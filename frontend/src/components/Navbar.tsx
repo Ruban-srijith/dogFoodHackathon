@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { RoleBadge } from './Badge';
 import { Button } from './Button';
-import { ThemeSelector } from './ThemeSelector';
 import { LogOut, Trophy, Shield, User as UserIcon, Menu, X } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -49,11 +48,8 @@ export const Navbar: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Actions, Multi-Theme Switcher & Auth State */}
+          {/* Right Actions & Auth State */}
           <div className="flex items-center gap-3">
-            {/* Theme Selector Component */}
-            <ThemeSelector />
-
             {/* Quick Action Button */}
             {user ? (
               <div className="hidden md:flex items-center gap-2.5">
