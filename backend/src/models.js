@@ -154,6 +154,24 @@ const evaluationScoreSchema = new mongoose.Schema({
 
 evaluationScoreSchema.index({ submission_id: 1, judge_id: 1 }, { unique: true });
 
+// Community vote: one per user per event, points at a submission
+const voteSchema = new mongoose.Schema({
+  event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+  submission_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Submission', required: true },
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  created_at: { type: Date, default: Date.now }
+});
+voteSchema.index({ event_id: 1, user_id: 1 }, { unique: true }); // one vote per user per event
+
+// Threaded comment on a submission (judges and organizers can mark is_internal)
+const commentSchema = new mongoose.Schema({
+  submission_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Submission', required: true },
+  author_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  content: { type: String, required: true, trim: true },
+  is_internal: { type: Boolean, default: false }, // true = only judges/organizers see it
+  created_at: { type: Date, default: Date.now }
+});
+
 const User = mongoose.model('User', userSchema);
 const Event = mongoose.model('Event', eventSchema);
 const Track = mongoose.model('Track', trackSchema);
@@ -164,6 +182,8 @@ const JudgeInvite = mongoose.model('JudgeInvite', judgeInviteSchema);
 const JudgeAssignment = mongoose.model('JudgeAssignment', judgeAssignmentSchema);
 const RubricCriterion = mongoose.model('RubricCriterion', rubricCriterionSchema);
 const EvaluationScore = mongoose.model('EvaluationScore', evaluationScoreSchema);
+const Vote = mongoose.model('Vote', voteSchema);
+const Comment = mongoose.model('Comment', commentSchema);
 
 module.exports = {
   User,
@@ -176,5 +196,7 @@ module.exports = {
   JudgeAssignment,
   RubricCriterion,
   EvaluationScore,
-  Score: EvaluationScore
+  Score: EvaluationScore,
+  Vote,
+  Comment
 };

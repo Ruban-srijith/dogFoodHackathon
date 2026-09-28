@@ -7,7 +7,7 @@ const crypto = require('crypto');
 require('dotenv').config();
 
 const { seedDatabaseIfEmpty, testCredentials } = require('./seed');
-const { User, Event, Track, Prize, Team, Submission, JudgeInvite, JudgeAssignment, RubricCriterion, EvaluationScore } = require('./models');
+const { User, Event, Track, Prize, Team, Submission, JudgeInvite, JudgeAssignment, RubricCriterion, EvaluationScore, Vote, Comment } = require('./models');
 const { generateToken, authenticate, requireRole, optionalAuth } = require('./auth');
 
 const app = express();
@@ -345,6 +345,34 @@ app.get('/api/events/:id', async (req, res) => {
 // ==========================================
 // 4. T1 FEATURE: TEAMS & INVITE LINKS (MAX 4 MEMBERS)
 // ==========================================
+
+// PATCH /api/events/:id  (organizer/admin – update event fields)
+const handleUpdateEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let event = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      event = await Event.findById(id);
+    } else {
+      event = await Event.findOne({ slug: id });
+    }
+    if (!event) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Event not found' } });
+    const allowed = ['title', 'description', 'start_date', 'end_date', 'submission_deadline', 'location', 'status'];
+    allowed.forEach(f => { if (req.body[f] !== undefined) event[f] = req.body[f]; });
+    await event.save();
+    return res.status(200).json({ success: true, data: event });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+};
+app.patch('/api/events/:id', authenticate, requireRole('organizer', 'admin'), handleUpdateEvent);
+app.patch('/api/v1/events/:id', authenticate, requireRole('organizer', 'admin'), handleUpdateEvent);
+app.post('/api/v1/events', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
+  // Proxy through to the existing POST /api/events handler inline
+  req.url = '/api/events';
+  return res.redirect(307, '/api/events');
+});
+
 
 // POST /api/teams (Participant creates a team and gets an invite link)
 app.post('/api/teams', authenticate, requireRole('participant', 'admin'), async (req, res) => {
@@ -2222,6 +2250,452 @@ app.get('/api/overview', async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 });
+
+// ===========================================================================
+// MISSING /api/v1/ ROUTE ALIASES & NEW FEATURE ROUTES
+// These are the routes consumed by the React frontend (endpoints.ts) that
+// had no backend counterpart.  Added in one block for clarity.
+// ===========================================================================
+
+// --- Submissions ---
+// GET /api/v1/submissions/gallery/:eventId  (public – no auth required)
+app.get('/api/v1/submissions/gallery/:eventId', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+    }
+    const subs = await Submission.find({ event_id: eventId, status: { $ne: 'draft' } })
+      .populate('team_id', 'name slug')
+      .populate('track_id', 'name prize_pool description')
+      .sort({ submitted_at: -1 })
+      .lean();
+    // Strip invite_code from populated teams
+    const safe = subs.map(s => {
+      if (s.team_id && s.team_id.invite_code) {
+        const t = { ...s.team_id }; delete t.invite_code; return { ...s, team_id: t };
+      }
+      return s;
+    });
+    return res.status(200).json({ success: true, data: safe });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// GET /api/v1/submissions/event/:eventId  (authenticated)
+app.get('/api/v1/submissions/event/:eventId', authenticate, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+    }
+    const filter = { event_id: eventId };
+    // Participants only see their own team's submissions; judges/organizers/admin see all
+    const roleUpper = (req.user.role || '').toUpperCase();
+    if (roleUpper === 'PARTICIPANT') {
+      const myTeam = await Team.findOne({ event_id: eventId, members: req.user.id }).lean();
+      if (myTeam) filter.team_id = myTeam._id;
+      else return res.status(200).json({ success: true, data: [] });
+    }
+    const subs = await Submission.find(filter)
+      .populate('team_id', 'name slug')
+      .populate('track_id', 'name prize_pool')
+      .sort({ submitted_at: -1 })
+      .lean();
+    return res.status(200).json({ success: true, data: subs });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// POST /api/v1/submissions  (participant)
+app.post('/api/v1/submissions', authenticate, requireRole('participant', 'admin'), async (req, res) => {
+  // delegate to the existing /api/submissions handler logic inline
+  const { event_id, team_id, track_id, title, tagline, description, repo_url, demo_url, tech_stack } = req.body;
+  if (!event_id || !team_id || !track_id || !title || !description) {
+    return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'event_id, team_id, track_id, title, description are required' } });
+  }
+  try {
+    const event = await Event.findById(event_id).lean();
+    if (!event) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Event not found' } });
+    if (new Date() > new Date(event.submission_deadline)) {
+      return res.status(403).json({ success: false, error: { code: 'DEADLINE_PASSED', message: 'Submission deadline has passed' } });
+    }
+    const sub = new Submission({ event_id, team_id, track_id, title, tagline, description, repo_url, demo_url, tech_stack: tech_stack || [] });
+    await sub.save();
+    return res.status(201).json({ success: true, data: sub });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// GET  /api/v1/submissions/:id  (public with optional auth)
+app.get('/api/v1/submissions/:id', optionalAuth, async (req, res) => {
+  try {
+    const sub = await Submission.findById(req.params.id)
+      .populate('team_id', 'name slug')
+      .populate('track_id', 'name')
+      .lean();
+    if (!sub) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Submission not found' } });
+    return res.status(200).json({ success: true, data: sub });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// PATCH /api/v1/submissions/:id  (participant)
+app.patch('/api/v1/submissions/:id', authenticate, requireRole('participant', 'admin'), async (req, res) => {
+  try {
+    const sub = await Submission.findById(req.params.id);
+    if (!sub) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Submission not found' } });
+    const event = await Event.findById(sub.event_id).lean();
+    if (event && new Date() > new Date(event.submission_deadline)) {
+      return res.status(403).json({ success: false, error: { code: 'DEADLINE_PASSED', message: 'Submission deadline has passed' } });
+    }
+    const allowed = ['title', 'tagline', 'description', 'repo_url', 'demo_url', 'tech_stack', 'status'];
+    allowed.forEach(f => { if (req.body[f] !== undefined) sub[f] = req.body[f]; });
+    sub.updated_at = new Date();
+    await sub.save();
+    return res.status(200).json({ success: true, data: sub });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// --- Tracks ---
+// GET /api/v1/tracks/event/:eventId  (public)
+app.get('/api/v1/tracks/event/:eventId', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+    }
+    const tracks = await Track.find({ event_id: eventId }).lean();
+    return res.status(200).json({ success: true, data: tracks });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// GET /api/v1/tracks/:id  (public)
+app.get('/api/v1/tracks/:id', async (req, res) => {
+  try {
+    const track = await Track.findById(req.params.id).lean();
+    if (!track) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Track not found' } });
+    return res.status(200).json({ success: true, data: track });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// --- Events ---
+// GET /api/v1/events/all  (public – alias)
+app.get('/api/v1/events/all', async (req, res) => {
+  try {
+    const events = await Event.find().sort({ created_at: -1 }).lean();
+    return res.status(200).json({ success: true, data: events });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// GET /api/v1/events/:id  (public)
+app.get('/api/v1/events/:id', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id).lean();
+    if (!event) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Event not found' } });
+    return res.status(200).json({ success: true, data: event });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// --- Teams ---
+// GET /api/v1/teams/event/:eventId/me  (authenticated)
+app.get('/api/v1/teams/event/:eventId/me', authenticate, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+    }
+    const team = await Team.findOne({ event_id: eventId, members: req.user.id })
+      .populate('leader_id', 'username full_name email')
+      .populate('members', 'username full_name email')
+      .lean();
+    if (!team) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'No team found for this event' } });
+    // Strip invite_code for non-leader members  
+    const isLeader = String(team.leader_id?._id || team.leader_id) === String(req.user.id);
+    const roleUpper = (req.user.role || '').toUpperCase();
+    if (!isLeader && !['ORGANIZER', 'ADMIN', 'JUDGE'].includes(roleUpper)) {
+      delete team.invite_code;
+    }
+    return res.status(200).json({ success: true, data: team });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// GET /api/v1/teams/event/:eventId  (authenticated)
+app.get('/api/v1/teams/event/:eventId', authenticate, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+    }
+    const teams = await Team.find({ event_id: eventId })
+      .populate('leader_id', 'username full_name')
+      .lean();
+    // Strip invite_codes from response
+    const safe = teams.map(t => { const c = { ...t }; delete c.invite_code; return c; });
+    return res.status(200).json({ success: true, data: safe });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// GET /api/v1/teams/:id  (authenticated)
+app.get('/api/v1/teams/:id', authenticate, async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id)
+      .populate('leader_id', 'username full_name email')
+      .populate('members', 'username full_name email')
+      .lean();
+    if (!team) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Team not found' } });
+    const isLeader = String(team.leader_id?._id || team.leader_id) === String(req.user.id);
+    const roleUpper = (req.user.role || '').toUpperCase();
+    if (!isLeader && !['ORGANIZER', 'ADMIN', 'JUDGE'].includes(roleUpper)) delete team.invite_code;
+    return res.status(200).json({ success: true, data: team });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// --- Judge routes ---
+// GET /api/v1/judges/event/:eventId/assignments  (organizer/admin)
+app.get('/api/v1/judges/event/:eventId/assignments', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+    }
+    const assignments = await JudgeAssignment.find({ event_id: eventId })
+      .populate('judge_id', 'username full_name email')
+      .populate('submission_id', 'title status')
+      .lean();
+    return res.status(200).json({ success: true, data: assignments, total: assignments.length });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// POST /api/v1/judges/assign  (organizer/admin) — alias for POST /api/judges/assignments
+app.post('/api/v1/judges/assign', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
+  const { event_id, judge_id, submission_id } = req.body;
+  if (!event_id || !judge_id || !submission_id) {
+    return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'event_id, judge_id, submission_id required' } });
+  }
+  try {
+    // Verify judge role
+    const judge = await User.findById(judge_id).lean();
+    if (!judge || judge.role.toUpperCase() !== 'JUDGE') {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'User is not a judge' } });
+    }
+    const existing = await JudgeAssignment.findOne({ submission_id, judge_id }).lean();
+    if (existing) return res.status(409).json({ success: false, error: { code: 'CONFLICT', message: 'Judge is already assigned to this submission' } });
+    const assignment = new JudgeAssignment({ event_id, judge_id, submission_id, assigned_by: req.user.id });
+    await assignment.save();
+    const populated = await JudgeAssignment.findById(assignment._id)
+      .populate('judge_id', 'username full_name email')
+      .populate('submission_id', 'title')
+      .lean();
+    return res.status(201).json({ success: true, data: populated });
+  } catch (err) {
+    if (err.code === 11000) return res.status(409).json({ success: false, error: { code: 'CONFLICT', message: 'Duplicate assignment' } });
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// DELETE /api/v1/judges/assignments/:id  (organizer/admin)
+app.delete('/api/v1/judges/assignments/:id', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
+  try {
+    const assignment = await JudgeAssignment.findById(req.params.id);
+    if (!assignment) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Assignment not found' } });
+    await assignment.deleteOne();
+    return res.status(200).json({ success: true, message: 'Assignment removed' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// --- Scores / Results ---
+// GET /api/v1/scores/event/:eventId/results  (authenticated – organizer/admin see full; others see normalized)
+app.get('/api/v1/scores/event/:eventId/results', authenticate, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+    }
+    const scores = await EvaluationScore.find({ event_id: eventId, status: 'submitted' })
+      .populate('submission_id', 'title team_id track_id')
+      .populate('judge_id', 'username full_name')
+      .lean();
+    // Aggregate per-submission
+    const bySubmission = {};
+    scores.forEach(s => {
+      const sid = String(s.submission_id?._id || s.submission_id);
+      if (!bySubmission[sid]) bySubmission[sid] = { submission: s.submission_id, scores: [], total: 0, count: 0 };
+      bySubmission[sid].scores.push(s.weighted_total);
+      bySubmission[sid].total += s.weighted_total;
+      bySubmission[sid].count++;
+    });
+    const results = Object.values(bySubmission).map(r => ({
+      submission: r.submission,
+      average_score: r.count > 0 ? r.total / r.count : 0,
+      judge_count: r.count
+    })).sort((a, b) => b.average_score - a.average_score);
+    return res.status(200).json({ success: true, data: results, total: results.length });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// --- Votes ---
+// POST /api/v1/votes  (authenticated – cast or toggle a community vote)
+app.post('/api/v1/votes', authenticate, async (req, res) => {
+  try {
+    const { event_id, submission_id } = req.body;
+    if (!event_id || !submission_id) {
+      return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'event_id and submission_id are required' } });
+    }
+    // Validate event is in a voting phase
+    const event = await Event.findById(event_id).lean();
+    if (!event) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Event not found' } });
+    const userId = req.user.id;
+    const existing = await Vote.findOne({ event_id, user_id: userId });
+    if (existing) {
+      // Toggle: if same submission, remove vote; else update to new submission
+      if (String(existing.submission_id) === String(submission_id)) {
+        await existing.deleteOne();
+        const count = await Vote.countDocuments({ submission_id });
+        return res.status(200).json({ success: true, data: { removed: true, currentCount: count } });
+      }
+      existing.submission_id = submission_id;
+      await existing.save();
+      const count = await Vote.countDocuments({ submission_id });
+      return res.status(200).json({ success: true, data: { vote: existing, currentCount: count } });
+    }
+    const vote = new Vote({ event_id, submission_id, user_id: userId });
+    await vote.save();
+    const count = await Vote.countDocuments({ submission_id });
+    return res.status(201).json({ success: true, data: { vote, currentCount: count } });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ success: false, error: { code: 'CONFLICT', message: 'You have already voted in this event' } });
+    }
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// GET /api/v1/votes/event/:eventId/leaderboard  (public)
+app.get('/api/v1/votes/event/:eventId/leaderboard', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+    }
+    const agg = await Vote.aggregate([
+      { $match: { event_id: new mongoose.Types.ObjectId(eventId) } },
+      { $group: { _id: '$submission_id', vote_count: { $sum: 1 } } },
+      { $sort: { vote_count: -1 } },
+      { $limit: 50 }
+    ]);
+    // Enrich with submission titles
+    const ids = agg.map(a => a._id);
+    const subs = await Submission.find({ _id: { $in: ids } }).select('title tagline team_id').populate('team_id', 'name').lean();
+    const subMap = {}; subs.forEach(s => { subMap[String(s._id)] = s; });
+    const board = agg.map(a => ({ submission: subMap[String(a._id)] || { _id: a._id }, vote_count: a.vote_count }));
+    return res.status(200).json({ success: true, data: board });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// GET /api/v1/votes/event/:eventId/me  (authenticated – my vote in this event)
+app.get('/api/v1/votes/event/:eventId/me', authenticate, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const vote = await Vote.findOne({ event_id: eventId, user_id: req.user.id }).lean();
+    return res.status(200).json({ success: true, data: vote || null });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// --- Comments ---
+// GET /api/v1/comments/submission/:submissionId  (authenticated)
+app.get('/api/v1/comments/submission/:submissionId', authenticate, async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const roleUpper = (req.user.role || '').toUpperCase();
+    const canSeeInternal = ['JUDGE', 'ORGANIZER', 'ADMIN'].includes(roleUpper);
+    const filter = { submission_id: submissionId };
+    if (!canSeeInternal) filter.is_internal = false;
+    const comments = await Comment.find(filter)
+      .populate('author_id', 'username full_name avatar_url role')
+      .sort({ created_at: 1 })
+      .lean();
+    return res.status(200).json({ success: true, data: comments });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// POST /api/v1/comments/submission/:submissionId  (authenticated)
+app.post('/api/v1/comments/submission/:submissionId', authenticate, async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const { content, is_internal } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'content is required' } });
+    }
+    const roleUpper = (req.user.role || '').toUpperCase();
+    // Only judges/organizers/admin can post internal comments
+    const finalInternal = is_internal && ['JUDGE', 'ORGANIZER', 'ADMIN'].includes(roleUpper);
+    const comment = new Comment({
+      submission_id: submissionId,
+      author_id: req.user.id,
+      content: content.trim(),
+      is_internal: finalInternal
+    });
+    await comment.save();
+    const populated = await Comment.findById(comment._id).populate('author_id', 'username full_name avatar_url role').lean();
+    return res.status(201).json({ success: true, data: populated });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// DELETE /api/v1/comments/:commentId  (authenticated – own comment or admin/organizer)
+app.delete('/api/v1/comments/:commentId', authenticate, async (req, res) => {
+  try {
+    const comment = await Comment.findById(req.params.commentId);
+    if (!comment) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Comment not found' } });
+    const roleUpper = (req.user.role || '').toUpperCase();
+    const isOwner = String(comment.author_id) === String(req.user.id);
+    if (!isOwner && !['ORGANIZER', 'ADMIN'].includes(roleUpper)) {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Not authorized to delete this comment' } });
+    }
+    await comment.deleteOne();
+    return res.status(200).json({ success: true, message: 'Comment deleted' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
+// ===========================================================================
+// END OF /api/v1/ ALIASES
+// ===========================================================================
 
 // Retry loop to ensure backend waits for the database to be fully ready
 async function connectWithRetry() {

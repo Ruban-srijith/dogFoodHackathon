@@ -43,10 +43,9 @@ export const Navbar: React.FC = () => {
               <Link to="/events" className="hover:text-rose-500 transition">ABOUT</Link>
               <Link to="/events" className="hover:text-rose-500 transition">TIERS</Link>
               <Link to="/events" className="hover:text-rose-500 transition">TIMELINE</Link>
-              <Link to="/gallery" className="hover:text-rose-500 transition">SCORING</Link>
+              <Link to="/gallery" className="hover:text-rose-500 transition">GALLERY</Link>
               <Link to="/events" className="hover:text-rose-500 transition">PRIZES</Link>
               <Link to="/events" className="hover:text-rose-500 transition">RULES</Link>
-              <Link to="/gallery" className="hover:text-rose-500 transition">JUDGES</Link>
               <Link to="/events" className="hover:text-rose-500 transition">FAQ</Link>
               <Link to="/events" className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">SPEC</Link>
             </div>
@@ -132,9 +131,9 @@ export const Navbar: React.FC = () => {
             <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">ABOUT</Link>
             <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">TIERS</Link>
             <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">TIMELINE</Link>
-            <Link to="/gallery" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">SCORING</Link>
+            <Link to="/gallery" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">GALLERY</Link>
             <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">PRIZES</Link>
-            <Link to="/gallery" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">JUDGES</Link>
+            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">RULES</Link>
           </div>
           <div className="pt-2">
             {!user ? (
