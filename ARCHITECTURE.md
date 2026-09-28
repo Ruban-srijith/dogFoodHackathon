@@ -1,135 +1,95 @@
 # DOGFOOD — Architecture Specification
 
-> **Technical architecture, request lifecycle, modular boundaries, and security enforcement models for the DOGFOOD platform.**
+> **Technical architecture, inter-service communication, request lifecycle, and key technical decisions.**
 
 ---
 
-## 1. Architectural Principles
+## 1. Services & System Topology
 
-1. **Self-Hostable & Local-First:** No reliance on AWS, Supabase, Firebase, or external cloud OAuth. Runs reliably on a local laptop or an isolated air-gapped server.
-2. **Reproducibility:** A single `docker compose up --build` brings up the entire platform deterministically.
-3. **Decoupled Three-Tier Topology:** Strict separation between presentation (React SPA), API & domain logic (Node.js/TypeScript REST API), and storage (PostgreSQL).
-4. **Never Trust the Client:** Authorization, role checks, team ownership, and judging isolation are evaluated exclusively server-side.
-
----
-
-## 2. System Topology
+The platform runs as 3 containerized services communicating over an isolated Docker network (`dogfood-network`):
 
 ```text
                            CLIENT BROWSER
                                  │
-                                 │ :8080
+                                 │ Port 5173 (or 80 / 3000)
                                  ▼
-                     ┌───────────────────────┐
-                     │         NGINX         │
-                     │     Reverse Proxy     │
-                     └───────────┬───────────┘
+                    ┌─────────────────────────┐
+                    │      FRONTEND SPA       │
+                    │   React 18 + Vite + TS  │
+                    │   (Proxy /api -> :5001) │
+                    └────────────┬────────────┘
                                  │
-                ┌────────────────┴────────────────┐
-                │                                 │
-         / (Frontend SPA)                 /api/*, /health, /ready
-                │                                 │
-                ▼                                 ▼
-     ┌─────────────────────┐           ┌─────────────────────┐
-     │   dogfood_frontend  │           │   dogfood_backend   │
-     │     (Port 80)       │           │     (Port 3000)     │
-     │ React+TS Vite Nginx │           │ Express REST API TS │
-     └─────────────────────┘           └──────────┬──────────┘
-                                                  │
-                                                  ▼
-                                       ┌─────────────────────┐
-                                       │   dogfood_postgres  │
-                                       │     (Port 5432)     │
-                                       │ Internal Network    │
-                                       └─────────────────────┘
+                                 │ HTTP REST (Port 5001 / 5000)
+                                 ▼
+                    ┌─────────────────────────┐
+                    │     EXPRESS BACKEND     │
+                    │   Node.js 18+ REST API  │
+                    │   JWT + RBAC + Z-Score  │
+                    └────────────┬────────────┘
+                                 │
+                                 │ mongodb://database:27017/app_db
+                                 ▼
+                    ┌─────────────────────────┐
+                    │    MONGODB DATABASE     │
+                    │    MongoDB 6.0 Engine   │
+                    │    Collection Storage   │
+                    └─────────────────────────┘
 ```
 
-### Network Isolation (Rule 18)
-* Only the **NGINX** container binds to the host's public port (`8080`).
-* The **Frontend**, **Backend**, and **PostgreSQL** communicate on the internal bridge network `dogfood-internal`.
-* PostgreSQL is intentionally unexposed to the host to protect persistent data from unauthorized external network access.
+### Inter-Service Connections
+1. **Client to Frontend**: Browser interacts with Vite dev server (or Nginx production bundle) on port `5173`.
+2. **Frontend to Backend**: In development, `vite.config.ts` proxies `/api` and `/api/v1` to `http://localhost:5001` (with port 5000 fallback). In production Docker Compose, Nginx proxies requests to `http://backend:5000`.
+3. **Backend to Database**: Backend establishes a persistent connection via Mongoose to `mongodb://database:27017/app_db` (with automatic fallback to `mongodb://127.0.0.1:27017/app_db` for host-direct execution).
 
 ---
 
-## 3. Backend Request Lifecycle (Rule 6)
+## 2. Request Lifecycle
 
-Every incoming HTTP request flows sequentially through well-defined responsibility boundaries:
+Every incoming API request follows this sequential pipeline:
 
 ```text
 HTTP Request
      │
      ▼
-[Route]                     (Mounts endpoint, rate limiting, and parameter schema)
+[CORS & Body Parser]        (express.json with 10MB limit, cookie-parser)
      │
      ▼
-[Auth Middleware]           (Extracts Bearer JWT, validates signature, populates req.user)
+[authenticate]              (Extracts Bearer token or 'token' cookie, verifies JWT, populates req.user)
      │
      ▼
-[RBAC Middleware]           (Enforces allowed roles e.g. ADMIN, ORGANIZER, JUDGE)
+[requireRole(...roles)]     (Enforces RBAC against user role: ADMIN, ORGANIZER, JUDGE, PARTICIPANT)
      │
      ▼
-[Validation Middleware]     (Zod schema validation on body, params, and query string)
+[Domain Guard]              (Deadline checks, Conflict-of-Interest validation, Ownership check)
      │
      ▼
-[Controller]                (Extracts input, delegates to service, formats JSON response)
+[Route Handler]             (Business logic execution: scoring, assignment, aggregation)
      │
      ▼
-[Service]                   (Business logic, domain invariants, audit logging, permissions)
+[Mongoose ODM]              (MongoDB query execution with schema-level toJSON transforms)
      │
      ▼
-[Repository]                (Direct SQL execution via connection pool, transactions)
-     │
-     ▼
-[PostgreSQL Database]       (Persistent ACID storage, constraints, foreign keys)
+JSON / CSV Response         (Strict error formatting or RFC 4180 CSV attachment)
 ```
 
 ---
 
-## 4. Frontend Architecture (Rule 5)
+## 3. Key Architectural Decisions
 
-The frontend avoids ad-hoc API calls within UI trees by maintaining strict layer boundaries:
+### 1. Dual Auth Delivery: HTTP-Only Cookies + Bearer Header
+* **Why**: Provides flexibility for both browser-based SPAs (cookie protection against XSS token harvesting) and automated API test suites / external clients (Bearer Authorization header).
 
-```text
-Component / Screen (e.g. GalleryPage)
-     │
-     ▼
-Hook (e.g. useSubmissions)
-     │
-     ▼
-Service (e.g. submissionService)
-     │
-     ▼
-API Client (apiClient with token interceptors)
-     │
-     ▼
-Backend REST API (/api/v1/*)
-```
+### 2. Schema-Level Secret Stripping (`toJSON` / `toObject`)
+* **Why**: Rather than relying on developers remembering `.select('-password_hash')` in every query controller, the Mongoose `userSchema` implements global `transform` hooks that automatically purge `password_hash` whenever any User document is serialized.
 
-### Layer Responsibilities
-* **`pages/`**: Routable views representing application screens.
-* **`components/`**: Reusable design system primitives (`Button`, `Card`, `Badge`, `Modal`, `Table`, `Loading`, `EmptyState`, `ErrorState`).
-* **`services/`**: Feature-level business operations.
-* **`api/`**: Centralized HTTP client and endpoint URL constants.
-* **`contexts/`**: Shared global state (`AuthContext`, `ToastContext`).
-* **`types/`**: TypeScript interfaces synchronized with backend domain models.
-* **`utils/`**: Pure formatting and local persistence helpers.
+### 3. Server-Calculated Weighted Rubrics
+* **Why**: The client is never trusted to calculate composite evaluation totals. When a judge submits criteria ratings, the server fetches the event's active rubric from MongoDB, verifies criteria weights, calculates the weighted total server-side, and stores both the criterion breakdown and the total.
 
----
+### 4. Positive Whitelisting for Privilege Boundaries
+* **Why**: Blacklisting roles (e.g. `role !== 'PARTICIPANT'`) allowed undefined or malformed roles to bypass security gates. All access-control points now use positive whitelisting (`['JUDGE', 'ORGANIZER', 'ADMIN'].includes(role)`).
 
-## 5. Security & Threat Model
+### 5. In-Memory Z-Score Normalization Engine
+* **Why**: Statistical normalization is computed dynamically on read (`/api/leaderboard`) via a pure mathematical service rather than pre-baked database triggers. This allows instant recalibration whenever organizers reopen scores or when new evaluations arrive, without database corruption.
 
-### 1. Judge Isolation Enforcement (Rule 16)
-* A judge cannot view or score any project submission unless an explicit `judge_assignments` record links their `user_id` to that `submission_id`.
-* The server inspects `req.user.userId` rather than any client-supplied `judge_id`.
-
-### 2. Team & Submission Ownership (Rule 8)
-* Editing a project submission requires verified membership in the submission's associated team.
-* The backend verifies `isMemberOfSubmissionTeam(req.user.userId, submissionId)` before applying mutations.
-
-### 3. Append-Only Audit Trail (Rule 23)
-* Security-critical actions (`LOGIN`, `LOGOUT`, `TEAM_CREATED`, `SUBMISSION_SUBMITTED`, `JUDGE_ASSIGNED`, `SCORE_CREATED`, `VOTE_CREATED`, `RESULTS_PUBLISHED`) write append-only records to `audit_logs`.
-* The standard application API provides no endpoints to delete or mutate audit logs.
-
-### 4. Input Sanitization & Information Hiding (Rule 12 & 14)
-* Input payloads are verified using strict Zod schemas with regex constraints.
-* Unhandled database exceptions and internal stack traces are redacted before sending responses to normal users.
+### 6. RFC 4180 Compliant Native CSV Exporter
+* **Why**: Organizers require offline spreadsheets for external audit. The CSV serialization is built in-house with zero external heavy dependencies, properly handling comma escaping, multi-line quotes, and carriage returns per RFC 4180.

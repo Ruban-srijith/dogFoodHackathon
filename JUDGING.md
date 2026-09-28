@@ -1,175 +1,92 @@
-# DOGFOOD — Judging Isolation & Scoring Specification
+# DOGFOOD — Judging Engine Specification
 
-> **Operational rules, verification flow, rubric weighting mathematics, and security isolation guarantees for evaluators.**
-
----
-
-## 1. The Core Law of Judging Isolation (Rule 16)
-
-Judges **MUST ONLY** access and evaluate submissions explicitly assigned to them by an event organizer or administrator.
-
-```text
-                  Incoming Evaluation Request:
-                 POST /api/v1/scores/submission/:id
-                                 │
-                                 ▼
-                     Extract Authenticated User
-                        (from signed JWT)
-                                 │
-                                 ▼
-                    Verify User Has JUDGE Role
-                                 │
-                                 ▼
-                   Query: judge_assignments WHERE
-                 judge_id = auth_user.id AND
-                 submission_id = req.params.id
-                                 │
-                ┌────────────────┴────────────────┐
-                │                                 │
-             Match Found?                   No Assignment?
-                │                                 │
-                ▼                                 ▼
-       Allow Evaluation Form            403 FORBIDDEN
-       & Validate Rubric Points          "Access Denied: You are not assigned
-                                          to evaluate this submission."
-```
-
-### Critical Security Guarantees
-* **Identity Immutability:** The server determines the judge identity strictly from `req.user.userId`. Any `judge_id` passed in request payloads or query parameters is discarded.
-* **Tamper Resistance:** Modifying a submission ID in the URL bar yields a `403 Forbidden` unless an assignment record exists in PostgreSQL.
+> **Assignment strategies, multi-criteria scoring mechanics, cross-judge z-score normalization, and rationale.**
 
 ---
 
-## 2. Evaluation Rubric & Scoring Mechanics
+## 1. Assignment Strategies
 
-Every hackathon defines a multi-dimensional rubric with customizable criteria.
+The platform supports 3 assignment modes via dedicated organizer endpoints:
 
-### Criterion Definition
-Each criterion specifies:
-1. `name`: Pillar title (e.g., "Innovation & Novelty").
-2. `max_points`: Upper bound for raw points (e.g., `25.0`).
-3. `weight`: Multiplier applied during aggregation (e.g., `1.0` or `1.5`).
+### 1. Manual Assignment (`POST /api/judges/assignments`)
+* **Behavior**: Organizer specifies `{ submission_id, judge_id }`.
+* **Validation**: Validates that the judge exists, project is not in draft, and verifies conflict of interest.
 
-### Validation Rules (Rule 14)
-When a score is submitted:
-1. `points` must be $\ge 0$.
-2. `points` must be $\le \text{criterion.max\_points}$.
-3. `criterion_id` must belong to the rubric configured for this specific hackathon event.
+### 2. Batch Assignment (`POST /api/judges/assignments/batch`)
+* **Behavior**: Accepts an array of `{ submission_id, judge_id }` pairs.
+* **Resilience**: Skips duplicate assignments and rejects conflict-of-interest pairs with detailed error reporting.
 
----
+### 3. Automatic Load-Balanced Assignment (`POST /api/judges/assignments/automatic`)
+* **Behavior**: Accepts `{ event_id, n_judges }` (default: 3 judges per project).
+* **Strategy**:
+  1. Computes current workload (number of assigned projects) for all available judges.
+  2. For each submission, filters out judges who are on the project's team or already assigned.
+  3. Sorts candidate judges by current load in ascending order.
+  4. Assigns the least-burdened $N$ judges to each project, ensuring balanced distribution across the judging pool.
 
-## 3. Aggregate Scoring Mathematics
-
-Let $S$ be a project submission evaluated by a set of assigned judges $J = \{j_1, j_2, \dots, j_m\}$.
-Let $C = \{c_1, c_2, \dots, c_k\}$ be the set of rubric criteria for the event.
-
-For each judge $j \in J$ and criterion $c \in C$, let $p(j, c)$ be the points awarded, and $w(c)$ be the criterion weight.
-
-The score awarded by judge $j$ is:
-$$\text{Score}(j, S) = \sum_{c \in C} \left( p(j, c) \times w(c) \right)$$
-
-The aggregate score across all assigned judges is the arithmetic mean:
-$$\text{Aggregate Score}(S) = \frac{1}{|J|} \sum_{j \in J} \text{Score}(j, S)$$
-
-### Tie-Breaking Hierarchy
-1. **Weighted Normalized Score** (highest wins).
-2. **Weighted Aggregate Raw Score**.
-3. **Total Number of Evaluators Completed**.
-4. **Public Community Votes** (tie-breaker).
-5. **Earliest Submission Timestamp**.
+### Conflict-of-Interest Guarantee
+* A judge can **never** evaluate a project belonging to a team where they are a leader or member. Both manual and automated assignment engines actively query `Team.find({ members: judgeId })` and reject assignments with `400 Bad Request`.
 
 ---
 
-## 3.1. Cross-Judge Score Normalization (Z-Score & 0–100 Rescaling)
+## 2. Scoring Method
 
-### Motivation: Eliminating Evaluator Bias
-In open hackathons, evaluator standards differ significantly:
-* **Harsh Judges:** Score strictly, with average evaluations around 4.0–6.0.
-* **Generous Judges:** Score leniently, with average evaluations around 7.5–9.5.
-
-When raw scores are directly averaged, a project assigned to a generous judge receives an unearned advantage over an exceptional project assigned to a harsh judge. **Cross-judge score normalization** resolves this by evaluating how far a project performed relative to that specific judge's scoring distribution.
-
-### Mathematical Formulation
-
-#### 1. Per-Judge Mean ($\mu_j$) and Standard Deviation ($\sigma_j$)
-For each judge $j$ who evaluated $N_j$ submissions with scores $X_j = \{x_{j, 1}, x_{j, 2}, \dots, x_{j, N_j}\}$:
-
-$$\mu_j = \frac{1}{N_j} \sum_{i=1}^{N_j} x_{j, i}$$
-
-$$\sigma_j = \sqrt{\frac{1}{N_j} \sum_{i=1}^{N_j} (x_{j, i} - \mu_j)^2}$$
-
-#### 2. Z-Score Transformation
-For each evaluation score $x_{j, i}$:
-
-$$z_{j, i} = \frac{x_{j, i} - \mu_j}{\sigma_j}$$
-
-The z-score measures how many standard deviations a project score falls above or below the judge's personal average.
-
-#### 3. 0–100 Rescaling
-Across all computed $z$-scores in the event, let $z_{\min} = \min(Z)$ and $z_{\max} = \max(Z)$:
-
-$$\text{Score}_{\text{norm}}(j, i) = \begin{cases} 
-\displaystyle \left( \frac{z_{j, i} - z_{\min}}{z_{\max} - z_{\min}} \right) \times 100 & \text{if } z_{\max} > z_{\min} \\
-50.0 & \text{if } z_{\max} = z_{\min}
-\end{cases}$$
-
-#### 4. Submission Normalized Score
-The final normalized score for submission $S$ evaluated by judges $J_S$ is:
-
-$$\text{Normalized Score}(S) = \frac{1}{|J_S|} \sum_{j \in J_S} \text{Score}_{\text{norm}}(j, S)$$
+### Multi-Criteria Rubric Evaluation (`POST /api/judges/submissions/:id/evaluate`)
+1. Each event defines weighted rubric criteria (e.g. Innovation: weight 0.4, Execution: weight 0.6).
+2. When a judge grades a submission, the server computes the weighted total:
+   $$\text{Weighted Total} = \frac{\sum_{i=1}^{K} (\text{score}_i \times \text{weight}_i)}{\sum_{i=1}^{K} \text{weight}_i}$$
+3. **Draft vs Submit Locking**:
+   * Evaluators can save scores as `draft` and update them iteratively.
+   * Once finalized with `status: 'submitted'`, the score is **permanently locked**.
+   * Any subsequent edit by the judge returns `403 Forbidden`. Only an organizer can reopen the score (and only while the event remains open).
 
 ---
 
-### Robust Edge-Case Handling
+## 3. Cross-Judge Score Normalization Method
 
-| Edge Case | Mathematical Problem | System Resolution |
-| :--- | :--- | :--- |
-| **Judge with 1 Score ($N_j = 1$)** | Variance $\sigma_j^2 = 0$; standard deviation $\sigma_j = 0$; division by zero. | Set $z_{j, 1} = 0.0$ (neutral median). The evaluation maps to the midpoint ($50.0$). Flagged with `single_score`. |
-| **Standard Deviation 0 ($\sigma_j = 0$)** | Judge gave identical scores to all assigned projects (no variance); division by zero. | Set $z_{j, i} = 0.0$ for all their scores. Avoids division by zero and treats all evaluations as average ($50.0$). Flagged with `zero_variance`. |
-| **Missing Scores / Unscored Projects** | Submissions with 0 completed judge evaluations. | Handled gracefully without `NaN`. Submissions remain unranked (`raw_rank = null`, `normalized_rank = null`) at the bottom of the table. |
+### The Problem: Evaluator Variance
+In any hackathon, some judges grade harshly (averaging 4.0–6.0) while others grade generously (averaging 8.0–9.5). Under a raw average, a mediocre project assigned to generous judges will unfairly beat an exceptional project assigned to harsh judges.
 
----
+### The Algorithm: Z-Score + 0–100 Rescaling
 
-### Before & After Case Study (Spec Fixture Data)
+#### Step 1: Per-Judge Mean ($\mu_j$) and Standard Deviation ($\sigma_j$)
+For each judge $j$ with scores $X_j = \{x_1, x_2, \dots, x_N\}$:
+$$\mu_j = \frac{1}{N} \sum_{i=1}^{N} x_i, \quad \sigma_j = \sqrt{\frac{1}{N} \sum_{i=1}^{N} (x_i - \mu_j)^2}$$
 
-Consider four projects from [`sample_teams_and_projects.json`](file:///Users/rubansrijith/IdeaProjects/projects/dogFoodHackathon/database/fixtures/sample_teams_and_projects.json) evaluated by two judges with opposing rating habits from [`sample_users.json`](file:///Users/rubansrijith/IdeaProjects/projects/dogFoodHackathon/database/fixtures/sample_users.json):
-* **Dr. Sarah Chen (`judge1`):** Harsh Judge ($\mu_1 = 5.0, \sigma_1 = 1.0$)
-* **Elena Rostova (`judge3`):** Generous Judge ($\mu_2 = 8.0, \sigma_2 = 1.0$)
+#### Step 2: Z-Score Calculation
+Each score is converted into units of standard deviation from that judge's mean:
+$$z = \frac{x - \mu_j}{\sigma_j}$$
 
-#### Side-by-Side Comparison
+#### Step 3: Edge-Case Handling (No Division by Zero)
+* **Single Evaluation ($N = 1$)**: $\sigma_j = 0 \implies z = 0.0$ (neutral).
+* **Identical Scores ($\sigma_j = 0$)**: All scores identical $\implies z = 0.0$.
+* **Unscored Projects**: Ranked at the bottom with `raw_score: null, normalized_score: null` without breaking ranking arrays.
 
-| Project Title | Team | Assigned Judge | Raw Score | Raw Rank | Z-Score | Normalized Score (0–100) | Normalized Rank | Rank Shift ($\Delta$) |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Antigravity Autonomous Core** | Team Antigravity | Dr. Sarah Chen (Harsh) | **6.0** | #3 | **+1.00** | **100.0** | **#1** (tied) | **+2 (Jumped up)** |
-| **ByteForge High-Throughput Log Engine** | Team ByteForge | Elena Rostova (Generous) | **9.0** | #1 | **+1.00** | **100.0** | **#1** (tied) | **0** |
-| **Agentic Workflow Orchestrator** | Team Antigravity | Dr. Sarah Chen (Harsh) | **4.0** | #4 | **-1.00** | **0.0** | **#3** (tied) | **+1** |
-| **HotReload Micro-Bundler** | Team ByteForge | Elena Rostova (Generous) | **7.0** | **#2** | **-1.00** | **0.0** | **#3** (tied) | **-1 (Dropped)** |
+#### Step 4: Rescaling to 0–100 Scale
+To make z-scores intuitive for human interpretation, z-scores are mapped across the global $[z_{\min}, z_{\max}]$ spectrum:
+$$\text{Normalized Score} = \left( \frac{z - z_{\min}}{z_{\max} - z_{\min}} \right) \times 100$$
+*(If all z-scores are identical, defaults to 50.0)*.
 
-#### Key Takeaway:
-* **Before Normalization:** HotReload Micro-Bundler was Elena's *worst* project ($7.0$), yet it placed **#2**, beating Dr. Chen's *best* project, Antigravity Autonomous Core ($6.0$, ranked #3), solely due to judge generosity bias.
-* **After Normalization:** Antigravity Autonomous Core moves to **#1** with a perfect $100.0$, because it was the top-ranked project within its evaluator's distribution. Bias is completely eliminated.
-
----
-
-## 4. Judging Lifecycle States
-
-```text
-[assigned] ────► [in_progress] ────► [completed]
-     │                 │
-     └─────────────────┴────────► (Assignment Removed by Organizer)
-```
-
-1. **`assigned`**: Organizer has assigned the project to the judge. The judge has not submitted scores for any criterion yet.
-2. **`in_progress`**: The judge has scored at least one criterion, but criteria remain unscored.
-3. **`completed`**: The judge has evaluated and saved scores for **all** criteria defined in the event rubric.
+#### Step 5: Side-by-Side Leaderboard & Rank Delta
+The leaderboard calculates both `raw_rank` and `normalized_rank`:
+$$\text{Rank Delta} = \text{raw\_rank} - \text{normalized\_rank}$$
+A positive delta indicates a project that was suppressed by harsh judging and restored to its rightful rank through normalization.
 
 ---
 
-## 5. Audit Logging
+## 4. Why We Chose These Methods
 
-Every evaluation event generates an append-only audit record:
-* `SCORE_CREATED`: First score recorded for a criterion.
-* `SCORE_UPDATED`: Modification of an existing criterion score.
-* `JUDGE_ASSIGNED`: Organizer associates a judge with a submission.
-* `JUDGE_UNASSIGNED`: Organizer removes an assignment.
-* `RESULTS_PUBLISHED`: Event status transitioned to reveal final standings.
+1. **Why Load-Balanced Greedy Assignment?**
+   * Minimizes judge fatigue by preventing uneven spikes in workload.
+   * Completely eliminates conflict of interest programmatically at assignment time.
+
+2. **Why Server-Side Weighted Totals?**
+   * Eliminates client tampering. Judges cannot modify weight factors in browser payloads.
+
+3. **Why Draft & Lock Mechanics?**
+   * Judges can draft notes and deliberate without prematurely publishing unfinished marks. Once finalized, locking prevents post-competition manipulation or collusion.
+
+4. **Why Z-Score Over Simple Min-Max or Percentile Ranking?**
+   * Simple min-max rescaling only stretches the range and remains vulnerable to extreme outlier scores.
+   * Percentile ranking discards the magnitude of difference between projects.
+   * **Z-score preserves relative distribution and distance**, measuring how exceptionally a project performed relative to a specific judge's typical scoring tendencies.

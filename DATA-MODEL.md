@@ -1,174 +1,137 @@
 # DOGFOOD — Data Model Specification
 
-> **PostgreSQL schema, entity relationships, integrity constraints, and migration sequencing for the DOGFOOD platform.**
+> **Mongoose collections, schema field definitions, relationship constraints, and CSV export endpoints.**
 
 ---
 
-## 1. Entity Relationship Overview
-
-```mermaid
-erDiagram
-    users ||--o{ events : "organizes"
-    users ||--o{ team_members : "belongs to"
-    users ||--o{ judge_assignments : "evaluates"
-    users ||--o{ scores : "scores"
-    users ||--o{ votes : "casts"
-    users ||--o{ comments : "posts"
-    users ||--o{ audit_logs : "triggers"
-
-    events ||--o{ tracks : "features"
-    events ||--o{ teams : "enrolls"
-    events ||--o{ submissions : "receives"
-    events ||--o{ rubrics : "defines"
-    events ||--o{ judge_assignments : "assigns"
-    events ||--o{ votes : "tallies"
-
-    teams ||--o{ team_members : "consists of"
-    teams ||--o| submissions : "submits"
-
-    rubrics ||--o{ rubric_criteria : "contains"
-
-    submissions ||--o{ judge_assignments : "assigned to"
-    submissions ||--o{ scores : "scored in"
-    submissions ||--o{ votes : "voted for"
-    submissions ||--o{ comments : "receives"
-
-    judge_assignments ||--o{ scores : "produces"
-    rubric_criteria ||--o{ scores : "graded against"
-```
-
----
-
-## 2. Table Specifications
+## 1. MongoDB Collections
 
 ### 1. `users`
-Represents registered platform actors (participants, judges, organizers, administrators).
-* `id` (UUID, PK, Default: `gen_random_uuid()`): Unique user ID.
-* `username` (VARCHAR(50), UNIQUE, NOT NULL): Alphanumeric handle.
-* `email` (VARCHAR(255), UNIQUE, NOT NULL): Verified email address.
-* `password_hash` (VARCHAR(255), NOT NULL): Bcrypt salted hash (10 rounds).
-* `role` (VARCHAR(20), NOT NULL, Default: `'PARTICIPANT'`): Check: `VISITOR`, `PARTICIPANT`, `JUDGE`, `ORGANIZER`, `ADMIN`.
-* `full_name` (VARCHAR(100), NOT NULL): Display name.
-* `bio` (TEXT, Nullable): Self-description.
-* `avatar_url` (TEXT, Nullable): Profile image URL.
-* `created_at` / `updated_at` (TIMESTAMPTZ, NOT NULL).
+* `_id` (`ObjectId`, PK): Unique user identifier.
+* `username` (`String`, required, unique): Alphanumeric login handle.
+* `email` (`String`, required, unique): User email address.
+* `password_hash` (`String`, required): Bcrypt salted hash (automatically removed via `toJSON` transform).
+* `role` (`String`, required, enum: `['ADMIN', 'ORGANIZER', 'JUDGE', 'PARTICIPANT', 'VISITOR']`, default: `'PARTICIPANT'`).
+* `full_name` (`String`, required): User display name.
+* `bio` (`String`): User biography.
+* `avatar_url` (`String`): Profile image path or URL.
+* `created_at` (`Date`, default: `Date.now`).
 
 ### 2. `events`
-Represents hackathon competitions and conferences.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `title` (VARCHAR(200), NOT NULL): Competition title.
-* `slug` (VARCHAR(100), UNIQUE, NOT NULL): URL-friendly slug.
-* `description` (TEXT, NOT NULL): Markdown overview.
-* `start_date` (TIMESTAMPTZ, NOT NULL).
-* `end_date` (TIMESTAMPTZ, NOT NULL).
-* `submission_deadline` (TIMESTAMPTZ, NOT NULL).
-* `status` (VARCHAR(20), NOT NULL, Default: `'draft'`): Check: `draft`, `published`, `ongoing`, `voting`, `judging`, `closed`.
-* `banner_url` / `location` (TEXT / VARCHAR).
-* `created_by` (UUID, FK -> `users.id`, ON DELETE RESTRICT).
+* `_id` (`ObjectId`, PK): Unique event identifier.
+* `title` (`String`, required): Hackathon competition title.
+* `slug` (`String`, required, unique): URL slug.
+* `description` (`String`, required): Event summary.
+* `start_date` (`Date`, required): Event commencement.
+* `end_date` (`Date`, required): Event conclusion.
+* `submission_deadline` (`Date`, required): Strict project submission deadline.
+* `status` (`String`, enum: `['draft', 'published', 'ongoing', 'voting', 'judging', 'closed']`, default: `'ongoing'`).
+* `location` (`String`, default: `'Global / Decentralized'`).
+* `created_by` (`ObjectId`, ref: `'User'`): Organizer ID who created the event.
+* `created_at` (`Date`, default: `Date.now`).
 
 ### 3. `tracks`
-Prize categories or thematic technical areas within a hackathon.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `event_id` (UUID, FK -> `events.id`, ON DELETE CASCADE).
-* `name` (VARCHAR(100), NOT NULL): Track title.
-* `description` (TEXT, Nullable).
-* `prize_pool` (VARCHAR(100), Nullable): Monetary or sponsor prizes.
-* *Constraint:* `UNIQUE(event_id, name)`.
+* `_id` (`ObjectId`, PK): Unique track identifier.
+* `event_id` (`ObjectId`, ref: `'Event'`, required): Parent hackathon.
+* `name` (`String`, required): Track name (e.g. "Autonomous Agents & DevTools").
+* `description` (`String`): Detailed track overview.
+* `prize_pool` (`String`): Bounty or prize description.
 
-### 4. `teams`
-Participant collaborations competing in an event.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `event_id` (UUID, FK -> `events.id`, ON DELETE CASCADE).
-* `name` (VARCHAR(100), NOT NULL): Team name.
-* `slug` (VARCHAR(120), NOT NULL).
-* `description` (TEXT, Nullable).
-* `leader_id` (UUID, FK -> `users.id`, ON DELETE RESTRICT).
-* `invite_code` (VARCHAR(32), UNIQUE, NOT NULL): 8-character secret invite token.
-* *Constraint:* `UNIQUE(event_id, name)`.
+### 4. `prizes`
+* `_id` (`ObjectId`, PK): Unique prize identifier.
+* `event_id` (`ObjectId`, ref: `'Event'`, required): Parent hackathon.
+* `title` (`String`, required): Prize title (e.g. "Grand Champion").
+* `award_amount` (`String`, required): Monetary value or award item.
+* `description` (`String`): Award criteria.
 
-### 5. `team_members`
-Association table connecting users to teams.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `team_id` (UUID, FK -> `teams.id`, ON DELETE CASCADE).
-* `user_id` (UUID, FK -> `users.id`, ON DELETE CASCADE).
-* `role` (VARCHAR(20), Default: `'member'`): Check: `leader`, `member`.
-* *Constraint:* `UNIQUE(team_id, user_id)`.
+### 5. `teams`
+* `_id` (`ObjectId`, PK): Unique team identifier.
+* `event_id` (`ObjectId`, ref: `'Event'`, required): Competing event.
+* `name` (`String`, required): Team name.
+* `slug` (`String`, required): Slugified team name.
+* `description` (`String`): Team summary.
+* `leader_id` (`ObjectId`, ref: `'User'`, required): Creator/Captain.
+* `invite_code` (`String`, required, unique): Unique 8-character secret invite code (hidden from public APIs).
+* `members` ([`ObjectId`], ref: `'User'`): Team members array (**strictly capped at maximum 4 members**).
+* `created_at` (`Date`, default: `Date.now`).
 
 ### 6. `submissions`
-Team project entries submitted for judging.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `event_id` (UUID, FK -> `events.id`, ON DELETE CASCADE).
-* `team_id` (UUID, FK -> `teams.id`, ON DELETE CASCADE).
-* `track_id` (UUID, FK -> `tracks.id`, ON DELETE SET NULL).
-* `title` (VARCHAR(200), NOT NULL).
-* `tagline` (VARCHAR(255), NOT NULL): One-sentence elevator pitch.
-* `description` (TEXT, NOT NULL): Full architectural breakdown.
-* `repo_url` (TEXT, NOT NULL): Git repository URL.
-* `demo_url` / `video_url` (TEXT, Nullable).
-* `tech_stack` (TEXT[], Default: `'{}'`).
-* `status` (VARCHAR(20), Default: `'draft'`): Check: `draft`, `submitted`.
-* `submitted_at` (TIMESTAMPTZ, Nullable).
-* *Constraint:* `UNIQUE(event_id, team_id)` (One submission per team per event).
+* `_id` (`ObjectId`, PK): Unique submission identifier.
+* `event_id` (`ObjectId`, ref: `'Event'`, required): Competing event.
+* `team_id` (`ObjectId`, ref: `'Team'`, required): Owning team.
+* `track_id` (`ObjectId`, ref: `'Track'`, required): Selected track.
+* `title` (`String`, required): Project title.
+* `tagline` (`String`): One-sentence elevator pitch.
+* `description` (`String`, required): Markdown project breakdown.
+* `repo_url` (`String`): Source code repository URL.
+* `demo_url` (`String`): Live demonstration or deployment link.
+* `tech_stack` ([`String`]): Array of technologies used.
+* `status` (`String`, enum: `['draft', 'submitted']`, default: `'draft'`).
+* `submitted_at` (`Date`, default: `Date.now`).
+* `updated_at` (`Date`, default: `Date.now`).
 
-### 7. `rubrics`
-Evaluation framework attached to a hackathon.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `event_id` (UUID, FK -> `events.id`, ON DELETE CASCADE).
-* `name` (VARCHAR(100), NOT NULL).
-* `max_score` (NUMERIC(5,2), Default: `100.00`).
+### 7. `judgeinvites`
+* `_id` (`ObjectId`, PK): Unique invite identifier.
+* `event_id` (`ObjectId`, ref: `'Event'`): Optional linked event.
+* `email` (`String`): Targeted judge recipient email.
+* `invite_code` (`String`, required, unique): Secure invite token.
+* `invited_by` (`ObjectId`, ref: `'User'`, required): Inviting organizer.
+* `status` (`String`, enum: `['pending', 'accepted', 'expired']`, default: `'pending'`).
+* `accepted_by` (`ObjectId`, ref: `'User'`): User who accepted.
+* `created_at` (`Date`, default: `Date.now`).
 
-### 8. `rubric_criteria`
-Individual weighted dimensions within a rubric.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `rubric_id` (UUID, FK -> `rubrics.id`, ON DELETE CASCADE).
-* `name` (VARCHAR(100), NOT NULL).
-* `description` (TEXT, Nullable).
-* `weight` (NUMERIC(4,2), Default: `1.00`, Check: `weight > 0`).
-* `max_points` (NUMERIC(5,2), Default: `10.00`, Check: `max_points > 0`).
+### 8. `judgeassignments`
+* `_id` (`ObjectId`, PK): Unique assignment identifier.
+* `event_id` (`ObjectId`, ref: `'Event'`, required): Hackathon event.
+* `submission_id` (`ObjectId`, ref: `'Submission'`, required): Project to evaluate.
+* `judge_id` (`ObjectId`, ref: `'User'`, required): Assigned evaluator.
+* `assigned_by` (`ObjectId`, ref: `'User'`): Organizer ID who assigned.
+* `status` (`String`, enum: `['assigned', 'in_progress', 'completed']`, default: `'assigned'`).
+* `created_at` (`Date`, default: `Date.now`).
+* **Compound Index**: `{ submission_id: 1, judge_id: 1 }` (unique constraint).
 
-### 9. `judge_assignments`
-Enforces Judge Isolation (Rule 16).
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `event_id` (UUID, FK -> `events.id`, ON DELETE CASCADE).
-* `judge_id` (UUID, FK -> `users.id`, ON DELETE CASCADE).
-* `submission_id` (UUID, FK -> `submissions.id`, ON DELETE CASCADE).
-* `status` (VARCHAR(20), Default: `'assigned'`): Check: `assigned`, `in_progress`, `completed`.
-* *Constraint:* `UNIQUE(judge_id, submission_id)`.
+### 9. `rubriccriteria`
+* `_id` (`ObjectId`, PK): Unique criterion identifier.
+* `event_id` (`ObjectId`, ref: `'Event'`, required): Hackathon event.
+* `name` (`String`, required): Pillar title (e.g. "Innovation & Novelty").
+* `description` (`String`): Scoring guidelines.
+* `weight` (`Number`, default: `1.0`): Multiplier applied in evaluation totals.
+* `min_score` (`Number`, default: `0`): Minimum allowable score.
+* `max_score` (`Number`, default: `10`): Maximum allowable score.
+* `created_at` (`Date`, default: `Date.now`).
 
-### 10. `scores`
-Judges' evaluations for each rubric criterion.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `assignment_id` (UUID, FK -> `judge_assignments.id`, ON DELETE CASCADE).
-* `judge_id` (UUID, FK -> `users.id`, ON DELETE CASCADE).
-* `submission_id` (UUID, FK -> `submissions.id`, ON DELETE CASCADE).
-* `criterion_id` (UUID, FK -> `rubric_criteria.id`, ON DELETE CASCADE).
-* `points` (NUMERIC(5,2), NOT NULL, Check: `points >= 0`).
-* `feedback` (TEXT, Nullable).
-* *Constraint:* `UNIQUE(judge_id, submission_id, criterion_id)`.
+### 10. `evaluationscores`
+* `_id` (`ObjectId`, PK): Unique score identifier.
+* `event_id` (`ObjectId`, ref: `'Event'`, required): Associated event.
+* `submission_id` (`ObjectId`, ref: `'Submission'`, required): Evaluated project.
+* `judge_id` (`ObjectId`, ref: `'User'`, required): Evaluating judge.
+* `criteria_scores`: Array of scored rubric criteria:
+  * `criterion_id` (`ObjectId`, ref: `'RubricCriterion'`, required)
+  * `name` (`String`)
+  * `score` (`Number`, required)
+  * `weight` (`Number`, default: `1.0`)
+* `comment` (`String`): Qualitative judge feedback.
+* `weighted_total` (`Number`, default: `0`): Server-calculated weighted aggregate.
+* `status` (`String`, enum: `['draft', 'submitted']`, default: `'draft'`).
+* `created_at` (`Date`, default: `Date.now`).
+* `updated_at` (`Date`, default: `Date.now`).
+* `submitted_at` (`Date`).
+* **Compound Index**: `{ submission_id: 1, judge_id: 1 }` (unique constraint).
 
-### 11. `votes`
-Community Choice voting records.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `event_id` (UUID, FK -> `events.id`, ON DELETE CASCADE).
-* `user_id` (UUID, FK -> `users.id`, ON DELETE CASCADE).
-* `submission_id` (UUID, FK -> `submissions.id`, ON DELETE CASCADE).
-* *Constraint:* `UNIQUE(event_id, user_id)` (One vote per user per event).
+---
 
-### 12. `comments`
-Public discussion and internal evaluation notes on submissions.
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `submission_id` (UUID, FK -> `submissions.id`, ON DELETE CASCADE).
-* `user_id` (UUID, FK -> `users.id`, ON DELETE CASCADE).
-* `content` (TEXT, NOT NULL).
-* `is_internal` (BOOLEAN, Default: `FALSE`): When true, restricted to judges/organizers.
+## 2. CSV Export Endpoints & Data Paths
 
-### 13. `audit_logs`
-Immutable compliance and security records (Rule 23).
-* `id` (UUID, PK, Default: `gen_random_uuid()`).
-* `user_id` (UUID, FK -> `users.id`, ON DELETE SET NULL).
-* `action` (VARCHAR(50), NOT NULL).
-* `entity_type` (VARCHAR(50), NOT NULL).
-* `entity_id` (VARCHAR(100), Nullable).
-* `details` (JSONB, Default: `'{}'::jsonb`).
-* `ip_address` / `user_agent` (VARCHAR(45) / TEXT).
-* `created_at` (TIMESTAMPTZ, Default: `CURRENT_TIMESTAMP`).
+The backend provides RFC 4180 compliant CSV exports strictly protected by `requireRole('organizer', 'admin')`:
+
+| Export Resource | Endpoint URL | Exported CSV Headers |
+| :--- | :--- | :--- |
+| **Participants** | `GET /api/export/participants` | `User ID,Username,Email,Full Name,Role,Created At` |
+| **Teams** | `GET /api/export/teams` | `Team ID,Team Name,Slug,Event ID,Leader ID,Leader Name,Leader Email,Member Count,Members,Created At` |
+| **Submissions** | `GET /api/export/submissions` | `Submission ID,Title,Tagline,Event ID,Event Title,Team ID,Team Name,Track ID,Track Name,Status,Repo URL,Demo URL,Tech Stack,Submitted At` |
+| **Assignments** | `GET /api/export/assignments` | `Assignment ID,Event ID,Submission ID,Submission Title,Team Name,Judge ID,Judge Username,Judge Full Name,Judge Email,Status,Assigned At` |
+| **Raw Scores** | `GET /api/export/raw_scores` | `Score ID,Submission ID,Submission Title,Team Name,Judge ID,Judge Name,Weighted Total,Status,Criteria Breakdown,Judge Comment,Updated At` |
+| **Normalized Scores** | `GET /api/export/normalized_scores` | `Rank,Submission ID,Title,Team,Track,Evaluations Count,Raw Score,Z Score Min,Z Score Max,Normalized Score (0-100)` |
+| **Final Results** | `GET /api/export/final_results` | `Normalized Rank,Raw Rank,Rank Delta,Submission ID,Title,Team,Track,Evaluations Count,Raw Score,Normalized Score (0-100)` |
+
+*Note: Query parameters `?type=<resource>` and `?event_id=<id>` are also supported on `GET /api/export`.*
