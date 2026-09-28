@@ -266,26 +266,15 @@ export const GalleryPage: React.FC = () => {
                         target="_blank"
                         rel="noreferrer"
                         className="text-slate-400 hover:text-white transition p-1"
-                        title="Repository"
+                        title="Source Code Repository"
                       >
                         <Github className="w-4 h-4" />
-                      </a>
-                    )}
-                    {safeDemoUrl && (
-                      <a
-                        href={safeDemoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-slate-400 hover:text-white transition p-1"
-                        title="Live Demo"
-                      >
-                        <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
                     <button
                       onClick={() => handleShare(subId, sub.title)}
                       className="text-slate-400 hover:text-emerald-400 transition p-1 cursor-pointer"
-                      title="Share / Copy Link"
+                      title="Share Project Link"
                     >
                       {copiedId === subId ? (
                         <Check className="w-4 h-4 text-emerald-400" />
@@ -293,6 +282,17 @@ export const GalleryPage: React.FC = () => {
                         <Share2 className="w-4 h-4" />
                       )}
                     </button>
+                    {safeDemoUrl && safeDemoUrl.startsWith('http') && !safeDemoUrl.includes('unstop.org') && (
+                      <a
+                        href={safeDemoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-slate-400 hover:text-cyan-400 transition p-1"
+                        title="Live Demo"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
                   </div>
                   <Link to={`/submissions/${subId}`}>
                     <Button variant="outline" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>

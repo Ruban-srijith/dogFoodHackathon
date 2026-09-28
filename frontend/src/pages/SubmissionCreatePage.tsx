@@ -10,7 +10,7 @@ import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { Card } from '../components/Card';
 import { Event, Team } from '../types';
-import { Rocket, Save, AlertCircle, LogIn, Plus, UserPlus, Sparkles } from 'lucide-react';
+import { Rocket, Save, LogIn, UserPlus, Sparkles } from 'lucide-react';
 
 export const SubmissionCreatePage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -27,6 +27,7 @@ export const SubmissionCreatePage: React.FC = () => {
 
   const [myTeams, setMyTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string>(initialTeamId);
+  const [newTeamName, setNewTeamName] = useState<string>('');
 
   const [title, setTitle] = useState('');
   const [tagline, setTagline] = useState('');
@@ -114,9 +115,25 @@ export const SubmissionCreatePage: React.FC = () => {
       setError('Please fill out all required fields (title, tagline, description, repo URL)');
       return;
     }
-    if (!selectedTeamId) {
-      setError('Please select or create a team for this hackathon before submitting.');
-      return;
+
+    let finalTeamId = selectedTeamId;
+    if (!finalTeamId) {
+      if (!newTeamName.trim()) {
+        setError('Please enter your Team Name or select an existing team before submitting.');
+        return;
+      }
+      try {
+        const targetEvent = event?.id || (event as any)?._id || selectedEventId;
+        const newTeam = await teamService.createTeam({
+          event_id: targetEvent,
+          name: newTeamName.trim(),
+        });
+        finalTeamId = newTeam.id || (newTeam as any)._id;
+        setSelectedTeamId(finalTeamId);
+      } catch (err: any) {
+        setError(err.message || 'Failed to auto-register team for submission');
+        return;
+      }
     }
 
     setError(null);
@@ -131,7 +148,7 @@ export const SubmissionCreatePage: React.FC = () => {
 
       const sub = await submissionService.createSubmission({
         event_id: targetEvent,
-        team_id: selectedTeamId,
+        team_id: finalTeamId,
         track_id: trackId || undefined,
         title: title.trim(),
         tagline: tagline.trim(),
@@ -230,32 +247,26 @@ export const SubmissionCreatePage: React.FC = () => {
                 }))}
               />
             ) : (
-              <div className="space-y-1.5 text-left">
-                <label className="block text-xs font-mono font-bold uppercase tracking-wider text-[var(--accent-cyan)]">
-                  Submitting Team
-                </label>
-                <div className="text-xs text-slate-400 py-2.5">
-                  No team joined for this event yet.
-                </div>
-              </div>
+              <Input
+                label="Team / Organization Name"
+                placeholder="e.g. Apex Builders"
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                required
+              />
             )}
           </div>
 
           {matchingTeams.length === 0 && (
-            <div className="p-3.5 rounded-lg bg-amber-950/30 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 text-amber-300">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>You need to belong to a team in this hackathon to submit.</span>
+            <div className="p-3.5 rounded-lg bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-emerald-300">
+                <Sparkles className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>Entering your team name above will automatically register your team and submit your entry.</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Link to={`/teams/new?event_id=${event?.id || selectedEventId}`}>
-                  <Button size="sm" variant="outline" leftIcon={<Plus className="w-3.5 h-3.5" />}>
-                    Create Team
-                  </Button>
-                </Link>
                 <Link to="/teams/join">
                   <Button size="sm" variant="outline" leftIcon={<UserPlus className="w-3.5 h-3.5" />}>
-                    Join Team
+                    Join Team via Code
                   </Button>
                 </Link>
               </div>
@@ -343,7 +354,7 @@ export const SubmissionCreatePage: React.FC = () => {
               variant="outline"
               onClick={() => handleSubmit('draft')}
               isLoading={loading}
-              disabled={!selectedTeamId}
+              disabled={!selectedTeamId && !newTeamName.trim()}
               leftIcon={<Save className="w-4 h-4" />}
             >
               Save as Draft
@@ -353,7 +364,7 @@ export const SubmissionCreatePage: React.FC = () => {
               variant="primary"
               onClick={() => handleSubmit('submitted')}
               isLoading={loading}
-              disabled={!selectedTeamId}
+              disabled={!selectedTeamId && !newTeamName.trim()}
               leftIcon={<Rocket className="w-4 h-4" />}
             >
               Submit Final Project

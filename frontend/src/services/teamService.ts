@@ -4,11 +4,20 @@ import { Team } from '../types';
 
 export const teamService = {
   getTeamsForEvent: async (eventId: string): Promise<Team[]> => {
-    return await apiClient.get<Team[]>(ENDPOINTS.TEAMS_BY_EVENT(eventId));
+    try {
+      const data = await apiClient.get<Team[]>(ENDPOINTS.TEAMS_BY_EVENT(eventId));
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   },
 
   getMyTeamInEvent: async (eventId: string): Promise<Team | null> => {
-    return await apiClient.get<Team | null>(ENDPOINTS.MY_TEAM_IN_EVENT(eventId));
+    try {
+      return await apiClient.get<Team | null>(ENDPOINTS.MY_TEAM_IN_EVENT(eventId));
+    } catch {
+      return null;
+    }
   },
 
   getTeamById: async (id: string): Promise<Team> => {

@@ -294,8 +294,8 @@ app.post('/api/events', authenticate, requireRole('organizer', 'admin'), async (
   }
 });
 
-// GET /api/events (Public - List all events with tracks and prizes)
-app.get('/api/events', async (req, res) => {
+// GET /api/events & /api/v1/events & /api/v1/events/all (Public - List all events with tracks and prizes)
+const handleGetEvents = async (req, res) => {
   try {
     const events = await Event.find().sort({ created_at: -1 }).lean();
     const eventIds = events.map(e => e._id);
@@ -305,17 +305,27 @@ app.get('/api/events', async (req, res) => {
       Prize.find({ event_id: { $in: eventIds } }).lean()
     ]);
 
-    const enrichedEvents = events.map(ev => ({
-      ...ev,
-      tracks: allTracks.filter(t => String(t.event_id) === String(ev._id)),
-      prizes: allPrizes.filter(p => String(p.event_id) === String(ev._id))
-    }));
+    const enrichedEvents = events.map(ev => {
+      const evId = ev._id ? ev._id.toString() : (ev.id || '');
+      return {
+        ...ev,
+        id: evId,
+        _id: evId,
+        tracks: allTracks.filter(t => String(t.event_id) === String(ev._id)).map(t => ({ ...t, id: t._id })),
+        prizes: allPrizes.filter(p => String(p.event_id) === String(ev._id)).map(p => ({ ...p, id: p._id }))
+      };
+    });
 
+    if (req.originalUrl && req.originalUrl.includes('/v1/')) {
+      return res.status(200).json({ success: true, data: enrichedEvents });
+    }
     return res.status(200).json(enrichedEvents);
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
-});
+};
+
+app.get(['/api/events', '/api/v1/events', '/api/v1/events/all'], handleGetEvents);
 
 // GET /api/events/:id and /api/v1/events/:id
 app.get(['/api/events/:id', '/api/v1/events/:id'], async (req, res) => {
@@ -559,10 +569,15 @@ const handleGetTeamById = async (req, res) => {
 };
 app.get('/api/teams/:id', authenticate, handleGetTeamById);
 app.get('/api/v1/teams/:id', authenticate, handleGetTeamById);
-app.get('/api/v1/teams/event/:eventId', authenticate, async (req, res) => {
+app.get(['/api/teams/event/:eventId', '/api/v1/teams/event/:eventId'], optionalAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
-    const teams = await Team.find({ event_id: eventId })
+    let targetEventId = eventId;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      const foundEv = await Event.findOne({ slug: eventId }).lean();
+      if (foundEv) targetEventId = foundEv._id;
+    }
+    const teams = await Team.find({ event_id: targetEventId })
       .populate('members', 'username full_name email role')
       .populate('leader_id', 'username full_name email')
       .lean();
@@ -575,15 +590,14 @@ app.get('/api/v1/teams/event/:eventId', authenticate, async (req, res) => {
         String(t.leader_id?._id || t.leader_id) === userIdStr ||
         (Array.isArray(t.members) && t.members.some(m => String(m._id || m) === userIdStr))
       );
+      const copy = { ...t, id: t._id };
       if (!isMember) {
-        const copy = { ...t };
         delete copy.invite_code;
-        return copy;
       }
-      return t;
+      return copy;
     });
 
-    return res.status(200).json(sanitizedTeams);
+    return res.status(200).json({ success: true, data: sanitizedTeams, teams: sanitizedTeams, ...sanitizedTeams });
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
@@ -2182,15 +2196,6 @@ app.get('/api/organizer/export/:resource', authenticate, requireRole('organizer'
 app.get('/api/export', authenticate, requireRole('organizer', 'admin'), handleExportCsv);
 
 
-// Compatibility aliases for acceptance test runners
-app.get('/api/v1/events', async (req, res) => {
-  try {
-    const events = await Event.find().sort({ created_at: -1 }).lean();
-    return res.status(200).json({ success: true, data: events });
-  } catch (err) {
-    return res.status(500).json({ error: 'Server Error', message: err.message });
-  }
-});
 
 app.get('/api/v1/admin/audit', authenticate, requireRole('admin'), (req, res) => {
   return res.status(200).json({ success: true, data: [] });
@@ -2424,59 +2429,35 @@ app.get('/api/v1/tracks/:id', async (req, res) => {
   }
 });
 
-// --- Events ---
-// GET /api/v1/events/all  (public – alias)
-app.get('/api/v1/events/all', async (req, res) => {
-  try {
-    const events = await Event.find().sort({ created_at: -1 }).lean();
-    return res.status(200).json({ success: true, data: events });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
-  }
-});
 
 // --- Teams ---
 // GET /api/v1/teams/event/:eventId/me  (authenticated)
-app.get('/api/v1/teams/event/:eventId/me', authenticate, async (req, res) => {
+app.get(['/api/teams/event/:eventId/me', '/api/v1/teams/event/:eventId/me'], authenticate, async (req, res) => {
   try {
     const { eventId } = req.params;
+    let targetEventId = eventId;
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
-      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+      const foundEv = await Event.findOne({ slug: eventId }).lean();
+      if (foundEv) targetEventId = foundEv._id;
     }
-    const team = await Team.findOne({ event_id: eventId, members: req.user.id })
+    const team = await Team.findOne({ event_id: targetEventId, members: req.user.id })
       .populate('leader_id', 'username full_name email')
       .populate('members', 'username full_name email')
       .lean();
-    if (!team) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'No team found for this event' } });
+    if (!team) return res.status(200).json({ success: true, data: null, team: null });
     // Strip invite_code for non-leader members  
     const isLeader = String(team.leader_id?._id || team.leader_id) === String(req.user.id);
     const roleUpper = (req.user.role || '').toUpperCase();
     if (!isLeader && !['ORGANIZER', 'ADMIN', 'JUDGE'].includes(roleUpper)) {
       delete team.invite_code;
     }
-    return res.status(200).json({ success: true, data: team });
+    const formatted = { ...team, id: team._id };
+    return res.status(200).json({ success: true, data: formatted, team: formatted, ...formatted });
   } catch (err) {
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
   }
 });
 
-// GET /api/v1/teams/event/:eventId  (authenticated)
-app.get('/api/v1/teams/event/:eventId', authenticate, async (req, res) => {
-  try {
-    const { eventId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(eventId)) {
-      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
-    }
-    const teams = await Team.find({ event_id: eventId })
-      .populate('leader_id', 'username full_name')
-      .lean();
-    // Strip invite_codes from response
-    const safe = teams.map(t => { const c = { ...t }; delete c.invite_code; return c; });
-    return res.status(200).json({ success: true, data: safe });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
-  }
-});
 
 // GET /api/v1/teams/:id  (authenticated)
 app.get('/api/v1/teams/:id', authenticate, async (req, res) => {

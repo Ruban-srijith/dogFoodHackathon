@@ -54,7 +54,7 @@ export const App: React.FC = () => {
                 <Route path="/teams/new" element={<ProtectedRoute><TeamCreatePage /></ProtectedRoute>} />
                 <Route path="/teams/join" element={<ProtectedRoute><TeamJoinPage /></ProtectedRoute>} />
                 <Route path="/teams/:id" element={<TeamPage />} />
-                <Route path="/submissions/new" element={<ProtectedRoute><SubmissionCreatePage /></ProtectedRoute>} />
+                <Route path="/submissions/new" element={<SubmissionCreatePage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
 
