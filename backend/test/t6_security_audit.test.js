@@ -131,6 +131,18 @@ test('T6 Security & Authorization Audit Suite', async (t) => {
     status: 'submitted'
   };
 
+  const scoreClosed = {
+    _id: 'score_closed',
+    event_id: closedEvent._id,
+    submission_id: closedEventSubmission._id,
+    judge_id: judge1,
+    criteria_scores: [{ name: 'Quality', score: 8, weight: 1.0 }],
+    weighted_total: 80,
+    comment: 'Score for closed event',
+    status: 'submitted',
+    save: async function() { return this; }
+  };
+
   // Mock DB Setup
   User.countDocuments = async () => 6;
   Event.countDocuments = async () => 2;
@@ -249,13 +261,33 @@ test('T6 Security & Authorization Audit Suite', async (t) => {
   };
 
   EvaluationScore.findOne = async (query) => {
-    if (String(query.judge_id) === String(judge1._id)) return scoreJudge1;
-    if (String(query.judge_id) === String(judge2._id)) return scoreJudge2;
+    const scores = [scoreJudge1, scoreJudge2, scoreClosed];
+    if (query._id) {
+      return scores.find(s => String(s._id) === String(query._id)) || null;
+    }
+    if (query.$or) {
+      for (const cond of query.$or) {
+        if (cond._id) {
+          const found = scores.find(s => String(s._id) === String(cond._id));
+          if (found) return found;
+        }
+        if (cond.submission_id) {
+          const found = scores.find(s => String(s.submission_id) === String(cond.submission_id));
+          if (found) return found;
+        }
+      }
+    }
+    if (query.judge_id) {
+      return scores.find(s => String(s.judge_id._id || s.judge_id) === String(query.judge_id)) || null;
+    }
     return null;
   };
 
   EvaluationScore.findById = (id) => {
-    const score = String(id) === String(scoreJudge1._id) ? scoreJudge1 : String(id) === String(scoreJudge2._id) ? scoreJudge2 : null;
+    let score = null;
+    if (String(id) === String(scoreJudge1._id)) score = scoreJudge1;
+    else if (String(id) === String(scoreJudge2._id)) score = scoreJudge2;
+    else if (String(id) === String(scoreClosed._id)) score = scoreClosed;
     return {
       populate: function() { return this; },
       lean: async () => score,
@@ -545,6 +577,15 @@ test('T6 Security & Authorization Audit Suite', async (t) => {
       });
     assert.equal(res.status, 403, 'Scoring on closed events must return 403 Forbidden');
     assert.match(res.body.message, /event is closed/i);
+
+    // Also verify organizer cannot reopen evaluation for closed event
+    const resReopen = await request(app)
+      .post(`/api/scores/${scoreClosed._id}/reopen`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({});
+    assert.equal(resReopen.body.message || resReopen.status, 'The event is closed. Reopening scores is no longer permitted.');
+    assert.equal(resReopen.status, 403, 'Reopening score on closed events must return 403 Forbidden');
+    assert.match(resReopen.body.message, /event is closed/i);
   });
 
   // =========================================================================

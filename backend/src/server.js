@@ -1749,6 +1749,18 @@ const handleReopenScore = async (req, res) => {
       return res.status(404).json({ error: 'Not Found', message: 'Evaluation score record not found.' });
     }
 
+    // Check if associated event is closed or past end date
+    const event = await Event.findById(score.event_id);
+    if (event) {
+      const now = new Date();
+      if (event.status === 'closed' || (event.end_date && now > new Date(event.end_date))) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'The event is closed. Reopening scores is no longer permitted.'
+        });
+      }
+    }
+
     // Reopen score by setting status back to 'draft'
     score.status = 'draft';
     score.updated_at = new Date();
