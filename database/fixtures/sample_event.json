@@ -1,0 +1,14 @@
+{
+  "events": [
+    {
+      "id": "e0000000-0000-0000-0000-000000000001",
+      "slug": "global-ai-hackathon-2026",
+      "title": "Global AI & Open Source Hackathon 2026",
+      "status": "ongoing"
+    }
+  ],
+  "tracks": [
+    { "name": "Autonomous AI Agents", "prize_pool": "$10,000" },
+    { "name": "Developer Tooling & Infrastructure", "prize_pool": "$7,500" }
+  ]
+}

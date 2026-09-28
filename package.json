@@ -1,0 +1,23 @@
+{
+  "name": "dogfood",
+  "version": "1.0.0",
+  "description": "DOGFOOD Self-Hostable Hackathon Platform",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "test": "npm --prefix backend test",
+    "test:acceptance": "node tests/acceptance/runner.js",
+    "lint": "npm --prefix backend run lint && npm --prefix frontend run lint",
+    "seed": "npm --prefix backend run db:seed",
+    "migrate": "npm --prefix backend run db:migrate",
+    "reset": "npm --prefix backend run db:reset"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

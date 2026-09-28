@@ -1,0 +1,32 @@
+[platform]
+name = "DOGFOOD"
+version = "1.0.0"
+description = "Self-Hostable Hackathon Management & Judging Platform"
+author = "Dogfood Open Source Team"
+
+[server]
+port = 3000
+api_prefix = "/api/v1"
+cors_enabled = true
+trust_proxy = true
+
+[security]
+bcrypt_rounds = 10
+jwt_expiry = "7d"
+max_upload_size_mb = 25
+rate_limit_auth_requests_per_minute = 10
+rate_limit_api_requests_per_minute = 120
+
+[database]
+migrations_dir = "database/migrations"
+seeds_dir = "database/seeds"
+fixtures_dir = "database/fixtures"
+
+[features]
+public_voting = true
+judge_isolation = true
+audit_logging = true
+team_creation = true
+project_submissions = true
+community_comments = true
+leaderboard_reveal = true

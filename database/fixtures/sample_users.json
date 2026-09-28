@@ -1,0 +1,8 @@
+{
+  "admin": { "email": "admin@dogfood.local", "role": "ADMIN" },
+  "organizer": { "email": "organizer@dogfood.local", "role": "ORGANIZER" },
+  "judge1": { "email": "judge1@dogfood.local", "role": "JUDGE" },
+  "judge2": { "email": "judge2@dogfood.local", "role": "JUDGE" },
+  "participant": { "email": "alice@dogfood.local", "role": "PARTICIPANT" },
+  "visitor": { "email": "visitor@dogfood.local", "role": "VISITOR" }
+}
