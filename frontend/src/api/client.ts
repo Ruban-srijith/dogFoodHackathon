@@ -1,4 +1,4 @@
-import { getStoredToken } from '../utils/storage';
+import { getStoredToken, removeStoredToken } from '../utils/storage';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -38,6 +38,7 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   }
 
   const config: RequestInit = {
+    credentials: 'include',
     ...options,
     headers,
   };
@@ -48,6 +49,10 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
     // Handle 204 No Content
     if (response.status === 204) {
       return {} as T;
+    }
+
+    if (response.status === 401) {
+      removeStoredToken();
     }
 
     const text = await response.text();

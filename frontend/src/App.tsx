@@ -35,6 +35,8 @@ import { OrganizerResultsPage } from './pages/OrganizerResultsPage';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { AdminAuditPage } from './pages/AdminAuditPage';
 
+import { ProtectedRoute } from './components/ProtectedRoute';
+
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -49,10 +51,10 @@ export const App: React.FC = () => {
                 <Route path="/events/:id" element={<EventDetailPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />
                 <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
-                <Route path="/teams/new" element={<TeamCreatePage />} />
-                <Route path="/teams/join" element={<TeamJoinPage />} />
+                <Route path="/teams/new" element={<ProtectedRoute><TeamCreatePage /></ProtectedRoute>} />
+                <Route path="/teams/join" element={<ProtectedRoute><TeamJoinPage /></ProtectedRoute>} />
                 <Route path="/teams/:id" element={<TeamPage />} />
-                <Route path="/submissions/new" element={<SubmissionCreatePage />} />
+                <Route path="/submissions/new" element={<ProtectedRoute><SubmissionCreatePage /></ProtectedRoute>} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
 

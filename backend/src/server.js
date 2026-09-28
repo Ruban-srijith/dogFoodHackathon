@@ -52,8 +52,8 @@ app.get('/ready', (req, res) => {
 // 2. AUTHENTICATION ROUTES (Register, Login, Logout, Me)
 // ==========================================
 
-// POST /api/auth/register
-app.post('/api/auth/register', async (req, res) => {
+// POST /api/auth/register & /api/v1/auth/register
+app.post(['/api/auth/register', '/api/v1/auth/register'], async (req, res) => {
   try {
     const { email, password, username, full_name, role } = req.body;
 
@@ -191,15 +191,16 @@ const handleLogin = async (req, res) => {
 app.post('/api/auth/login', handleLogin);
 app.post('/api/v1/auth/login', handleLogin);
 
-// POST /api/auth/logout
-app.post('/api/auth/logout', (req, res) => {
+// POST /api/auth/logout & /api/v1/auth/logout
+app.post(['/api/auth/logout', '/api/v1/auth/logout'], (req, res) => {
+  res.clearCookie('token', { path: '/', httpOnly: true, sameSite: 'lax' });
   res.clearCookie('token');
-  return res.status(200).json({ message: 'Logged out successfully' });
+  return res.status(200).json({ success: true, message: 'Logged out successfully' });
 });
 
-// GET /api/auth/me
-app.get('/api/auth/me', authenticate, (req, res) => {
-  return res.status(200).json({ user: req.user });
+// GET /api/auth/me & /api/v1/auth/me
+app.get(['/api/auth/me', '/api/v1/auth/me'], authenticate, (req, res) => {
+  return res.status(200).json({ success: true, user: req.user, data: req.user });
 });
 
 // ==========================================

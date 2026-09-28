@@ -12,8 +12,9 @@ export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
+    setMobileMenuOpen(false);
     await logout();
-    navigate('/');
+    navigate('/login', { replace: true });
   };
 
   return (
