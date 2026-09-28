@@ -25,8 +25,9 @@ export const TeamJoinPage: React.FC = () => {
     setLoading(true);
     try {
       const team = await teamService.joinTeam(inviteCode.trim());
+      const teamId = team.id || (team as any)._id;
       success(`Successfully joined ${team.name}!`);
-      navigate(`/teams/${team.id}`);
+      navigate(`/teams/${teamId}`);
     } catch (err: any) {
       setError(err.message || 'Failed to join team');
     } finally {

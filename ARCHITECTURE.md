@@ -1,95 +1,82 @@
 # DOGFOOD — Architecture Specification
 
-> **Technical architecture, inter-service communication, request lifecycle, and key technical decisions.**
+Technical architecture, inter-service connectivity, request lifecycle, and key technical decisions for the DOGFOOD platform.
 
 ---
 
-## 1. Services & System Topology
+## 1. Services Overview
 
-The platform runs as 3 containerized services communicating over an isolated Docker network (`dogfood-network`):
+The platform consists of 3 containerized services orchestrated via Docker Compose:
 
-```text
-                           CLIENT BROWSER
-                                 │
-                                 │ Port 5173 (or 80 / 3000)
-                                 ▼
-                    ┌─────────────────────────┐
-                    │      FRONTEND SPA       │
-                    │   React 18 + Vite + TS  │
-                    │   (Proxy /api -> :5001) │
-                    └────────────┬────────────┘
-                                 │
-                                 │ HTTP REST (Port 5001 / 5000)
-                                 ▼
-                    ┌─────────────────────────┐
-                    │     EXPRESS BACKEND     │
-                    │   Node.js 18+ REST API  │
-                    │   JWT + RBAC + Z-Score  │
-                    └────────────┬────────────┘
-                                 │
-                                 │ mongodb://database:27017/app_db
-                                 ▼
-                    ┌─────────────────────────┐
-                    │    MONGODB DATABASE     │
-                    │    MongoDB 6.0 Engine   │
-                    │    Collection Storage   │
-                    └─────────────────────────┘
-```
+1. **Frontend (`frontend`)**:
+   * Single Page Application built with React 18, TypeScript, and Vite.
+   * Serves user dashboards for Participants, Judges, Organizers, and Admins.
+   * Runs on port `5173` (mapped to `80` or `3000` via Nginx in production).
 
-### Inter-Service Connections
-1. **Client to Frontend**: Browser interacts with Vite dev server (or Nginx production bundle) on port `5173`.
-2. **Frontend to Backend**: In development, `vite.config.ts` proxies `/api` and `/api/v1` to `http://localhost:5001` (with port 5000 fallback). In production Docker Compose, Nginx proxies requests to `http://backend:5000`.
-3. **Backend to Database**: Backend establishes a persistent connection via Mongoose to `mongodb://database:27017/app_db` (with automatic fallback to `mongodb://127.0.0.1:27017/app_db` for host-direct execution).
+2. **Backend (`backend`)**:
+   * REST API built with Node.js 18+ and Express.
+   * Handles authentication (JWT/cookies), RBAC, rubric evaluations, assignment algorithms, z-score normalization, and RFC 4180 CSV exports.
+   * Runs on port `5000` (or `5001`).
+
+3. **Database (`database`)**:
+   * MongoDB 6.0 (`app_db`).
+   * Persistent document storage for users, events, teams, submissions, rubrics, assignments, and evaluation scores.
+   * Runs on port `27017`.
 
 ---
 
-## 2. Request Lifecycle
-
-Every incoming API request follows this sequential pipeline:
+## 2. How Services Connect
 
 ```text
-HTTP Request
-     │
-     ▼
-[CORS & Body Parser]        (express.json with 10MB limit, cookie-parser)
-     │
-     ▼
-[authenticate]              (Extracts Bearer token or 'token' cookie, verifies JWT, populates req.user)
-     │
-     ▼
-[requireRole(...roles)]     (Enforces RBAC against user role: ADMIN, ORGANIZER, JUDGE, PARTICIPANT)
-     │
-     ▼
-[Domain Guard]              (Deadline checks, Conflict-of-Interest validation, Ownership check)
-     │
-     ▼
-[Route Handler]             (Business logic execution: scoring, assignment, aggregation)
-     │
-     ▼
-[Mongoose ODM]              (MongoDB query execution with schema-level toJSON transforms)
-     │
-     ▼
-JSON / CSV Response         (Strict error formatting or RFC 4180 CSV attachment)
+  [ Client Browser ]
+          │
+          │ HTTP / Port 5173 (or 80 / 3000)
+          ▼
+  ┌─────────────────┐
+  │  Frontend SPA   │  (Vite / Nginx proxy /api & /api/v1 -> Backend)
+  └────────┬────────┘
+           │
+           │ HTTP REST / Port 5000 / 5001
+           ▼
+  ┌─────────────────┐
+  │ Express Backend │  (JWT validation, RBAC, domain validation)
+  └────────┬────────┘
+           │
+           │ mongodb://database:27017/app_db
+           ▼
+  ┌─────────────────┐
+  │ MongoDB Engine  │  (Document storage with Mongoose ODM)
+  └─────────────────┘
 ```
+
+1. **Client to Frontend**: Browser interacts with the Vite development server on port `5173` (or Nginx production proxy on port `80`/`3000`).
+2. **Frontend to Backend**: In development, `vite.config.ts` proxies `/api` and `/api/v1` calls to `http://localhost:5000` (fallback `5001`). In production Docker Compose, Nginx forwards requests directly to `http://backend:5000`.
+3. **Backend to Database**: Express connects to MongoDB via Mongoose at `mongodb://database:27017/app_db` inside Docker, or `mongodb://127.0.0.1:27017/app_db` when running natively.
 
 ---
 
 ## 3. Key Architectural Decisions
 
-### 1. Dual Auth Delivery: HTTP-Only Cookies + Bearer Header
-* **Why**: Provides flexibility for both browser-based SPAs (cookie protection against XSS token harvesting) and automated API test suites / external clients (Bearer Authorization header).
+1. **Dual Authentication Support (HTTP-Only Cookie + Bearer Token)**:
+   * *Decision*: The auth middleware inspects both the `token` HTTP-only cookie and the `Authorization: Bearer <token>` header.
+   * *Rationale*: Protects browser sessions against XSS token theft via cookies while supporting automated CLI scripts, acceptance tests, and headless tools via Bearer tokens.
 
-### 2. Schema-Level Secret Stripping (`toJSON` / `toObject`)
-* **Why**: Rather than relying on developers remembering `.select('-password_hash')` in every query controller, the Mongoose `userSchema` implements global `transform` hooks that automatically purge `password_hash` whenever any User document is serialized.
+2. **Schema-Level Secret Stripping**:
+   * *Decision*: The Mongoose `userSchema` implements global `transform` rules on `toJSON` and `toObject` that delete `password_hash`.
+   * *Rationale*: Eliminates inadvertent credential leakage across all queries, population hooks, and JSON serialization without depending on per-route `.select('-password_hash')`.
 
-### 3. Server-Calculated Weighted Rubrics
-* **Why**: The client is never trusted to calculate composite evaluation totals. When a judge submits criteria ratings, the server fetches the event's active rubric from MongoDB, verifies criteria weights, calculates the weighted total server-side, and stores both the criterion breakdown and the total.
+3. **Server-Side Rubric Math & Score Integrity**:
+   * *Decision*: Criteria weights and composite scores are computed exclusively on the backend from active event rubric definitions.
+   * *Rationale*: Prevents client-side manipulation of weighting multipliers or final totals.
 
-### 4. Positive Whitelisting for Privilege Boundaries
-* **Why**: Blacklisting roles (e.g. `role !== 'PARTICIPANT'`) allowed undefined or malformed roles to bypass security gates. All access-control points now use positive whitelisting (`['JUDGE', 'ORGANIZER', 'ADMIN'].includes(role)`).
+4. **Strict Role Whitelisting (Positive RBAC)**:
+   * *Decision*: Access control checks require explicit role inclusion (`['ORGANIZER', 'ADMIN'].includes(user.role)`), rather than negative exclusion (`user.role !== 'PARTICIPANT'`).
+   * *Rationale*: Prevents privilege escalation from malformed, missing, or unexpected role values.
 
-### 5. In-Memory Z-Score Normalization Engine
-* **Why**: Statistical normalization is computed dynamically on read (`/api/leaderboard`) via a pure mathematical service rather than pre-baked database triggers. This allows instant recalibration whenever organizers reopen scores or when new evaluations arrive, without database corruption.
+5. **Read-Time In-Memory Normalization**:
+   * *Decision*: Z-score normalization and leaderboard ranking are computed on-demand from submitted scores rather than stored as rigid static database fields.
+   * *Rationale*: Ensures instant recalculation when organizers reopen evaluations, judges submit updates, or ties are broken, avoiding data desynchronization.
 
-### 6. RFC 4180 Compliant Native CSV Exporter
-* **Why**: Organizers require offline spreadsheets for external audit. The CSV serialization is built in-house with zero external heavy dependencies, properly handling comma escaping, multi-line quotes, and carriage returns per RFC 4180.
+6. **Native RFC 4180 CSV Engine**:
+   * *Decision*: Custom CSV serialization without external heavyweight libraries, enforcing proper RFC 4180 escaping (commas, quotes, CRLF).
+   * *Rationale*: Guarantees reliable offline spreadsheet export for organizers with zero external package vulnerabilities.

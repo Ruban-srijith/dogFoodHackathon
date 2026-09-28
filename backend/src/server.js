@@ -316,8 +316,8 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
-// GET /api/events/:id
-app.get('/api/events/:id', async (req, res) => {
+// GET /api/events/:id and /api/v1/events/:id
+app.get(['/api/events/:id', '/api/v1/events/:id'], async (req, res) => {
   try {
     const { id } = req.params;
     let event = null;
@@ -328,7 +328,7 @@ app.get('/api/events/:id', async (req, res) => {
     }
 
     if (!event) {
-      return res.status(404).json({ error: 'Not Found', message: 'Event not found' });
+      return res.status(404).json({ success: false, error: 'Not Found', message: 'Event not found' });
     }
 
     const [tracks, prizes] = await Promise.all([
@@ -336,9 +336,18 @@ app.get('/api/events/:id', async (req, res) => {
       Prize.find({ event_id: event._id }).lean()
     ]);
 
-    return res.status(200).json({ ...event, tracks, prizes });
+    const formattedTracks = tracks.map(t => ({ ...t, id: t._id }));
+    const formattedPrizes = prizes.map(p => ({ ...p, id: p._id }));
+    const formattedEvent = {
+      ...event,
+      id: event._id,
+      tracks: formattedTracks,
+      prizes: formattedPrizes
+    };
+
+    return res.status(200).json({ success: true, data: formattedEvent, ...formattedEvent });
   } catch (err) {
-    return res.status(500).json({ error: 'Server Error', message: err.message });
+    return res.status(500).json({ success: false, error: 'Server Error', message: err.message });
   }
 });
 
@@ -374,8 +383,8 @@ app.post('/api/v1/events', authenticate, requireRole('organizer', 'admin'), asyn
 });
 
 
-// POST /api/teams (Participant creates a team and gets an invite link)
-app.post('/api/teams', authenticate, requireRole('participant', 'admin'), async (req, res) => {
+// POST /api/teams & /api/v1/teams (Participant creates a team and gets an invite link)
+app.post(['/api/teams', '/api/v1/teams'], authenticate, requireRole('participant', 'admin'), async (req, res) => {
   try {
     const { event_id, name, description } = req.body;
 
@@ -415,6 +424,8 @@ app.post('/api/teams', authenticate, requireRole('participant', 'admin'), async 
     const invite_link = `/teams/join?code=${invite_code}`;
 
     return res.status(201).json({
+      success: true,
+      data: team,
       message: 'Team created successfully',
       team,
       invite_code,
@@ -425,8 +436,8 @@ app.post('/api/teams', authenticate, requireRole('participant', 'admin'), async 
   }
 });
 
-// POST /api/teams/join (Others join via link/code - max 4 members)
-app.post('/api/teams/join', authenticate, requireRole('participant', 'admin'), async (req, res) => {
+// POST /api/teams/join & /api/v1/teams/join (Others join via link/code - max 4 members)
+app.post(['/api/teams/join', '/api/v1/teams/join'], authenticate, requireRole('participant', 'admin'), async (req, res) => {
   try {
     const { invite_code } = req.body;
     if (!invite_code) {
@@ -471,6 +482,8 @@ app.post('/api/teams/join', authenticate, requireRole('participant', 'admin'), a
       .populate('leader_id', 'username full_name email');
 
     return res.status(200).json({
+      success: true,
+      data: populatedTeam,
       message: 'Successfully joined team',
       team: populatedTeam
     });
@@ -479,19 +492,21 @@ app.post('/api/teams/join', authenticate, requireRole('participant', 'admin'), a
   }
 });
 
-// GET /api/teams/my (Get teams for current user)
-app.get('/api/teams/my', authenticate, async (req, res) => {
+// GET /api/teams/my & /api/v1/teams/my (Get teams for current user)
+app.get(['/api/teams/my', '/api/v1/teams/my'], authenticate, async (req, res) => {
   try {
     const teams = await Team.find({
       $or: [{ members: req.user.id }, { leader_id: req.user.id }]
     })
       .populate('members', 'username full_name email role')
       .populate('leader_id', 'username full_name email')
-      .populate('event_id', 'title slug submission_deadline');
+      .populate('event_id', 'title slug submission_deadline')
+      .lean();
 
-    return res.status(200).json(teams);
+    const formatted = teams.map(t => ({ ...t, id: t._id }));
+    return res.status(200).json({ success: true, data: formatted, teams: formatted });
   } catch (err) {
-    return res.status(500).json({ error: 'Server Error', message: err.message });
+    return res.status(500).json({ success: false, error: 'Server Error', message: err.message });
   }
 });
 
@@ -578,10 +593,10 @@ app.get('/api/v1/teams/event/:eventId', authenticate, async (req, res) => {
 // Reject edits after deadline (403)
 // ==========================================
 
-// POST /api/submissions (Create project submission, saved as draft or submitted)
-app.post('/api/submissions', authenticate, requireRole('participant', 'admin'), async (req, res) => {
+// POST /api/submissions & /api/v1/submissions (Create project submission, saved as draft or submitted)
+app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole('participant', 'admin'), async (req, res) => {
   try {
-    const { event_id, team_id, track_id, title, tagline, description, repo_url, demo_url, tech_stack, is_draft } = req.body;
+    const { event_id, team_id, track_id, title, tagline, description, repo_url, demo_url, video_url, tech_stack, is_draft, status: reqStatus } = req.body;
 
     if (!title || !description || !team_id) {
       return res.status(400).json({
@@ -627,7 +642,7 @@ app.post('/api/submissions', authenticate, requireRole('participant', 'admin'), 
       if (defaultTrack) targetTrackId = defaultTrack._id;
     }
 
-    const status = is_draft ? 'draft' : 'submitted';
+    const status = (is_draft === true || reqStatus === 'draft') ? 'draft' : 'submitted';
 
     const submission = await Submission.create({
       event_id: targetEventId,
@@ -638,25 +653,47 @@ app.post('/api/submissions', authenticate, requireRole('participant', 'admin'), 
       description,
       repo_url: repo_url || '',
       demo_url: demo_url || '',
+      video_url: video_url || '',
       tech_stack: Array.isArray(tech_stack) ? tech_stack : (tech_stack ? [tech_stack] : []),
       status,
       submitted_at: new Date()
     });
 
+    const submissionObj = (submission && typeof submission.toObject === 'function')
+      ? submission.toObject()
+      : { ...submission };
+    const subIdStr = submission._id ? String(submission._id) : (submission.id || '');
+    const formatted = {
+      ...submissionObj,
+      _id: submission._id || subIdStr,
+      id: subIdStr
+    };
+
     return res.status(201).json({
-      message: is_draft ? 'Project saved as draft' : 'Project submitted successfully',
-      submission
+      success: true,
+      message: status === 'draft' ? 'Project saved as draft' : 'Project submitted successfully',
+      submission: formatted,
+      data: formatted,
+      ...formatted
     });
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
 });
 
-// PUT /api/submissions/:id (Edit project - Backend rejects edits after deadline with 403)
-app.put('/api/submissions/:id', authenticate, requireRole('participant', 'admin'), async (req, res) => {
+// PUT /api/submissions/:id & /api/v1/submissions/:id (Edit project - Backend rejects edits after deadline with 403)
+app.put(['/api/submissions/:id', '/api/v1/submissions/:id'], authenticate, requireRole('participant', 'admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    const submission = await Submission.findById(id);
+    let submission;
+    try {
+      submission = await Submission.findById(id);
+    } catch (e) {
+      if (e.name === 'CastError') {
+        return res.status(404).json({ error: 'Not Found', message: 'Submission not found.' });
+      }
+      throw e;
+    }
 
     if (!submission) {
       return res.status(404).json({ error: 'Not Found', message: 'Submission not found.' });
@@ -684,40 +721,64 @@ app.put('/api/submissions/:id', authenticate, requireRole('participant', 'admin'
       });
     }
 
-    const { title, tagline, description, repo_url, demo_url, track_id, tech_stack, is_draft } = req.body;
+    const { title, tagline, description, repo_url, demo_url, video_url, track_id, tech_stack, is_draft, status } = req.body;
     if (title !== undefined) submission.title = title;
     if (tagline !== undefined) submission.tagline = tagline;
     if (description !== undefined) submission.description = description;
     if (repo_url !== undefined) submission.repo_url = repo_url;
     if (demo_url !== undefined) submission.demo_url = demo_url;
+    if (video_url !== undefined) submission.video_url = video_url;
     if (track_id !== undefined) submission.track_id = track_id;
     if (tech_stack !== undefined) submission.tech_stack = Array.isArray(tech_stack) ? tech_stack : [tech_stack];
     if (is_draft !== undefined) {
       submission.status = is_draft ? 'draft' : 'submitted';
+    } else if (status !== undefined) {
+      submission.status = status;
     }
     submission.updated_at = new Date();
 
     await submission.save();
 
+    const submissionObj = (submission && typeof submission.toObject === 'function')
+      ? submission.toObject()
+      : { ...submission };
+    const subIdStr = submission._id ? String(submission._id) : (submission.id || '');
+    const formatted = {
+      ...submissionObj,
+      _id: submission._id || subIdStr,
+      id: subIdStr
+    };
+
     return res.status(200).json({
+      success: true,
       message: 'Submission updated successfully',
-      submission
+      submission: formatted,
+      data: formatted,
+      ...formatted
     });
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
 });
 
-// GET /api/submissions/:id
-app.get('/api/submissions/:id', optionalAuth, async (req, res) => {
+// GET /api/submissions/:id and /api/v1/submissions/:id
+app.get(['/api/submissions/:id', '/api/v1/submissions/:id'], optionalAuth, async (req, res) => {
   try {
-    const submission = await Submission.findById(req.params.id)
-      .populate('team_id', 'name slug invite_code members leader_id')
-      .populate('track_id', 'name prize_pool description')
-      .populate('event_id', 'title slug submission_deadline');
+    let submission;
+    try {
+      submission = await Submission.findById(req.params.id)
+        .populate('team_id', 'name slug invite_code members leader_id')
+        .populate('track_id', 'name prize_pool description')
+        .populate('event_id', 'title slug submission_deadline');
+    } catch (e) {
+      if (e.name === 'CastError') {
+        return res.status(404).json({ success: false, error: 'Not Found', message: 'Submission not found' });
+      }
+      throw e;
+    }
 
     if (!submission) {
-      return res.status(404).json({ error: 'Not Found', message: 'Submission not found' });
+      return res.status(404).json({ success: false, error: 'Not Found', message: 'Submission not found' });
     }
 
     // T2 REQUIREMENT: Judge sees ONLY the projects assigned to them.
@@ -771,9 +832,16 @@ app.get('/api/submissions/:id', optionalAuth, async (req, res) => {
       delete submissionObj.team_id.invite_code;
     }
 
-    return res.status(200).json(submissionObj);
+    const formatted = {
+      ...submissionObj,
+      id: submissionObj._id,
+      team_name: submissionObj.team_id?.name || 'Independent Team',
+      track_name: submissionObj.track_id?.name || 'General Track'
+    };
+
+    return res.status(200).json({ success: true, data: formatted, ...formatted });
   } catch (err) {
-    return res.status(500).json({ error: 'Server Error', message: err.message });
+    return res.status(500).json({ success: false, error: 'Server Error', message: err.message });
   }
 });
 
@@ -2259,86 +2327,48 @@ app.get('/api/overview', async (req, res) => {
 
 // --- Submissions ---
 // GET /api/v1/submissions/gallery/:eventId  (public – no auth required)
-app.get('/api/v1/submissions/gallery/:eventId', async (req, res) => {
+app.get(['/api/v1/submissions/gallery/:eventId', '/api/v1/submissions/gallery'], async (req, res) => {
   try {
-    const { eventId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(eventId)) {
-      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
-    }
-    const subs = await Submission.find({ event_id: eventId, status: { $ne: 'draft' } })
-      .populate('team_id', 'name slug')
-      .populate('track_id', 'name prize_pool description')
-      .sort({ submitted_at: -1 })
-      .lean();
-    // Strip invite_code from populated teams
-    const safe = subs.map(s => {
-      if (s.team_id && s.team_id.invite_code) {
-        const t = { ...s.team_id }; delete t.invite_code; return { ...s, team_id: t };
-      }
-      return s;
-    });
-    return res.status(200).json({ success: true, data: safe });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
-  }
-});
+    let { eventId } = req.params;
+    const filter = { status: { $ne: 'draft' } };
 
-// GET /api/v1/submissions/event/:eventId  (authenticated)
-app.get('/api/v1/submissions/event/:eventId', authenticate, async (req, res) => {
-  try {
-    const { eventId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(eventId)) {
-      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+    if (eventId && eventId !== 'all' && eventId !== 'null' && eventId !== 'undefined') {
+      if (mongoose.Types.ObjectId.isValid(eventId)) {
+        filter.event_id = eventId;
+      } else {
+        const ev = await Event.findOne({ slug: eventId }).lean();
+        if (ev) {
+          filter.event_id = ev._id;
+        } else {
+          // If no matching event found by slug or id, return empty array
+          return res.status(200).json({ success: true, data: [] });
+        }
+      }
     }
-    const filter = { event_id: eventId };
-    // Participants only see their own team's submissions; judges/organizers/admin see all
-    const roleUpper = (req.user.role || '').toUpperCase();
-    if (roleUpper === 'PARTICIPANT') {
-      const myTeam = await Team.findOne({ event_id: eventId, members: req.user.id }).lean();
-      if (myTeam) filter.team_id = myTeam._id;
-      else return res.status(200).json({ success: true, data: [] });
-    }
+
     const subs = await Submission.find(filter)
       .populate('team_id', 'name slug')
-      .populate('track_id', 'name prize_pool')
+      .populate('track_id', 'name prize_pool description')
+      .populate('event_id', 'title slug')
       .sort({ submitted_at: -1 })
       .lean();
-    return res.status(200).json({ success: true, data: subs });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
-  }
-});
 
-// POST /api/v1/submissions  (participant)
-app.post('/api/v1/submissions', authenticate, requireRole('participant', 'admin'), async (req, res) => {
-  // delegate to the existing /api/submissions handler logic inline
-  const { event_id, team_id, track_id, title, tagline, description, repo_url, demo_url, tech_stack } = req.body;
-  if (!event_id || !team_id || !track_id || !title || !description) {
-    return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'event_id, team_id, track_id, title, description are required' } });
-  }
-  try {
-    const event = await Event.findById(event_id).lean();
-    if (!event) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Event not found' } });
-    if (new Date() > new Date(event.submission_deadline)) {
-      return res.status(403).json({ success: false, error: { code: 'DEADLINE_PASSED', message: 'Submission deadline has passed' } });
-    }
-    const sub = new Submission({ event_id, team_id, track_id, title, tagline, description, repo_url, demo_url, tech_stack: tech_stack || [] });
-    await sub.save();
-    return res.status(201).json({ success: true, data: sub });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
-  }
-});
-
-// GET  /api/v1/submissions/:id  (public with optional auth)
-app.get('/api/v1/submissions/:id', optionalAuth, async (req, res) => {
-  try {
-    const sub = await Submission.findById(req.params.id)
-      .populate('team_id', 'name slug')
-      .populate('track_id', 'name')
-      .lean();
-    if (!sub) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Submission not found' } });
-    return res.status(200).json({ success: true, data: sub });
+    // Strip invite_code from populated teams and add id, team_name, track_name
+    const safe = subs.map(s => {
+      let safeTeam = s.team_id;
+      if (safeTeam && safeTeam.invite_code) {
+        safeTeam = { ...safeTeam };
+        delete safeTeam.invite_code;
+      }
+      return {
+        ...s,
+        id: s._id,
+        team_id: safeTeam,
+        team_name: safeTeam?.name || 'Independent Team',
+        track_name: s.track_id?.name || 'General Track'
+      };
+    });
+    return res.status(200).json({ success: true, data: safe });
   } catch (err) {
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
   }
@@ -2353,11 +2383,15 @@ app.patch('/api/v1/submissions/:id', authenticate, requireRole('participant', 'a
     if (event && new Date() > new Date(event.submission_deadline)) {
       return res.status(403).json({ success: false, error: { code: 'DEADLINE_PASSED', message: 'Submission deadline has passed' } });
     }
-    const allowed = ['title', 'tagline', 'description', 'repo_url', 'demo_url', 'tech_stack', 'status'];
+    const allowed = ['title', 'tagline', 'description', 'repo_url', 'demo_url', 'video_url', 'tech_stack', 'status'];
     allowed.forEach(f => { if (req.body[f] !== undefined) sub[f] = req.body[f]; });
     sub.updated_at = new Date();
     await sub.save();
-    return res.status(200).json({ success: true, data: sub });
+    const formatted = {
+      ...sub.toObject(),
+      id: sub._id.toString()
+    };
+    return res.status(200).json({ success: true, data: formatted, submission: formatted, ...formatted });
   } catch (err) {
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
   }
@@ -2395,17 +2429,6 @@ app.get('/api/v1/events/all', async (req, res) => {
   try {
     const events = await Event.find().sort({ created_at: -1 }).lean();
     return res.status(200).json({ success: true, data: events });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
-  }
-});
-
-// GET /api/v1/events/:id  (public)
-app.get('/api/v1/events/:id', async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.id).lean();
-    if (!event) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Event not found' } });
-    return res.status(200).json({ success: true, data: event });
   } catch (err) {
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
   }

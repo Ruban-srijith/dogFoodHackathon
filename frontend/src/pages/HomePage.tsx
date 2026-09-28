@@ -8,14 +8,13 @@ import { StatusBadge } from '../components/Badge';
 import { Loading } from '../components/Loading';
 import { ErrorState } from '../components/ErrorState';
 import { WireframeCanvas } from '../components/WireframeCanvas';
-import { WaveformVisualizer } from '../components/WaveformVisualizer';
 import { CyberpunkGlitchText } from '../components/CyberpunkGlitchText';
 import { StatementSection } from '../components/StatementSection';
 import { ScrubTextSection } from '../components/ScrubTextSection';
 import { ProjectCard } from '../components/ProjectCard';
 import { RoyalCrest } from '../components/RoyalCrest';
 import { formatDate, formatDaysRemaining } from '../utils/formatters';
-import { ShieldCheck, Terminal, Cpu, Activity, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Terminal, Cpu, ArrowRight } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -47,7 +46,7 @@ export const HomePage: React.FC = () => {
       position: 'left' as const,
       imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
       repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-      demoUrl: 'https://unstop.org',
+      demoUrl: 'https://unstop.com',
       techStack: ['React', 'TypeScript', 'TailwindCSS', 'Node.js'],
     },
     {
@@ -57,7 +56,7 @@ export const HomePage: React.FC = () => {
       position: 'right' as const,
       imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
       repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-      demoUrl: 'https://unstop.org',
+      demoUrl: 'https://unstop.com',
       techStack: ['TypeScript', 'Docker', 'Express', 'PostgreSQL'],
     },
     {
@@ -67,7 +66,7 @@ export const HomePage: React.FC = () => {
       position: 'left' as const,
       imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80',
       repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-      demoUrl: 'https://unstop.org',
+      demoUrl: 'https://unstop.com',
       techStack: ['React', 'PostgreSQL', 'Docker', 'TailwindCSS'],
     },
     {
@@ -77,7 +76,7 @@ export const HomePage: React.FC = () => {
       position: 'center' as const,
       imageUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
       repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-      demoUrl: 'https://unstop.org',
+      demoUrl: 'https://unstop.com',
       techStack: ['TypeScript', 'Three.js', 'GSAP', 'Lenis'],
     },
   ];
@@ -123,13 +122,18 @@ export const HomePage: React.FC = () => {
                 <p className="text-cyan-400 font-bold">FREE • $2,500 IN PRIZES</p>
               </div>
 
-              {/* Telemetry Waveform Visualizer */}
-              <div className="pt-1">
-                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 uppercase tracking-widest mb-1">
-                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Telemetry Spectrum Wave</span>
+              {/* Platform Capability Highlights */}
+              <div className="pt-2 pb-1">
+                <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase">Architecture</span>
+                    <span className="text-cyan-400 font-bold">100% Self-Hostable</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase">Judging Engine</span>
+                    <span className="text-emerald-400 font-bold">Z-Score Normalized</span>
+                  </div>
                 </div>
-                <WaveformVisualizer />
               </div>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -147,9 +151,9 @@ export const HomePage: React.FC = () => {
             </div>
 
             {/* Right Column: [ BRIEF / 00 ] */}
-            <div className="lg:col-span-7 space-y-3 p-5 rounded-2xl bg-[#03060c]/80 border border-slate-800 text-xs font-mono">
+            <div id="about" className="lg:col-span-7 space-y-3 p-5 rounded-2xl bg-[#03060c]/80 border border-slate-800 text-xs font-mono scroll-mt-24">
               <div className="text-cyan-400 font-bold uppercase tracking-widest text-[11px] flex items-center justify-between">
-                <span>[ BRIEF / 00 ]</span>
+                <span>[ ABOUT DOGFOOD / BRIEF ]</span>
                 <span className="text-[10px] text-slate-500 font-normal">SEC_LEVEL_01</span>
               </div>
               <p className="text-slate-300 leading-relaxed font-sans">

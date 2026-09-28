@@ -53,8 +53,9 @@ export const TeamCreatePage: React.FC = () => {
         name: name.trim(),
         description: description.trim() || undefined,
       });
+      const teamId = team.id || (team as any)._id;
       success(`Team "${team.name}" created!`);
-      navigate(`/teams/${team.id}`);
+      navigate(`/teams/${teamId}`);
     } catch (err: any) {
       setError(err.message || 'Failed to create team');
     } finally {

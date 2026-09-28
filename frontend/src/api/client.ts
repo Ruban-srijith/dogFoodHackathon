@@ -50,15 +50,37 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
       return {} as T;
     }
 
-    const json: ApiResponse<T> = await response.json();
-
-    if (!response.ok || !json.success) {
-      const code = json.error?.code || 'UNKNOWN_ERROR';
-      const message = json.error?.message || response.statusText || 'An error occurred';
-      throw new ApiError(message, code, response.status, json.error?.details);
+    const text = await response.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      throw new ApiError(
+        response.statusText || 'Unexpected server response format',
+        'INVALID_RESPONSE',
+        response.status
+      );
     }
 
-    return json.data;
+    if (!response.ok) {
+      const code = json?.error?.code || json?.code || 'API_ERROR';
+      const message = json?.error?.message || json?.message || json?.error || response.statusText || 'An error occurred';
+      throw new ApiError(message, code, response.status, json?.error?.details || json?.details);
+    }
+
+    // Support both standardized envelope { success: true, data: ... }
+    // and legacy/direct backend payloads { team: ... }, { submission: ... }, etc.
+    if (json && typeof json === 'object') {
+      if ('data' in json && (json.success === undefined || json.success === true)) {
+        return json.data;
+      }
+      if (json.team) return json.team as T;
+      if (json.submission) return json.submission as T;
+      if (json.event) return json.event as T;
+      if (json.user) return json.user as T;
+    }
+
+    return json as T;
   } catch (error: any) {
     if (error instanceof ApiError) {
       throw error;

@@ -81,6 +81,7 @@ const submissionSchema = new mongoose.Schema({
   description: { type: String, required: true },
   repo_url: { type: String },
   demo_url: { type: String },
+  video_url: { type: String },
   tech_stack: [{ type: String }],
   status: { 
     type: String, 

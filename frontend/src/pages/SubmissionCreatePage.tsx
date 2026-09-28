@@ -1,21 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { submissionService } from '../services/submissionService';
 import { eventService } from '../services/eventService';
+import { teamService } from '../services/teamService';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { Card } from '../components/Card';
-import { Event } from '../types';
-import { Rocket, Save } from 'lucide-react';
+import { Event, Team } from '../types';
+import { Rocket, Save, AlertCircle, LogIn, Plus, UserPlus, Sparkles } from 'lucide-react';
 
 export const SubmissionCreatePage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const eventId = searchParams.get('event_id') || '';
-  const teamId = searchParams.get('team_id') || '';
+  const initialEventId = searchParams.get('event_id') || '';
+  const initialTeamId = searchParams.get('team_id') || '';
 
+  const { user, loading: authLoading } = useAuth();
+  const { success } = useToast();
+  const navigate = useNavigate();
+
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>(initialEventId);
   const [event, setEvent] = useState<Event | null>(null);
+
+  const [myTeams, setMyTeams] = useState<Team[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string>(initialTeamId);
+
   const [title, setTitle] = useState('');
   const [tagline, setTagline] = useState('');
   const [description, setDescription] = useState('');
@@ -23,34 +35,90 @@ export const SubmissionCreatePage: React.FC = () => {
   const [repoUrl, setRepoUrl] = useState('');
   const [demoUrl, setDemoUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
-  const [techStackInput, setTechStackInput] = useState('TypeScript, React, Node.js, PostgreSQL');
+  const [techStackInput, setTechStackInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { success } = useToast();
-  const navigate = useNavigate();
-
+  // 1. Fetch all public hackathons
   useEffect(() => {
-    if (!eventId) return;
+    const fetchEvents = async () => {
+      try {
+        const evList = await eventService.getPublicEvents();
+        setEvents(evList);
+        if (!selectedEventId && evList.length > 0) {
+          const firstId = evList[0].id || (evList[0] as any)._id || evList[0].slug;
+          setSelectedEventId(firstId);
+        }
+      } catch (err) {
+        console.error('Failed to load events:', err);
+      }
+    };
+    fetchEvents();
+  }, []);
+
+  // 2. Fetch selected event details and tracks
+  useEffect(() => {
+    if (!selectedEventId) return;
     const fetchEvent = async () => {
       try {
-        const ev = await eventService.getEventByIdOrSlug(eventId);
+        const ev = await eventService.getEventByIdOrSlug(selectedEventId);
         setEvent(ev);
-        if (ev.tracks && ev.tracks.length > 0) {
+        if (ev?.tracks && ev.tracks.length > 0) {
           setTrackId(ev.tracks[0].id);
         }
       } catch (err) {
-        console.error(err);
+        console.error('Failed to load event details:', err);
       }
     };
     fetchEvent();
-  }, [eventId]);
+  }, [selectedEventId]);
+
+  // 3. Fetch user's teams and associate with the event
+  useEffect(() => {
+    if (!user) return;
+    const fetchTeams = async () => {
+      try {
+        const teams = await teamService.getMyTeams();
+        setMyTeams(teams);
+
+        // Find teams matching this event
+        const matching = teams.filter((t: any) => {
+          const tEventId = String(t.event_id?._id || t.event_id || '');
+          const currEventId = String(event?.id || (event as any)?._id || selectedEventId);
+          return tEventId === currEventId || tEventId === selectedEventId;
+        });
+
+        if (matching.length > 0) {
+          const currentValid = matching.some((t: any) => (t.id || t._id) === selectedTeamId);
+          if (!currentValid) {
+            setSelectedTeamId(matching[0].id || (matching[0] as any)._id);
+          }
+        } else if (!initialTeamId) {
+          setSelectedTeamId('');
+        }
+      } catch (err) {
+        console.error('Failed to load teams:', err);
+      }
+    };
+    fetchTeams();
+  }, [user, selectedEventId, event]);
+
+  const matchingTeams = myTeams.filter((t: any) => {
+    const tEventId = String(t.event_id?._id || t.event_id || '');
+    const currEventId = String(event?.id || (event as any)?._id || selectedEventId);
+    return tEventId === currEventId || tEventId === selectedEventId;
+  });
 
   const handleSubmit = async (status: 'draft' | 'submitted') => {
     if (!title.trim() || !tagline.trim() || !description.trim() || !repoUrl.trim()) {
       setError('Please fill out all required fields (title, tagline, description, repo URL)');
       return;
     }
+    if (!selectedTeamId) {
+      setError('Please select or create a team for this hackathon before submitting.');
+      return;
+    }
+
     setError(null);
     setLoading(true);
     try {
@@ -59,9 +127,11 @@ export const SubmissionCreatePage: React.FC = () => {
         .map((s) => s.trim())
         .filter(Boolean);
 
+      const targetEvent = event?.id || (event as any)?._id || selectedEventId;
+
       const sub = await submissionService.createSubmission({
-        event_id: eventId,
-        team_id: teamId,
+        event_id: targetEvent,
+        team_id: selectedTeamId,
         track_id: trackId || undefined,
         title: title.trim(),
         tagline: tagline.trim(),
@@ -73,8 +143,9 @@ export const SubmissionCreatePage: React.FC = () => {
         status,
       });
 
+      const subId = sub.id || (sub as any)._id;
       success(status === 'submitted' ? 'Project submitted successfully!' : 'Draft saved!');
-      navigate(`/submissions/${sub.id}`);
+      navigate(`/submissions/${subId}`);
     } catch (err: any) {
       setError(err.message || 'Failed to create submission');
     } finally {
@@ -82,8 +153,42 @@ export const SubmissionCreatePage: React.FC = () => {
     }
   };
 
+  if (!authLoading && !user) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 px-4">
+        <Card className="p-8 text-center space-y-6 border border-amber-500/30 bg-slate-900/60 backdrop-blur-xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
+            <LogIn className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-white">Participant Login Required</h2>
+            <p className="text-slate-400 text-sm max-w-md mx-auto">
+              You must be signed in with a participant account to submit a project entry.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            <Button
+              variant="primary"
+              onClick={() => navigate('/login?redirect=/submissions/new')}
+              leftIcon={<LogIn className="w-4 h-4" />}
+            >
+              Sign In to Continue
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/register')}
+              leftIcon={<Sparkles className="w-4 h-4" />}
+            >
+              Register New Account
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-3xl mx-auto py-6">
+    <div className="max-w-3xl mx-auto py-6 px-4">
       <Card className="p-8 space-y-6">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
@@ -98,6 +203,65 @@ export const SubmissionCreatePage: React.FC = () => {
             {error}
           </div>
         )}
+
+        {/* Hackathon Selection & Team Status */}
+        <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {events.length > 0 && (
+              <Select
+                label="Target Hackathon"
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                options={events.map((ev) => ({
+                  value: ev.id || (ev as any)._id || ev.slug,
+                  label: ev.title || ev.name || ev.slug,
+                }))}
+              />
+            )}
+
+            {matchingTeams.length > 0 ? (
+              <Select
+                label="Submitting Team"
+                value={selectedTeamId}
+                onChange={(e) => setSelectedTeamId(e.target.value)}
+                options={matchingTeams.map((t: any) => ({
+                  value: t.id || t._id,
+                  label: `${t.name} (${t.members?.length || 1} members)`,
+                }))}
+              />
+            ) : (
+              <div className="space-y-1.5 text-left">
+                <label className="block text-xs font-mono font-bold uppercase tracking-wider text-[var(--accent-cyan)]">
+                  Submitting Team
+                </label>
+                <div className="text-xs text-slate-400 py-2.5">
+                  No team joined for this event yet.
+                </div>
+              </div>
+            )}
+          </div>
+
+          {matchingTeams.length === 0 && (
+            <div className="p-3.5 rounded-lg bg-amber-950/30 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-amber-300">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>You need to belong to a team in this hackathon to submit.</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link to={`/teams/new?event_id=${event?.id || selectedEventId}`}>
+                  <Button size="sm" variant="outline" leftIcon={<Plus className="w-3.5 h-3.5" />}>
+                    Create Team
+                  </Button>
+                </Link>
+                <Link to="/teams/join">
+                  <Button size="sm" variant="outline" leftIcon={<UserPlus className="w-3.5 h-3.5" />}>
+                    Join Team
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="space-y-4">
           <Input
@@ -121,7 +285,10 @@ export const SubmissionCreatePage: React.FC = () => {
               label="Competition Track"
               value={trackId}
               onChange={(e) => setTrackId(e.target.value)}
-              options={event.tracks.map((t) => ({ value: t.id, label: `${t.name} (${t.prize_pool || ''})` }))}
+              options={event.tracks.map((t) => ({
+                value: t.id,
+                label: `${t.name} ${t.prize_pool ? `(${t.prize_pool})` : ''}`,
+              }))}
             />
           )}
 
@@ -176,6 +343,7 @@ export const SubmissionCreatePage: React.FC = () => {
               variant="outline"
               onClick={() => handleSubmit('draft')}
               isLoading={loading}
+              disabled={!selectedTeamId}
               leftIcon={<Save className="w-4 h-4" />}
             >
               Save as Draft
@@ -185,6 +353,7 @@ export const SubmissionCreatePage: React.FC = () => {
               variant="primary"
               onClick={() => handleSubmit('submitted')}
               isLoading={loading}
+              disabled={!selectedTeamId}
               leftIcon={<Rocket className="w-4 h-4" />}
             >
               Submit Final Project

@@ -17,6 +17,7 @@ export type EventStatus = 'draft' | 'published' | 'ongoing' | 'voting' | 'judgin
 export interface Event {
   id: string;
   title: string;
+  name?: string;
   slug: string;
   description: string;
   start_date: string;
@@ -71,8 +72,8 @@ export type SubmissionStatus = 'draft' | 'submitted';
 export interface Submission {
   id: string;
   event_id: string;
-  team_id: string;
-  track_id?: string | null;
+  team_id: any;
+  track_id?: any;
   title: string;
   tagline: string;
   description: string;

@@ -38,16 +38,13 @@ export const Navbar: React.FC = () => {
               </div>
             </Link>
 
-            {/* Brutalist Monospace Navigation Links (from Screenshot) */}
+            {/* Brutalist Monospace Navigation Links */}
             <div className="hidden lg:flex items-center gap-4 text-[11px] font-mono font-bold tracking-widest text-slate-300">
-              <Link to="/events" className="hover:text-rose-500 transition">ABOUT</Link>
-              <Link to="/events" className="hover:text-rose-500 transition">TIERS</Link>
-              <Link to="/events" className="hover:text-rose-500 transition">TIMELINE</Link>
+              <a href="/#about" className="hover:text-rose-500 transition">ABOUT</a>
+              <Link to="/events" className="hover:text-rose-500 transition">HACKATHONS</Link>
               <Link to="/gallery" className="hover:text-rose-500 transition">GALLERY</Link>
-              <Link to="/events" className="hover:text-rose-500 transition">PRIZES</Link>
-              <Link to="/events" className="hover:text-rose-500 transition">RULES</Link>
-              <Link to="/events" className="hover:text-rose-500 transition">FAQ</Link>
-              <Link to="/events" className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">SPEC</Link>
+              <Link to="/teams/join" className="hover:text-rose-500 transition">JOIN TEAM</Link>
+              <a href="https://github.com/Ruban-srijith/dogFoodHackathon" target="_blank" rel="noopener noreferrer" className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition">SPEC</a>
             </div>
           </div>
 
@@ -128,12 +125,10 @@ export const Navbar: React.FC = () => {
       {mobileMenuOpen && (
         <div className="lg:hidden border-b border-cyan-500/20 bg-[var(--bg-primary)] px-4 pt-3 pb-6 space-y-3 font-mono text-xs">
           <div className="grid grid-cols-2 gap-2 text-slate-300">
-            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">ABOUT</Link>
-            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">TIERS</Link>
-            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">TIMELINE</Link>
-            <Link to="/gallery" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">GALLERY</Link>
-            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">PRIZES</Link>
-            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">RULES</Link>
+            <a href="/#about" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800 text-center">ABOUT</a>
+            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800 text-center">HACKATHONS</Link>
+            <Link to="/gallery" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800 text-center">GALLERY</Link>
+            <Link to="/teams/join" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800 text-center">JOIN TEAM</Link>
           </div>
           <div className="pt-2">
             {!user ? (

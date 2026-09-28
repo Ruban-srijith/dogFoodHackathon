@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { submissionService } from '../services/submissionService';
 import { eventService } from '../services/eventService';
@@ -11,49 +11,56 @@ import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
-import { Heart, Github, ExternalLink, Trophy, Layers, ArrowRight } from 'lucide-react';
+import { Heart, Github, ExternalLink, Trophy, Layers, ArrowRight, Search, Share2, Check } from 'lucide-react';
 
 export const GalleryPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const eventIdParam = searchParams.get('event_id');
 
   const { user } = useAuth();
   const { success, error: toastError } = useToast();
 
   const [events, setEvents] = useState<Event[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState<string>(eventIdParam || '');
+  const [selectedEventId, setSelectedEventId] = useState<string>(eventIdParam || 'all');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [votedSubmissions, setVotedSubmissions] = useState<Record<string, boolean>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load Events on initial mount
   useEffect(() => {
     const loadEvents = async () => {
       try {
         const evts = await eventService.getPublicEvents();
         setEvents(evts);
-        if (!selectedEventId && evts.length > 0) {
-          setSelectedEventId(evts[0].id);
-        }
       } catch (err: any) {
-        setError(err.message || 'Failed to load events');
+        console.error('Failed to load events list:', err);
       }
     };
     loadEvents();
-  }, [selectedEventId]);
+  }, []);
 
+  // Sync eventIdParam with selectedEventId
   useEffect(() => {
-    if (!selectedEventId) return;
+    if (eventIdParam && eventIdParam !== selectedEventId) {
+      setSelectedEventId(eventIdParam);
+    }
+  }, [eventIdParam]);
 
+  // Load Submissions when selectedEventId or user changes
+  useEffect(() => {
     const loadGallery = async () => {
       setLoading(true);
       setError(null);
       try {
-        const subs = await submissionService.getGallery(selectedEventId);
+        const targetId = selectedEventId === 'all' ? undefined : selectedEventId;
+        const subs = await submissionService.getGallery(targetId);
         setSubmissions(subs);
 
-        if (user) {
-          const myVote = await voteService.getMyVote(selectedEventId);
+        if (user && targetId) {
+          const myVote = await voteService.getMyVote(targetId);
           if (myVote) {
             setVotedSubmissions({ [myVote.submission_id]: true });
           }
@@ -68,23 +75,66 @@ export const GalleryPage: React.FC = () => {
     loadGallery();
   }, [selectedEventId, user]);
 
-  const handleVote = async (submissionId: string) => {
+  const handleEventChange = (newVal: string) => {
+    setSelectedEventId(newVal);
+    if (newVal === 'all') {
+      searchParams.delete('event_id');
+      setSearchParams(searchParams);
+    } else {
+      setSearchParams({ event_id: newVal });
+    }
+  };
+
+  const handleVote = async (submissionId: string, eventId: string) => {
     if (!user) {
       toastError('Please sign in to vote for projects');
       return;
     }
 
     try {
-      const res = await voteService.castVote(selectedEventId, submissionId);
+      const res = await voteService.castVote(eventId, submissionId);
       setVotedSubmissions((prev) => ({ ...prev, [submissionId]: true }));
       setSubmissions((prev) =>
-        prev.map((s) => (s.id === submissionId ? { ...s, vote_count: res.currentCount } : s))
+        prev.map((s) => {
+          const sId = s.id || (s as any)._id;
+          return sId === submissionId ? { ...s, vote_count: res.currentCount } : s;
+        })
       );
       success('Vote recorded successfully!');
     } catch (err: any) {
       toastError(err.message || 'Could not cast vote');
     }
   };
+
+  const handleShare = (subId: string, title: string) => {
+    const url = `${window.location.origin}/submissions/${subId}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(subId);
+    success(`Copied share link for "${title}"!`);
+    setTimeout(() => setCopiedId(null), 3000);
+  };
+
+  // Real-time client-side search filtering
+  const filteredSubmissions = useMemo(() => {
+    if (!searchQuery.trim()) return submissions;
+    const q = searchQuery.toLowerCase().trim();
+    return submissions.filter((s) => {
+      const title = s.title?.toLowerCase() || '';
+      const tagline = s.tagline?.toLowerCase() || '';
+      const desc = s.description?.toLowerCase() || '';
+      const team = (s.team_name || (typeof s.team_id === 'object' ? s.team_id?.name : ''))?.toLowerCase() || '';
+      const track = (s.track_name || (typeof s.track_id === 'object' ? s.track_id?.name : ''))?.toLowerCase() || '';
+      const stack = Array.isArray(s.tech_stack) ? s.tech_stack.join(' ').toLowerCase() : '';
+      return (
+        title.includes(q) ||
+        tagline.includes(q) ||
+        desc.includes(q) ||
+        team.includes(q) ||
+        track.includes(q) ||
+        stack.includes(q)
+      );
+    });
+  }, [submissions, searchQuery]);
 
   return (
     <div className="space-y-8">
@@ -99,48 +149,80 @@ export const GalleryPage: React.FC = () => {
           <p className="text-sm text-slate-400 mt-1">Explore, test, and vote for submitted hackathon innovations</p>
         </div>
 
-        {events.length > 0 && (
-          <div className="flex items-center gap-2.5">
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider font-mono">Hackathon:</span>
+        {/* Hackathon Selection & Keyword Search */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search projects, stack, team..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400/30 w-56 sm:w-64"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider font-mono hidden sm:inline">
+              Hackathon:
+            </span>
             <select
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
+              onChange={(e) => handleEventChange(e.target.value)}
               className="rounded-xl bg-slate-900 border border-slate-800 text-xs px-3.5 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 font-medium cursor-pointer"
             >
-              {events.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.title}
-                </option>
-              ))}
+              <option value="all">All Hackathons ({submissions.length})</option>
+              {events.map((e) => {
+                const eId = e.id || (e as any)._id;
+                return (
+                  <option key={eId} value={eId}>
+                    {e.title}
+                  </option>
+                );
+              })}
             </select>
           </div>
-        )}
+        </div>
       </div>
 
       {loading ? (
         <Loading message="Loading gallery projects..." fullScreen />
       ) : error ? (
         <ErrorState message={error} onRetry={() => setSelectedEventId(selectedEventId)} fullScreen />
-      ) : submissions.length === 0 ? (
+      ) : filteredSubmissions.length === 0 ? (
         <EmptyState
           icon={<Trophy className="w-8 h-8 text-amber-400" />}
-          title="No Projects Submitted Yet"
-          description="Be the first team to finish and submit your hackathon project!"
+          title={searchQuery ? 'No Matching Projects Found' : 'No Projects Submitted Yet for this Hackathon'}
+          description={
+            searchQuery
+              ? `No projects found matching "${searchQuery}". Try a different keyword.`
+              : 'Switch to "All Hackathons" in the dropdown or be the first team to submit your project!'
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {submissions.map((sub) => {
-            const hasVoted = votedSubmissions[sub.id];
+          {filteredSubmissions.map((sub) => {
+            const subId = sub.id || (sub as any)._id;
+            const hasVoted = votedSubmissions[subId];
+            const teamName = sub.team_name || (typeof sub.team_id === 'object' ? sub.team_id?.name : 'Independent Team');
+            const trackName = sub.track_name || (typeof sub.track_id === 'object' ? sub.track_id?.name : 'General Track');
+
+            // Sanitize demo URL so it never throws privacy errors
+            let safeDemoUrl = sub.demo_url ? sub.demo_url.trim() : null;
+            if (safeDemoUrl && safeDemoUrl.includes('unstop.org')) {
+              safeDemoUrl = safeDemoUrl.replace('unstop.org', 'unstop.com');
+            }
+
             return (
-              <Card key={sub.id} hover className="flex flex-col justify-between h-full p-6 space-y-4 group border-slate-800/90 hover:border-sky-500/30">
+              <Card key={subId} hover className="flex flex-col justify-between h-full p-6 space-y-4 group border-slate-800/90 hover:border-sky-500/30">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[11px] font-mono uppercase tracking-wider text-sky-400 font-semibold px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20">
-                      {sub.track_name || 'General Track'}
+                      {trackName}
                     </span>
                     <button
-                      onClick={() => handleVote(sub.id)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition active:scale-95 ${
+                      onClick={() => handleVote(subId, sub.event_id)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition active:scale-95 cursor-pointer ${
                         hasVoted
                           ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
                           : 'bg-slate-800/80 text-slate-300 hover:text-rose-400 hover:bg-slate-700/60 border border-slate-700/80'
@@ -154,11 +236,11 @@ export const GalleryPage: React.FC = () => {
 
                   <div>
                     <h3 className="text-xl font-extrabold text-white group-hover:text-sky-400 transition-colors">
-                      <Link to={`/submissions/${sub.id}`}>{sub.title}</Link>
+                      <Link to={`/submissions/${subId}`}>{sub.title}</Link>
                     </h3>
-                    <p className="text-xs text-emerald-400 font-semibold mt-1">by {sub.team_name}</p>
+                    <p className="text-xs text-emerald-400 font-semibold mt-1">by {teamName}</p>
                     <p className="text-xs text-slate-300 mt-2.5 line-clamp-2 leading-relaxed">
-                      {sub.tagline}
+                      {sub.tagline || sub.description}
                     </p>
                   </div>
 
@@ -183,25 +265,36 @@ export const GalleryPage: React.FC = () => {
                         href={sub.repo_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-slate-400 hover:text-white transition"
+                        className="text-slate-400 hover:text-white transition p-1"
                         title="Repository"
                       >
                         <Github className="w-4 h-4" />
                       </a>
                     )}
-                    {sub.demo_url && (
+                    {safeDemoUrl && (
                       <a
-                        href={sub.demo_url}
+                        href={safeDemoUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-slate-400 hover:text-white transition"
+                        className="text-slate-400 hover:text-white transition p-1"
                         title="Live Demo"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
+                    <button
+                      onClick={() => handleShare(subId, sub.title)}
+                      className="text-slate-400 hover:text-emerald-400 transition p-1 cursor-pointer"
+                      title="Share / Copy Link"
+                    >
+                      {copiedId === subId ? (
+                        <Check className="w-4 h-4 text-emerald-400" />
+                      ) : (
+                        <Share2 className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
-                  <Link to={`/submissions/${sub.id}`}>
+                  <Link to={`/submissions/${subId}`}>
                     <Button variant="outline" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
                       View Project
                     </Button>

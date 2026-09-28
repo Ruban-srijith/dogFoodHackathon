@@ -11,7 +11,7 @@ export const UNSTOP_PRODUCT_SUBMISSIONS: Submission[] = [
     tagline: 'AI-Powered No-Code Product Development Platform',
     description: 'An interactive product design and workflow engine that compiles wireframes into production React components in real time.',
     repo_url: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-    demo_url: 'https://unstop.org',
+    demo_url: 'https://unstop.com',
     tech_stack: ['React', 'TypeScript', 'TailwindCSS', 'Node.js', 'PostgreSQL'],
     status: 'submitted',
     submitted_at: '2026-09-25T14:30:00Z',
@@ -29,7 +29,7 @@ export const UNSTOP_PRODUCT_SUBMISSIONS: Submission[] = [
     tagline: 'Self-Hostable Product Analytics & Health Dashboard',
     description: 'Real-time telemetry and error tracking suite engineered for microservice products with zero cloud dependencies.',
     repo_url: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-    demo_url: 'https://unstop.org',
+    demo_url: 'https://unstop.com',
     tech_stack: ['TypeScript', 'Docker', 'Express', 'Vite', 'TailwindCSS'],
     status: 'submitted',
     submitted_at: '2026-09-26T18:00:00Z',
@@ -42,10 +42,11 @@ export const UNSTOP_PRODUCT_SUBMISSIONS: Submission[] = [
 ];
 
 export const submissionService = {
-  getGallery: async (eventId: string): Promise<Submission[]> => {
+  getGallery: async (eventId?: string): Promise<Submission[]> => {
     try {
-      const data = await apiClient.get<Submission[]>(ENDPOINTS.GALLERY(eventId));
-      return data && data.length > 0 ? data : UNSTOP_PRODUCT_SUBMISSIONS;
+      const endpoint = eventId ? ENDPOINTS.GALLERY(eventId) : `${import.meta.env.VITE_API_URL || '/api/v1'}/submissions/gallery`;
+      const data = await apiClient.get<Submission[]>(endpoint);
+      return Array.isArray(data) ? data : UNSTOP_PRODUCT_SUBMISSIONS;
     } catch {
       return UNSTOP_PRODUCT_SUBMISSIONS;
     }
@@ -54,9 +55,9 @@ export const submissionService = {
   getEventSubmissions: async (eventId: string): Promise<Submission[]> => {
     try {
       const data = await apiClient.get<Submission[]>(ENDPOINTS.SUBMISSIONS_BY_EVENT(eventId));
-      return data && data.length > 0 ? data : UNSTOP_PRODUCT_SUBMISSIONS;
+      return Array.isArray(data) ? data : [];
     } catch {
-      return UNSTOP_PRODUCT_SUBMISSIONS;
+      return [];
     }
   },
 

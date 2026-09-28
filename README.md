@@ -1,33 +1,25 @@
-# DOGFOOD — Self-Hosted Hackathon Management & Judging Platform
+# DOGFOOD — Hackathon Management & Judging Platform
 
-A local-first, offline-ready microservices architecture composed of 3 isolated services orchestrated via Docker Compose:
-- **Frontend**: React 18 + TypeScript + Vite (SPA with SmoothScroll, WebGL Relief, and complete participant, judge, and organizer views).
-- **Backend**: Node.js + Express (JWT + HTTP-only cookies, RBAC matrix, deadline enforcement, isolated judging, z-score normalization, RFC 4180 CSV export).
-- **Database**: MongoDB 6.0 (`app_db`).
+DOGFOOD is a local-first, self-hostable hackathon management and judging platform built with zero cloud dependencies. It runs as a 3-service stack: React frontend, Express API backend, and MongoDB database.
 
 ---
 
-## 1. How to Run
+## 1. Run Command
 
-### Option A: Complete Docker Compose Stack
+### Option A: Docker Compose (Recommended)
 ```bash
 docker compose up --build
 ```
-* **Frontend**: `http://localhost:5173` (also accessible on `http://localhost:3000` or port 80 depending on proxy setup)
-* **Backend API**: `http://localhost:5000` (or `http://localhost:5001` if port 5000 is occupied by macOS AirPlay)
+* **Frontend**: `http://localhost:5173` (or `http://localhost:3000`)
+* **Backend API**: `http://localhost:5000` (or `http://localhost:5001`)
 * **MongoDB**: `mongodb://127.0.0.1:27017/app_db`
 
-To run detached:
-```bash
-docker compose up -d --build
-```
-
 ### Option B: Local Direct Execution
-Ensure a local MongoDB daemon is running on port 27017:
+Ensure MongoDB is running locally on port 27017:
 ```bash
 # Terminal 1: Backend
 npm --prefix backend install
-npm --prefix backend run seed   # Seeds initial users, events, tracks, rubrics
+npm --prefix backend run seed
 node backend/src/server.js
 
 # Terminal 2: Frontend
@@ -39,9 +31,9 @@ npm --prefix frontend run dev
 
 ## 2. Test Accounts & Credentials
 
-The seed script creates the following accounts in MongoDB. The backend accepts both the canonical seed passwords and the frontend Quick-Login passwords:
+The seed script (`backend/src/seed.js`) provisions deterministic test accounts. Passwords work with both canonical seed passwords and UI Quick-Login passwords:
 
-| Role | Username | Email | UI Quick Login Password | Canonical Seed Password |
+| Role | Username | Email | UI Quick-Login | Canonical Seed Password |
 | :--- | :--- | :--- | :--- | :--- |
 | **ADMIN** | `admin` | `admin@dogfood.local` | `DogfoodAdmin123!` | `AdminPassword123!` |
 | **ORGANIZER** | `organizer` | `organizer@dogfood.local` | `DogfoodOrg123!` | `OrganizerPassword123!` |
@@ -54,73 +46,73 @@ The seed script creates the following accounts in MongoDB. The backend accepts b
 | **PARTICIPANT** | `david` | `david@dogfood.local` | `DogfoodUser123!` | `DavidPassword123!` |
 | **PARTICIPANT** | `emma` | `emma@dogfood.local` | `DogfoodUser123!` | `EmmaPassword123!` |
 
-*(7 additional participants `frank` through `jack` are also seeded with `<Name>Password123!`)*.
+*(Additional participants `frank` through `jack` use `<Name>Password123!` or `DogfoodUser123!`)*.
 
 ---
 
 ## 3. How to Run Tests
 
-Run the complete Node.js test runner suite (123 automated tests across 6 feature suites):
-
+### Complete Backend Test Suite (123 tests)
 ```bash
 npm --prefix backend test
 ```
 
-Or run individual suites:
+### Acceptance Test Suite (10 criteria verified)
 ```bash
-node --test backend/test/t1_features.test.js        # Auth, Events, Teams, Submissions, Deadlines
-node --test backend/test/t2_features.test.js        # Judge Invites, Assignments, 403 Isolation
-node --test backend/test/t3_features.test.js        # Rubric Config, Draft Locking, Scored Isolation
-node --test backend/test/t4_normalization.test.js   # Z-Score, Rescaling, Bias Correction
-node --test backend/test/t5_judge_progress_csv.test.js # Progress Dashboard & CSV Exports
-node --test backend/test/t6_security_audit.test.js  # Security, Auth, Secrets & Deadline Audits
+node tests/acceptance/runner.js
+# or via Makefile
+make acceptance
+```
+
+### Individual Test Suites
+```bash
+node --test backend/test/auth.test.js
+node --test backend/test/t1_features.test.js
+node --test backend/test/t2_features.test.js
+node --test backend/test/t3_rubrics.test.js
+node --test backend/test/t4_normalization.test.js
+node --test backend/test/t5_judge_progress_and_csv_export.test.js
+node --test backend/test/t6_security_audit.test.js
 ```
 
 ---
 
-## 4. Tier Implementation Status (Honest Assessment)
+## 4. Implementation Status by Tier (Honest Assessment)
 
-### ✅ Completed & Tested Tiers (123 / 123 Tests Passing)
+### ✅ Completed & Tested Tiers (Verified by Acceptance Report & 123/123 Unit/Integration Tests)
 
 * **Tier 1: Core Platform & Lifecycle**
-  * JWT + HTTP-only cookie authentication with password hashing via bcrypt (10 rounds).
-  * Role-based access control matrix (`ADMIN`, `ORGANIZER`, `JUDGE`, `PARTICIPANT`, `VISITOR`).
+  * JWT authentication via HTTP-only cookies and Bearer headers; bcrypt (10 rounds) hashing.
+  * Role-Based Access Control (`ADMIN`, `ORGANIZER`, `JUDGE`, `PARTICIPANT`, `VISITOR`).
   * Event creation with chronological validation (`start_date < end_date`).
   * Team creation with unique 8-character `invite_code` and strict 4-member cap.
-  * Project submission lifecycle (`draft` vs `submitted`) with team ownership enforcement.
-  * Public gallery filtering with track categorization and draft exclusion.
-  * Strict deadline enforcement (`HTTP 403 Forbidden` on submissions, edits, team creation, and joining after deadline).
-
+  * Submission lifecycle (`draft` vs `submitted`) with team ownership checks.
+  * Strict deadline enforcement (`403 Forbidden` on submissions, edits, team creation, and joining post-deadline).
 * **Tier 2: Judge Management & Assignment Engine**
-  * Organizer judge invitation system with email-targeted verification and expiration tracking.
-  * Manual, batch, and automated load-balanced project assignment modes.
-  * Conflict-of-interest prevention: Judges can never be assigned projects from their own teams.
-  * Strict 403 judge isolation: Judges can only view and score projects explicitly assigned to them.
-
+  * Organizer judge invitation system with email matching and expiration tracking.
+  * Three assignment modes: Manual, Batch, and Automatic load-balanced distribution.
+  * Conflict-of-interest enforcement: judges cannot be assigned projects from their own teams.
+  * Strict judge isolation: judges only access and score assigned submissions (`403 Forbidden` otherwise).
 * **Tier 3: Configurable Rubrics & Evaluation Locking**
   * Dynamic weighted multi-criteria rubric management per event.
-  * Evaluation draft saving with backend-calculated weighted totals.
-  * Submission locking: Once submitted, evaluation scores are permanently locked against judge tampering.
-  * Organizer reopen capability: Organizers can reopen locked scores for editing (blocked if event is closed).
-  * Evaluator confidentiality: Judges cannot inspect evaluations submitted by other judges.
-
+  * Evaluation draft saving with server-computed weighted totals.
+  * Permanent submission locking on finalize; judges cannot alter submitted scores.
+  * Organizer reopen capability (allowed only while event remains open).
+  * Evaluator confidentiality: judges cannot view other judges' scores.
 * **Tier 4: Cross-Judge Z-Score Normalization**
-  * Per-judge mean ($\mu$) and standard deviation ($\sigma$) calculation to eliminate evaluator grading bias.
-  * Z-score calculation with complete edge-case handling (N=1 single evaluation, zero-variance identical scores, unscored submissions).
-  * 0–100 rescaling with side-by-side raw vs. normalized leaderboards and rank deltas.
-
-* **Tier 5: Judge Progress Dashboard & CSV Export Suite**
-  * Real-time organizer progress tracking (assigned, evaluated, pending, completion percentages).
-  * RFC 4180 compliant CSV export engine for 7 resources: `participants`, `teams`, `submissions`, `assignments`, `raw_scores`, `normalized_scores`, `final_results`.
-
+  * Per-judge mean ($\mu$) and standard deviation ($\sigma$) calculation.
+  * Outlier and edge-case handling ($N=1$ single score, $\sigma=0$ zero variance, unscored projects).
+  * Rescaling to 0–100 with side-by-side raw vs. normalized leaderboards and rank deltas.
+* **Tier 5: Judge Progress Dashboard & CSV Exports**
+  * Real-time organizer tracking of assigned, scored, pending, and completion rates.
+  * RFC 4180 compliant CSV exports for 7 resources: `participants`, `teams`, `submissions`, `assignments`, `raw_scores`, `normalized_scores`, and `final_results`.
 * **Tier 6: Security & Authorization Hardening**
-  * Global Mongoose schema transforms eliminating `password_hash` from all API responses and serialization.
-  * Team invite codes hidden from public gallery and outsiders.
-  * Logging sanitized (`MONGO_URI` credential masking).
-  * Event closure enforcement across scoring and reopening endpoints.
+  * Schema-level transforms stripping `password_hash` from all API responses.
+  * Team invite codes hidden from public endpoints and non-members.
+  * Role whitelisting and event closure enforcement across scoring and admin endpoints.
 
 ### ⚠️ Remaining / Out of Scope (Not Implemented)
-
-* **Live WebSockets for Real-Time Live Scoring**: Scoring updates are pulled via REST endpoints; real-time push via Socket.io/WebSockets is not implemented.
-* **Payment/Sponsorship Gateway**: Monetary prize tracking is stored as metadata only; automated Stripe/payout disbursement is not implemented.
-* **Native Mobile Apps**: Only the responsive Web SPA (React + Tailwind + Vite) is provided.
+* **Real-time WebSockets**: Scoring updates rely on REST API polling; live WebSocket push is not implemented.
+* **Payment/Disbursement Gateway**: Prize awards are stored as descriptive metadata; automated Stripe/banking payouts are not implemented.
+* **Cloud Object Storage (S3)**: Files and demo links are stored as URLs; direct cloud S3 upload is not implemented.
+* **Native Mobile Apps**: Only the responsive Web SPA (React + TypeScript) is provided.

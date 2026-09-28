@@ -22,4 +22,13 @@ export const teamService = {
   joinTeam: async (invite_code: string): Promise<Team> => {
     return await apiClient.post<Team>(ENDPOINTS.JOIN_TEAM, { invite_code });
   },
+
+  getMyTeams: async (): Promise<Team[]> => {
+    try {
+      const data = await apiClient.get<any>('/api/v1/teams/my');
+      return Array.isArray(data) ? data : (data?.teams || data?.data || []);
+    } catch {
+      return [];
+    }
+  },
 };
