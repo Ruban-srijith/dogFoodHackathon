@@ -1,25 +1,37 @@
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
+import { Relief } from '../components/Relief';
+import { Cursor } from '../components/Cursor';
+import { FixedUI } from '../components/FixedUI';
 
 export const AuthLayout: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-[#080c14] text-slate-100 relative overflow-hidden">
-      {/* Ambient background glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-emerald-500/10 via-sky-500/10 to-transparent blur-3xl pointer-events-none rounded-full" />
+    <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-[var(--bg-primary)] text-[var(--text-main)] relative overflow-hidden transition-colors duration-300">
+      {/* Precision Cursor */}
+      <Cursor />
+
+      {/* WebGL 3D Interactive Relief Shader Background */}
+      <Relief />
+
+      {/* Persistent Fixed UI (Theme Selector, Menu, Progress Ring) */}
+      <FixedUI />
+
+      {/* Ambient theme grid overlay */}
+      <div className="absolute inset-0 blueprint-grid-overlay pointer-events-none opacity-40 z-0" />
 
       <div className="mb-6 relative z-10">
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-sky-500 to-indigo-500 p-[1.5px] shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-            <div className="w-full h-full bg-[#080c14] rounded-[14px] flex items-center justify-center">
-              <span className="font-extrabold text-emerald-400 text-xl tracking-tighter">DF</span>
+          <div className="w-12 h-12 rounded-2xl bg-[var(--border-color)] p-[1.5px] shadow-lg group-hover:scale-105 transition-transform border border-[var(--border-hover)]">
+            <div className="w-full h-full bg-[var(--bg-surface)] rounded-[14px] flex items-center justify-center">
+              <span className="font-extrabold text-[var(--accent-cyan)] text-xl tracking-tighter">DF</span>
             </div>
           </div>
           <div className="flex flex-col">
-            <span className="font-black text-2xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              DOGFOOD
+            <span className="font-black text-2xl tracking-tight text-[var(--text-main)] font-mono">
+              DOG<span className="text-[var(--accent-red)]">FOOD</span>
             </span>
-            <span className="text-[10px] uppercase tracking-widest text-emerald-400 font-semibold -mt-1">
-              Hackathon Core
+            <span className="text-[10px] uppercase tracking-widest text-[var(--accent-cyan)] font-mono font-bold -mt-1">
+              Hackathon Core Engine
             </span>
           </div>
         </Link>
@@ -29,9 +41,10 @@ export const AuthLayout: React.FC = () => {
         <Outlet />
       </div>
 
-      <p className="mt-8 text-center text-xs text-slate-500 relative z-10 font-mono">
+      <p className="mt-8 text-center text-xs text-[var(--text-muted)] relative z-10 font-mono">
         DOGFOOD • Self-Hostable Hackathon Platform Architecture
       </p>
     </div>
   );
 };
+
