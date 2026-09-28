@@ -8,8 +8,10 @@ import { StatusBadge } from '../components/Badge';
 import { Loading } from '../components/Loading';
 import { ErrorState } from '../components/ErrorState';
 import { WireframeCanvas } from '../components/WireframeCanvas';
+import { WaveformVisualizer } from '../components/WaveformVisualizer';
+import { CyberpunkGlitchText } from '../components/CyberpunkGlitchText';
 import { formatDate, formatDaysRemaining } from '../utils/formatters';
-import { ShieldCheck, Terminal, Cpu } from 'lucide-react';
+import { ShieldCheck, Terminal, Cpu, Activity } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -35,41 +37,53 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-16 py-2">
-      {/* Hero Section (Replicating Screenshot Layout Exactly!) */}
+      {/* Immersive 3D Hero Section */}
       <section className="relative rounded-3xl border border-cyan-500/20 bg-[var(--bg-surface)] p-6 sm:p-12 overflow-hidden blueprint-grid-overlay shadow-2xl">
-        {/* 3D Wireframe Mesh Canvas (Interactive 3D Polyhedron Node Matrix) */}
+        {/* Interactive 3D Wireframe Mesh Canvas */}
         <WireframeCanvas />
 
         <div className="relative z-10 space-y-8 max-w-6xl">
-          {/* Telemetry Bar (From Screenshot) */}
-          <div className="flex flex-wrap items-center gap-4 text-xs font-mono tracking-widest text-slate-400">
-            <span className="text-cyan-400 font-bold">[ UNIT / DF-01 ]</span>
-            <span>51.5310°N 0.0500°E</span>
-            <span>REV 2.6</span>
+          {/* Telemetry Header Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 text-xs font-mono tracking-widest text-slate-400 border-b border-cyan-500/20 pb-4">
+            <div className="flex items-center gap-4">
+              <span className="text-cyan-400 font-bold">[ UNIT / DF-01 ]</span>
+              <span>51.5310°N 0.0500°E</span>
+              <span>REV 2.6</span>
+            </div>
             <div className="flex items-center gap-2 text-emerald-400 font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span>SYS READY • REGISTRATION OPEN</span>
             </div>
           </div>
 
-          {/* Extruded 3D DOGFOOD Title (With Red 'F' from Screenshot!) */}
+          {/* 3D Extruded DOGFOOD Master Title with Kinetic Glitch Effects */}
           <div className="pt-2 pb-4 select-none">
             <h1 className="text-6xl sm:text-8xl lg:text-9xl extruded-hero-title leading-none">
               DOG<span className="highlight-f">F</span>OOD
             </h1>
           </div>
 
-          {/* Subhead & Brief Grid (From Screenshot) */}
+          {/* Subhead, Telemetry Waveform & Brief Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4 border-t border-cyan-500/20">
             {/* Left Column */}
             <div className="lg:col-span-5 space-y-4">
               <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-[var(--text-main)] font-mono leading-tight">
-                BUILD THE PLATFORM <br />
-                <span className="text-rose-500">THAT WILL JUDGE YOU.</span>
+                <CyberpunkGlitchText text="BUILD THE PLATFORM" /> <br />
+                <span className="text-rose-500"><CyberpunkGlitchText text="THAT WILL JUDGE YOU." /></span>
               </h2>
+
               <div className="text-xs font-mono text-slate-400 space-y-1 font-semibold">
                 <p>SEPTEMBER 26-29, 2026 • ONLINE</p>
                 <p className="text-cyan-400 font-bold">FREE • $2,500 IN PRIZES</p>
+              </div>
+
+              {/* Real-time Telemetry Waveform Visualizer Graphic */}
+              <div className="pt-1">
+                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 uppercase tracking-widest mb-1">
+                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Telemetry Spectrum Wave</span>
+                </div>
+                <WaveformVisualizer />
               </div>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -86,18 +100,19 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Column: [ BRIEF / 00 ] (From Screenshot) */}
+            {/* Right Column: [ BRIEF / 00 ] */}
             <div className="lg:col-span-7 space-y-3 p-5 rounded-2xl bg-[#03060c]/80 border border-slate-800 text-xs font-mono">
-              <div className="text-cyan-400 font-bold uppercase tracking-widest text-[11px]">
-                [ BRIEF / 00 ]
+              <div className="text-cyan-400 font-bold uppercase tracking-widest text-[11px] flex items-center justify-between">
+                <span>[ BRIEF / 00 ]</span>
+                <span className="text-[10px] text-slate-500 font-normal">SEC_LEVEL_01</span>
               </div>
               <p className="text-slate-300 leading-relaxed font-sans">
                 Thirty-five hackathons in, across 85 countries, we know exactly what a submission and judging platform should do. So does every organizer who has ever run one. What none of us has is a modern, open, self-hostable platform that does it. This is the hackathon platform engineered to eliminate cloud SaaS dependency.
               </p>
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80 text-[10px] text-slate-400">
-                <div><span className="text-emerald-400 font-bold">01.</span> Isolated Judging</div>
-                <div><span className="text-cyan-400 font-bold">02.</span> Weighted Rubric</div>
-                <div><span className="text-rose-500 font-bold">03.</span> Docker Native</div>
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800/80 text-[10px] text-slate-400">
+                <div className="flex items-center gap-1.5"><span className="text-emerald-400 font-bold">01.</span> Isolated Judging</div>
+                <div className="flex items-center gap-1.5"><span className="text-cyan-400 font-bold">02.</span> Weighted Rubric</div>
+                <div className="flex items-center gap-1.5"><span className="text-rose-500 font-bold">03.</span> Docker Native</div>
               </div>
             </div>
           </div>
@@ -109,7 +124,9 @@ export const HomePage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-cyan-500/20 pb-4">
           <div>
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-rose-500">[ SYSTEM COMPETITIONS ]</span>
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] font-mono mt-1">Featured Hackathons</h2>
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] font-mono mt-1">
+              <CyberpunkGlitchText text="Featured Hackathons" />
+            </h2>
           </div>
           <Link to="/events" className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 transition">
             View All Competitions →
