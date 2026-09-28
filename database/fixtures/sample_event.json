@@ -19,5 +19,10 @@
     { "title": "Grand Prize — 1st Place Overall", "award_amount": "$10,000", "description": "Awarded to the most impactful, technically rigorous open-source platform." },
     { "title": "Runner-Up — 2nd Place Overall", "award_amount": "$5,000", "description": "Awarded to the project demonstrating outstanding engineering depth." },
     { "title": "Community Choice Award", "award_amount": "$2,500", "description": "Voted by the participants and peer evaluators across all active tracks." }
+  ],
+  "rubrics": [
+    { "name": "Technical Rigor & Innovation", "description": "Algorithmic complexity, novelty, and architectural soundness.", "weight": 0.4, "min_score": 0, "max_score": 10 },
+    { "name": "Execution & Demo Quality", "description": "Working demonstration, test coverage, and deployment reliability.", "weight": 0.4, "min_score": 0, "max_score": 10 },
+    { "name": "Impact & Documentation", "description": "Practical utility, developer experience, and documentation depth.", "weight": 0.2, "min_score": 0, "max_score": 10 }
   ]
 }

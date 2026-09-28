@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { User, Event, Track, Prize, Team, Submission } = require('./models');
+const { User, Event, Track, Prize, Team, Submission, RubricCriterion } = require('./models');
 
 // Test accounts to seed
 const testCredentials = [
@@ -137,6 +137,35 @@ async function seedDatabaseIfEmpty() {
       }
     ]);
     console.log(`[Seed] ✅ Seeded 3 Prizes: Grand Prize ($10,000), Runner-Up ($5,000), Community Choice ($2,500).`);
+
+    // 4.5. Seed Default Configurable Rubric Criteria
+    await RubricCriterion.create([
+      {
+        event_id: event._id,
+        name: 'Technical Rigor & Innovation',
+        description: 'Algorithmic complexity, novelty, and architectural soundness.',
+        weight: 0.4,
+        min_score: 0,
+        max_score: 10
+      },
+      {
+        event_id: event._id,
+        name: 'Execution & Demo Quality',
+        description: 'Working demonstration, test coverage, and deployment reliability.',
+        weight: 0.4,
+        min_score: 0,
+        max_score: 10
+      },
+      {
+        event_id: event._id,
+        name: 'Impact & Documentation',
+        description: 'Practical utility, developer experience, and documentation depth.',
+        weight: 0.2,
+        min_score: 0,
+        max_score: 10
+      }
+    ]);
+    console.log(`[Seed] ✅ Seeded 3 Configurable Judging Rubric Criteria.`);
 
     // 5. Seed 4 Teams
     const team1 = await Team.create({
