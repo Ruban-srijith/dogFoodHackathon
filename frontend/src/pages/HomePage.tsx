@@ -46,7 +46,7 @@ export const HomePage: React.FC = () => {
       position: 'left' as const,
       imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
       repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-      demoUrl: 'https://unstop.org',
+      demoUrl: 'https://unstop.com',
       techStack: ['React', 'TypeScript', 'TailwindCSS', 'Node.js'],
     },
     {
@@ -56,7 +56,7 @@ export const HomePage: React.FC = () => {
       position: 'right' as const,
       imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
       repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-      demoUrl: 'https://unstop.org',
+      demoUrl: 'https://unstop.com',
       techStack: ['TypeScript', 'Docker', 'Express', 'PostgreSQL'],
     },
     {
@@ -66,7 +66,7 @@ export const HomePage: React.FC = () => {
       position: 'left' as const,
       imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80',
       repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-      demoUrl: 'https://unstop.org',
+      demoUrl: 'https://unstop.com',
       techStack: ['React', 'PostgreSQL', 'Docker', 'TailwindCSS'],
     },
     {
@@ -76,7 +76,7 @@ export const HomePage: React.FC = () => {
       position: 'center' as const,
       imageUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
       repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
-      demoUrl: 'https://unstop.org',
+      demoUrl: 'https://unstop.com',
       techStack: ['TypeScript', 'Three.js', 'GSAP', 'Lenis'],
     },
   ];

@@ -82,7 +82,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
       {/* Media Card (16:10 aspect ratio) */}
       <div
         ref={mediaRef}
-        data-cursor-text="VIEW"
         className="w-full lg:w-[42vw] aspect-[16/10] bg-slate-900 border border-cyan-500/30 overflow-hidden relative group cursor-pointer shadow-2xl shrink-0"
       >
         <img

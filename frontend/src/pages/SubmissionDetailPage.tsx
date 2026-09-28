@@ -164,7 +164,7 @@ export const SubmissionDetailPage: React.FC = () => {
             <a
               href={submission.demo_url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition"
             >
               <ExternalLink className="w-4 h-4 text-sky-400" />
