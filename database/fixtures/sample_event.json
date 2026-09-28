@@ -2,13 +2,21 @@
   "events": [
     {
       "id": "e0000000-0000-0000-0000-000000000001",
-      "slug": "global-ai-hackathon-2026",
-      "title": "Global AI & Open Source Hackathon 2026",
-      "status": "ongoing"
+      "slug": "unstop-product-pro-2026",
+      "title": "Unstop Product Pro Hackathon 2026",
+      "status": "ongoing",
+      "description": "Premier Product Development & Innovation Challenge hosted on Unstop. Teams design, prototype, and build end-to-end digital product MVPs."
+    },
+    {
+      "id": "e0000000-0000-0000-0000-000000000002",
+      "slug": "unstop-ai-product-sprint",
+      "title": "Unstop AI Product Development Sprint",
+      "status": "voting",
+      "description": "National Level Product Development Hackathon by Unstop. Focuses on architecting AI-driven SaaS solutions and telemetry pipelines."
     }
   ],
   "tracks": [
-    { "name": "Autonomous AI Agents", "prize_pool": "$10,000" },
-    { "name": "Developer Tooling & Infrastructure", "prize_pool": "$7,500" }
+    { "name": "AI & SaaS Product Innovation", "prize_pool": "$1,500" },
+    { "name": "Developer Tools & Telemetry", "prize_pool": "$1,000" }
   ]
 }
