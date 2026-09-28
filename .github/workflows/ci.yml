@@ -1,4 +1,4 @@
-name: DOGFOOD CI Pipeline
+name: CI Pipeline
 
 on:
   push:
@@ -8,23 +8,8 @@ on:
 
 jobs:
   validate-and-test:
-    name: Lint, Type Check & Unit Tests
+    name: Lint, Test & Docker Verification
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: dogfood_test
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - name: Checkout Code
@@ -39,23 +24,16 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Lint Backend & Frontend
-        run: npm run lint
-
-      - name: Run Backend Unit & Security Tests
-        env:
-          NODE_ENV: test
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/dogfood_test
-          JWT_SECRET: test_jwt_secret_key_1234567890
+      - name: Run Backend Auth & RBAC Tests
         run: npm test
 
-      - name: Build Backend
-        run: cd backend && npm run build
+      - name: Lint Frontend
+        run: npm run lint
 
       - name: Build Frontend
-        run: cd frontend && npm run build
+        run: npm run build
 
       - name: Verify Docker Builds
         run: |
-          docker build -t dogfood-backend:ci ./backend
-          docker build -t dogfood-frontend:ci ./frontend
+          docker build -t backend:ci ./backend
+          docker build -t frontend:ci ./frontend

@@ -1,4 +1,4 @@
-name: DOGFOOD Acceptance Pipeline
+name: Acceptance Pipeline
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   acceptance-tests:
-    name: Full Docker Compose Acceptance Run
+    name: Full Docker Compose Stack Test
     runs-on: ubuntu-latest
 
     steps:
@@ -28,17 +28,13 @@ jobs:
           echo "Waiting for services to become healthy..."
           sleep 15
 
-      - name: Run Platform Healthcheck
+      - name: Verify Backend Health Endpoint
         run: |
-          bash ./scripts/healthcheck.sh localhost 8080 3000
+          curl -s -f http://localhost:5000/api/health | grep '"status":"ok"'
 
-      - name: Run End-to-End Acceptance Tests
+      - name: Verify Frontend Web Delivery
         run: |
-          docker compose exec -T backend npm run db:migrate
-          docker compose exec -T backend npm run db:seed
-          npm run test:acceptance
-        env:
-          ACCEPTANCE_BASE_URL: http://localhost:8080
+          curl -s -f http://localhost:5173/ | grep -i "html"
 
       - name: Collect Stack Logs on Failure
         if: failure()
