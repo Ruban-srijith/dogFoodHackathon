@@ -1,24 +1,35 @@
 {
   "events": [
     {
-      "slug": "global-ai-hackathon-2026",
-      "title": "Global AI & Open Source Hackathon 2026",
-      "description": "The premier self-hosted engineering hackathon pushing the frontiers of autonomous agents, developer tooling, and distributed systems.",
-      "start_date": "2026-09-25T00:00:00.000Z",
+      "id": "e0000000-0000-0000-0000-000000000001",
+      "slug": "unstop-product-pro-2026",
+      "title": "Unstop Product Pro Hackathon 2026",
+      "description": "Premier Product Development & Innovation Challenge hosted on Unstop. Teams design, prototype, and build end-to-end digital product MVPs.",
+      "start_date": "2026-09-20T00:00:00.000Z",
+      "end_date": "2026-10-15T23:59:59.000Z",
+      "submission_deadline": "2026-10-12T23:59:59.000Z",
+      "status": "ongoing",
+      "location": "Unstop Platform / Virtual Global"
+    },
+    {
+      "id": "e0000000-0000-0000-0000-000000000002",
+      "slug": "unstop-ai-product-sprint",
+      "title": "Unstop AI Product Development Sprint",
+      "description": "National Level Product Development Hackathon by Unstop. Focuses on architecting AI-driven SaaS solutions and telemetry pipelines.",
+      "start_date": "2026-09-10T00:00:00.000Z",
       "end_date": "2026-10-05T23:59:59.000Z",
       "submission_deadline": "2026-10-02T23:59:59.000Z",
-      "status": "ongoing",
-      "location": "Global / Decentralized"
+      "status": "voting",
+      "location": "Unstop Digital Arena / Remote"
     }
   ],
   "tracks": [
-    { "name": "Autonomous AI Agents", "description": "Multi-agent frameworks, tool use, reasoning loops, and intelligent local sidecars.", "prize_pool": "$10,000 + Cloud Credits" },
-    { "name": "Developer Tooling & Infrastructure", "description": "Compilers, package managers, testing frameworks, and reproducible environments.", "prize_pool": "$7,500" }
+    { "name": "AI & SaaS Product Innovation", "description": "Build user-first generative AI products and workflow automation tools.", "prize_pool": "$1,500 + Unstop Pro Badges" },
+    { "name": "Developer Tools & Telemetry", "description": "Design self-hostable developer platforms, monitoring dashboards, and APIs.", "prize_pool": "$1,000 + Cloud Credits" }
   ],
   "prizes": [
     { "title": "Grand Prize — 1st Place Overall", "award_amount": "$10,000", "description": "Awarded to the most impactful, technically rigorous open-source platform." },
-    { "title": "Runner-Up — 2nd Place Overall", "award_amount": "$5,000", "description": "Awarded to the project demonstrating outstanding engineering depth." },
-    { "title": "Community Choice Award", "award_amount": "$2,500", "description": "Voted by the participants and peer evaluators across all active tracks." }
+    { "title": "Runner-Up — 2nd Place Overall", "award_amount": "$5,000", "description": "Awarded to the project demonstrating outstanding engineering depth." }
   ],
   "rubrics": [
     { "name": "Technical Rigor & Innovation", "description": "Algorithmic complexity, novelty, and architectural soundness.", "weight": 0.4, "min_score": 0, "max_score": 10 },
