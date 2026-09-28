@@ -138,19 +138,26 @@ test('T6 Security & Authorization Audit Suite', async (t) => {
   Prize.countDocuments = async () => 3;
   Team.countDocuments = async () => 2;
   Submission.countDocuments = async () => 3;
+  EvaluationScore.countDocuments = async () => 2;
 
   Track.find = () => ({ lean: async () => [] });
   Prize.find = () => ({ lean: async () => [] });
 
   User.find = () => ({
-    select: () => ({ lean: async () => [judge1, judge2] }),
-    sort: () => ({ lean: async () => [participantA, participantB, judge1, judge2, organizerUser, adminUser] }),
-    lean: async () => [participantA, participantB, judge1, judge2, organizerUser, adminUser]
+    select: function() { return this; },
+    sort: function() { return this; },
+    lean: async () => [participantA, participantB, judge1, judge2, organizerUser, adminUser],
+    then: (resolve) => resolve([participantA, participantB, judge1, judge2, organizerUser, adminUser])
   });
 
   User.findById = async (id) => {
     const all = [participantA, participantB, judge1, judge2, organizerUser, adminUser];
-    return all.find(u => String(u._id) === String(id) || String(u.id) === String(id)) || null;
+    const u = all.find(x => String(x._id) === String(id) || String(x.id) === String(id));
+    if (!u) return null;
+    return {
+      ...u,
+      save: async function() { return this; }
+    };
   };
 
   User.findOne = async (query) => {
@@ -172,10 +179,15 @@ test('T6 Security & Authorization Audit Suite', async (t) => {
     lean: async () => activeEvent
   });
 
-  Team.findById = async (id) => {
-    if (String(id) === String(teamA._id)) return teamA;
-    if (String(id) === String(teamClosed._id)) return teamClosed;
-    return null;
+  Team.findById = (id) => {
+    let t = null;
+    if (String(id) === String(teamA._id)) t = teamA;
+    if (String(id) === String(teamClosed._id)) t = teamClosed;
+    return {
+      populate: function() { return this; },
+      lean: async () => t,
+      then: (resolve) => resolve(t)
+    };
   };
 
   Team.find = () => ({
@@ -184,10 +196,15 @@ test('T6 Security & Authorization Audit Suite', async (t) => {
     lean: async () => [teamA]
   });
 
-  Team.findOne = async (query) => {
-    if (query.invite_code === 'CODE_ALPHA') return teamA;
-    if (query.invite_code === 'CODE_CLOSED') return teamClosed;
-    return null;
+  Team.findOne = (query) => {
+    let t = null;
+    if (query.invite_code === 'CODE_ALPHA' || query.slug === 'team-alpha') t = teamA;
+    if (query.invite_code === 'CODE_CLOSED' || query.slug === 'team-closed') t = teamClosed;
+    return {
+      populate: function() { return this; },
+      lean: async () => t,
+      then: (resolve) => resolve(t)
+    };
   };
 
   Submission.findById = (id) => {
@@ -458,5 +475,157 @@ test('T6 Security & Authorization Audit Suite', async (t) => {
     assert.equal(resExport.status, 200);
     assert.doesNotMatch(resExport.text, /password_hash/i, 'Participant CSV export must not contain password_hash');
     assert.doesNotMatch(resExport.text, /Password123/i, 'Participant CSV export must not contain passwords');
+  });
+
+  // =========================================================================
+  // 6. AUDIT CATEGORY 6: Team Invite Code Confidentiality & Leak Prevention
+  // =========================================================================
+  await t.test('Audit 6: Team invite codes are never leaked in public gallery or to outsiders', async () => {
+    // 1. GET /api/gallery must NOT leak invite_code
+    const resGallery = await request(app).get('/api/gallery');
+    assert.equal(resGallery.status, 200);
+    assert.ok(resGallery.body.projects?.length > 0, 'Gallery should return projects');
+    for (const p of resGallery.body.projects) {
+      if (p.team_id) {
+        assert.equal(p.team_id.invite_code, undefined, 'Public gallery must not leak team invite_code');
+      }
+    }
+
+    // 2. GET /api/submissions/:id: Outsider cannot see team invite_code
+    const resSubOutsider = await request(app)
+      .get(`/api/submissions/${submittedSubA._id}`)
+      .set('Authorization', `Bearer ${partBToken}`);
+    assert.equal(resSubOutsider.status, 200);
+    assert.equal(resSubOutsider.body.team_id?.invite_code, undefined, 'Outsiders must not receive team invite_code');
+
+    // 3. GET /api/submissions/:id: Team member Alice CAN see her team invite_code
+    const resSubMember = await request(app)
+      .get(`/api/submissions/${submittedSubA._id}`)
+      .set('Authorization', `Bearer ${partAToken}`);
+    assert.equal(resSubMember.status, 200);
+    assert.equal(resSubMember.body.team_id?.invite_code, 'CODE_ALPHA', 'Team member should be able to view their own invite_code');
+
+    // 4. GET /api/teams/:id: Outsider cannot see invite_code
+    const resTeamOutsider = await request(app)
+      .get(`/api/teams/${teamA._id}`)
+      .set('Authorization', `Bearer ${partBToken}`);
+    assert.equal(resTeamOutsider.status, 200);
+    assert.equal(resTeamOutsider.body.invite_code, undefined, 'Outsider fetching team must not receive invite_code');
+
+    // 5. GET /api/teams/:id: Team member CAN see invite_code
+    const resTeamMember = await request(app)
+      .get(`/api/teams/${teamA._id}`)
+      .set('Authorization', `Bearer ${partAToken}`);
+    assert.equal(resTeamMember.status, 200);
+    assert.equal(resTeamMember.body.invite_code, 'CODE_ALPHA', 'Team member fetching team must receive invite_code');
+  });
+
+  // =========================================================================
+  // 7. AUDIT CATEGORY 7: Role Whitelisting on Judge Assignments
+  // =========================================================================
+  await t.test('Audit 7: Unknown or arbitrary roles are rejected from judge assignments (403)', async () => {
+    const guestUser = { _id: 'guest_1', id: 'guest_1', email: 'guest@dogfood.local', username: 'guest_1', role: 'GUEST', full_name: 'Guest User' };
+    const guestToken = generateToken(guestUser);
+
+    const res = await request(app)
+      .get('/api/judges/assignments')
+      .set('Authorization', `Bearer ${guestToken}`);
+    assert.equal(res.status, 403, 'Non-whitelisted role GUEST must be rejected with 403 Forbidden');
+  });
+
+  // =========================================================================
+  // 8. AUDIT CATEGORY 8: Evaluations Rejected on Closed Events
+  // =========================================================================
+  await t.test('Audit 8: Scoring rejected when event has ended or is closed (403 Forbidden)', async () => {
+    const res = await request(app)
+      .post(`/api/judges/submissions/${closedEventSubmission._id}/score`)
+      .set('Authorization', `Bearer ${judge1Token}`)
+      .send({
+        scores: { Quality: 9 }
+      });
+    assert.equal(res.status, 403, 'Scoring on closed events must return 403 Forbidden');
+    assert.match(res.body.message, /event is closed/i);
+  });
+
+  // =========================================================================
+  // 9. AUDIT CATEGORY 9: Admin User Directory & Role Governance
+  // =========================================================================
+  await t.test('Audit 9: User directory & role modification strictly restricted to Admin', async () => {
+    // Participant blocked from GET /api/users
+    const resPartGet = await request(app)
+      .get('/api/users')
+      .set('Authorization', `Bearer ${partAToken}`);
+    assert.equal(resPartGet.status, 403, 'Participant must get 403 on GET /api/users');
+
+    // Participant blocked from PATCH /api/users/:id/role
+    const resPartPatch = await request(app)
+      .patch(`/api/users/${participantA._id}/role`)
+      .set('Authorization', `Bearer ${partAToken}`)
+      .send({ role: 'ADMIN' });
+    assert.equal(resPartPatch.status, 403, 'Participant must get 403 on PATCH /api/users/:id/role');
+
+    // Admin can list users and password_hash is stripped
+    const resAdminGet = await request(app)
+      .get('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`);
+    assert.equal(resAdminGet.status, 200);
+    assert.ok(Array.isArray(resAdminGet.body), 'Admin should receive user array');
+    for (const u of resAdminGet.body) {
+      assert.equal(u.password_hash, undefined, 'Users in admin directory must not contain password_hash');
+    }
+
+    // Admin can update user role
+    const resAdminPatch = await request(app)
+      .patch(`/api/users/${participantB._id}/role`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ role: 'JUDGE' });
+    assert.equal(resAdminPatch.status, 200);
+    assert.equal(resAdminPatch.body.role, 'JUDGE');
+    assert.equal(resAdminPatch.body.password_hash, undefined);
+
+    // Admin stats endpoint check
+    const resStatsAdmin = await request(app)
+      .get('/api/admin/stats')
+      .set('Authorization', `Bearer ${adminToken}`);
+    assert.equal(resStatsAdmin.status, 200);
+    assert.ok(resStatsAdmin.body.totalUsers !== undefined);
+
+    const resStatsPart = await request(app)
+      .get('/api/admin/stats')
+      .set('Authorization', `Bearer ${partAToken}`);
+    assert.equal(resStatsPart.status, 403, 'Participant must get 403 on GET /api/admin/stats');
+  });
+
+  // =========================================================================
+  // 10. AUDIT CATEGORY 10: Event Date Consistency Validation
+  // =========================================================================
+  await t.test('Audit 10: Event creation rejects invalid chronological date sequences (400)', async () => {
+    // start_date >= end_date
+    const resInvalidDates = await request(app)
+      .post('/api/events')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({
+        title: 'Broken Dates Hackathon',
+        description: 'Test invalid dates',
+        start_date: '2026-10-15',
+        end_date: '2026-10-10', // Before start
+        submission_deadline: '2026-10-12'
+      });
+    assert.equal(resInvalidDates.status, 400);
+    assert.match(resInvalidDates.body.message, /start_date must be strictly before end_date/i);
+
+    // submission_deadline > end_date
+    const resDeadlineAfterEnd = await request(app)
+      .post('/api/events')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({
+        title: 'Late Deadline Hackathon',
+        description: 'Test deadline after end',
+        start_date: '2026-10-01',
+        end_date: '2026-10-10',
+        submission_deadline: '2026-10-15' // After end
+      });
+    assert.equal(resDeadlineAfterEnd.status, 400);
+    assert.match(resDeadlineAfterEnd.body.message, /submission_deadline must fall between start_date and end_date/i);
   });
 });

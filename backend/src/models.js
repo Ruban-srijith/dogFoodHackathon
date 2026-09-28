@@ -16,6 +16,20 @@ const userSchema = new mongoose.Schema({
   created_at: { type: Date, default: Date.now }
 });
 
+userSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    delete ret.password_hash;
+    return ret;
+  }
+});
+
+userSchema.set('toObject', {
+  transform: (doc, ret) => {
+    delete ret.password_hash;
+    return ret;
+  }
+});
+
 const eventSchema = new mongoose.Schema({
   title: { type: String, required: true },
   slug: { type: String, required: true, unique: true },

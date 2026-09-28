@@ -219,15 +219,40 @@ app.post('/api/events', authenticate, requireRole('organizer', 'admin'), async (
       });
     }
 
+    const sDate = new Date(start_date);
+    const eDate = new Date(end_date);
+    const subDeadline = new Date(submission_deadline);
+
+    if (isNaN(sDate.getTime()) || isNaN(eDate.getTime()) || isNaN(subDeadline.getTime())) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Invalid date format provided for event dates.'
+      });
+    }
+
+    if (sDate >= eDate) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'start_date must be strictly before end_date.'
+      });
+    }
+
+    if (subDeadline > eDate || subDeadline < sDate) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'submission_deadline must fall between start_date and end_date.'
+      });
+    }
+
     const eventSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
     const event = await Event.create({
       title,
       slug: eventSlug,
       description,
-      start_date: new Date(start_date),
-      end_date: new Date(end_date),
-      submission_deadline: new Date(submission_deadline),
+      start_date: sDate,
+      end_date: eDate,
+      submission_deadline: subDeadline,
       location: location || 'Global / Online',
       status: 'ongoing',
       created_by: req.user.id
@@ -442,6 +467,84 @@ app.get('/api/teams/my', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/teams/:id and /api/v1/teams/:id
+// Privacy Rule: invite_code is visible ONLY to team members, organizers, and admins
+const handleGetTeamById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let team = null;
+    try {
+      team = await Team.findById(id)
+        .populate('members', 'username full_name email role')
+        .populate('leader_id', 'username full_name email')
+        .populate('event_id', 'title slug submission_deadline')
+        .lean();
+    } catch {
+      team = null;
+    }
+
+    if (!team) {
+      team = await Team.findOne({ $or: [{ slug: id }, { name: id }] })
+        .populate('members', 'username full_name email role')
+        .populate('leader_id', 'username full_name email')
+        .populate('event_id', 'title slug submission_deadline')
+        .lean();
+    }
+
+    if (!team) {
+      return res.status(404).json({ error: 'Not Found', message: 'Team not found' });
+    }
+
+    const userIdStr = req.user ? String(req.user.id) : null;
+    const isMemberOrStaff = req.user && (
+      req.user.role === 'ORGANIZER' ||
+      req.user.role === 'ADMIN' ||
+      String(team.leader_id?._id || team.leader_id) === userIdStr ||
+      (Array.isArray(team.members) && team.members.some(m => String(m._id || m) === userIdStr))
+    );
+
+    const teamObj = team.toObject ? team.toObject() : { ...team };
+    if (!isMemberOrStaff) {
+      delete teamObj.invite_code;
+    }
+
+    return res.status(200).json(teamObj);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+app.get('/api/teams/:id', authenticate, handleGetTeamById);
+app.get('/api/v1/teams/:id', authenticate, handleGetTeamById);
+app.get('/api/v1/teams/event/:eventId', authenticate, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const teams = await Team.find({ event_id: eventId })
+      .populate('members', 'username full_name email role')
+      .populate('leader_id', 'username full_name email')
+      .lean();
+
+    const userIdStr = req.user ? String(req.user.id) : null;
+    const isStaff = req.user && (req.user.role === 'ORGANIZER' || req.user.role === 'ADMIN');
+
+    const sanitizedTeams = teams.map(t => {
+      const isMember = isStaff || (
+        String(t.leader_id?._id || t.leader_id) === userIdStr ||
+        (Array.isArray(t.members) && t.members.some(m => String(m._id || m) === userIdStr))
+      );
+      if (!isMember) {
+        const copy = { ...t };
+        delete copy.invite_code;
+        return copy;
+      }
+      return t;
+    });
+
+    return res.status(200).json(sanitizedTeams);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
 // ==========================================
 // 5. T1 FEATURE: SUBMISSIONS & DEADLINE VALIDATION
 // Reject edits after deadline (403)
@@ -625,7 +728,22 @@ app.get('/api/submissions/:id', optionalAuth, async (req, res) => {
       }
     }
 
-    return res.status(200).json(submission);
+    const userIdStr = req.user ? String(req.user.id) : null;
+    const isStaffOrMember = req.user && (
+      req.user.role === 'ORGANIZER' ||
+      req.user.role === 'ADMIN' ||
+      (submission.team_id && (
+        String(submission.team_id.leader_id?._id || submission.team_id.leader_id) === userIdStr ||
+        (Array.isArray(submission.team_id.members) && submission.team_id.members.some(m => String(m?._id || m) === userIdStr))
+      ))
+    );
+
+    const submissionObj = submission.toObject ? submission.toObject() : JSON.parse(JSON.stringify(submission));
+    if (!isStaffOrMember && submissionObj.team_id) {
+      delete submissionObj.team_id.invite_code;
+    }
+
+    return res.status(200).json(submissionObj);
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
@@ -672,15 +790,24 @@ app.get('/api/gallery', async (req, res) => {
     }
 
     const projects = await Submission.find(filter)
-      .populate('team_id', 'name slug invite_code')
+      .populate('team_id', 'name slug')
       .populate('track_id', 'name prize_pool description')
       .populate('event_id', 'title slug submission_deadline')
       .sort({ submitted_at: -1 })
       .lean();
 
+    const sanitizedProjects = projects.map(p => {
+      if (p.team_id && p.team_id.invite_code) {
+        const safeTeam = { ...p.team_id };
+        delete safeTeam.invite_code;
+        return { ...p, team_id: safeTeam };
+      }
+      return p;
+    });
+
     return res.status(200).json({
-      total: projects.length,
-      projects
+      total: sanitizedProjects.length,
+      projects: sanitizedProjects
     });
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
@@ -1182,8 +1309,8 @@ const handleGetJudgeAssignments = async (req, res) => {
   try {
     const userRole = (req.user.role || '').toUpperCase();
 
-    // STRICT CHECK: Participant or visitor receives 403 Forbidden
-    if (userRole === 'PARTICIPANT' || userRole === 'VISITOR') {
+    // STRICT CHECK: Only Judge, Organizer, and Admin are permitted
+    if (!['JUDGE', 'ORGANIZER', 'ADMIN'].includes(userRole)) {
       return res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'Forbidden: Insufficient permissions to access judge assignments.' }
@@ -1206,7 +1333,7 @@ const handleGetJudgeAssignments = async (req, res) => {
       .populate({
         path: 'submission_id',
         populate: [
-          { path: 'team_id', select: 'name slug invite_code members leader_id' },
+          { path: 'team_id', select: 'name slug members leader_id' },
           { path: 'track_id', select: 'name prize_pool' },
           { path: 'event_id', select: 'title slug submission_deadline' }
         ]
@@ -1263,7 +1390,7 @@ const handleJudgeGetSubmission = async (req, res) => {
   try {
     const { id } = req.params;
     const submission = await Submission.findById(id)
-      .populate('team_id', 'name slug invite_code members leader_id')
+      .populate('team_id', 'name slug members leader_id')
       .populate('track_id', 'name prize_pool description')
       .populate('event_id', 'title slug submission_deadline')
       .lean();
@@ -1447,6 +1574,18 @@ const handleSaveEvaluation = async (req, res) => {
     const submission = await Submission.findById(submissionId);
     if (!submission) {
       return res.status(404).json({ error: 'Not Found', message: 'Submission not found.' });
+    }
+
+    // Check Event Closure & End Date
+    const event = await Event.findById(submission.event_id);
+    if (event) {
+      const now = new Date();
+      if (event.status === 'closed' || (event.end_date && now > new Date(event.end_date))) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'The event is closed. Further scoring and evaluations are no longer permitted.'
+        });
+      }
     }
 
     // 1. Check Judge Assignment Isolation (Judge must be assigned to this project)
@@ -1948,6 +2087,87 @@ app.get('/api/v1/admin/audit', authenticate, requireRole('admin'), (req, res) =>
   return res.status(200).json({ success: true, data: [] });
 });
 
+// Admin Stats Endpoint
+app.get(['/api/admin/stats', '/api/v1/admin/stats'], authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    const [totalUsers, totalEvents, totalTeams, totalSubmissions] = await Promise.all([
+      User.countDocuments(),
+      Event.countDocuments(),
+      Team.countDocuments(),
+      Submission.countDocuments()
+    ]);
+    return res.status(200).json({
+      totalUsers,
+      totalEvents,
+      totalTeams,
+      totalSubmissions,
+      totalVotes: 0,
+      totalScores: (typeof EvaluationScore.countDocuments === 'function' ? await EvaluationScore.countDocuments() : 0)
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
+// Admin User Directory: Strict admin authorization with password_hash stripped
+app.get(['/api/users', '/api/v1/users'], authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.role) {
+      filter.role = req.query.role.toUpperCase();
+    }
+    const users = await User.find(filter)
+      .select('-password_hash')
+      .sort({ created_at: -1 })
+      .lean();
+
+    return res.status(200).json(users);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
+// Admin User Role Update: Strict admin authorization
+app.patch(['/api/users/:id/role', '/api/v1/users/:id/role'], authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!role) {
+      return res.status(400).json({ error: 'Bad Request', message: 'role is required' });
+    }
+
+    const normalizedRole = role.toUpperCase();
+    const validRoles = ['ADMIN', 'ORGANIZER', 'JUDGE', 'PARTICIPANT', 'VISITOR'];
+    if (!validRoles.includes(normalizedRole)) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: `Invalid role '${role}'. Valid roles are: ${validRoles.join(', ')}.`
+      });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'Not Found', message: 'User not found' });
+    }
+
+    user.role = normalizedRole;
+    await user.save();
+
+    return res.status(200).json({
+      id: user._id,
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      full_name: user.full_name,
+      created_at: user.created_at
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
 // Overview route
 app.get('/api/overview', async (req, res) => {
   try {
@@ -1996,7 +2216,8 @@ async function connectWithRetry() {
   const retryIntervalMs = 2000;
   let attempt = 0;
 
-  console.log(`Connecting to MongoDB at ${MONGO_URI}...`);
+  const sanitizedUri = MONGO_URI.replace(/:\/\/([^:]+):([^@]+)@/, '://$1:***@');
+  console.log(`Connecting to MongoDB at ${sanitizedUri}...`);
 
   while (true) {
     try {
