@@ -52,15 +52,19 @@ export function Table<T>({
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--border-color)] font-normal">
-          {data.map((row) => (
-            <tr key={keyExtractor(row)} className="hover:bg-[var(--bg-surface)] transition-colors">
-              {columns.map((col, cIdx) => (
-                <td key={cIdx} className={`px-5 py-4 whitespace-nowrap ${col.className || ''}`}>
-                  {col.render ? col.render(row) : col.accessor ? String(row[col.accessor]) : null}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {data.map((row, rIdx) => {
+            const computedKey = keyExtractor ? keyExtractor(row) : null;
+            const validKey = computedKey || (row as any)?.id || (row as any)?._id || `table-row-${rIdx}`;
+            return (
+              <tr key={validKey} className="hover:bg-[var(--bg-surface)] transition-colors">
+                {columns.map((col, cIdx) => (
+                  <td key={cIdx} className={`px-5 py-4 whitespace-nowrap ${col.className || ''}`}>
+                    {col.render ? col.render(row) : col.accessor ? String(row[col.accessor]) : null}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

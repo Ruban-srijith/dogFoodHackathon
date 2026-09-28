@@ -134,7 +134,7 @@ export const AdminUsersPage: React.FC = () => {
       render: (row) => (
         <select
           value={row.role}
-          onChange={(e) => handleRoleChange(row.id, e.target.value as UserRole)}
+          onChange={(e) => handleRoleChange(row.id || (row as any)._id, e.target.value as UserRole)}
           className="rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-xs px-2.5 py-1 text-[var(--text-main)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-cyan)] font-mono cursor-pointer"
         >
           <option value="VISITOR">VISITOR</option>
@@ -178,7 +178,7 @@ export const AdminUsersPage: React.FC = () => {
         <ErrorState message={error} onRetry={fetchUsers} fullScreen />
       ) : (
         <Card className="p-0 overflow-hidden theme-card">
-          <Table columns={columns} data={users} keyExtractor={(u) => u.id} />
+          <Table columns={columns} data={users} keyExtractor={(u) => u.id || (u as any)._id || u.username} />
         </Card>
       )}
 

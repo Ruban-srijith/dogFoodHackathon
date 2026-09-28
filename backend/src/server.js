@@ -2319,7 +2319,13 @@ app.get(['/api/users', '/api/v1/users'], authenticate, requireRole('admin'), asy
       .sort({ created_at: -1 })
       .lean();
 
-    return res.status(200).json(users);
+    const safeUsers = users.map((u) => ({
+      ...u,
+      id: u._id ? u._id.toString() : (u.id || ''),
+      _id: u._id ? u._id.toString() : (u.id || '')
+    }));
+
+    return res.status(200).json(safeUsers);
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
