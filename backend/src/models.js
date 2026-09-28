@@ -106,6 +106,40 @@ const judgeAssignmentSchema = new mongoose.Schema({
 
 judgeAssignmentSchema.index({ submission_id: 1, judge_id: 1 }, { unique: true });
 
+const rubricCriterionSchema = new mongoose.Schema({
+  event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+  name: { type: String, required: true },
+  description: { type: String, default: '' },
+  weight: { type: Number, default: 1.0 },
+  min_score: { type: Number, default: 0 },
+  max_score: { type: Number, default: 10 },
+  created_at: { type: Date, default: Date.now }
+});
+
+const evaluationScoreSchema = new mongoose.Schema({
+  event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+  submission_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Submission', required: true },
+  judge_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  criteria_scores: [{
+    criterion_id: { type: mongoose.Schema.Types.ObjectId, ref: 'RubricCriterion', required: true },
+    name: { type: String },
+    score: { type: Number, required: true },
+    weight: { type: Number, default: 1.0 }
+  }],
+  comment: { type: String, default: '' },
+  weighted_total: { type: Number, default: 0 },
+  status: { 
+    type: String, 
+    enum: ['draft', 'submitted'], 
+    default: 'draft' 
+  },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
+  submitted_at: { type: Date }
+});
+
+evaluationScoreSchema.index({ submission_id: 1, judge_id: 1 }, { unique: true });
+
 const User = mongoose.model('User', userSchema);
 const Event = mongoose.model('Event', eventSchema);
 const Track = mongoose.model('Track', trackSchema);
@@ -114,6 +148,8 @@ const Team = mongoose.model('Team', teamSchema);
 const Submission = mongoose.model('Submission', submissionSchema);
 const JudgeInvite = mongoose.model('JudgeInvite', judgeInviteSchema);
 const JudgeAssignment = mongoose.model('JudgeAssignment', judgeAssignmentSchema);
+const RubricCriterion = mongoose.model('RubricCriterion', rubricCriterionSchema);
+const EvaluationScore = mongoose.model('EvaluationScore', evaluationScoreSchema);
 
 module.exports = {
   User,
@@ -123,5 +159,8 @@ module.exports = {
   Team,
   Submission,
   JudgeInvite,
-  JudgeAssignment
+  JudgeAssignment,
+  RubricCriterion,
+  EvaluationScore,
+  Score: EvaluationScore
 };

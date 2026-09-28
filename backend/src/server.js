@@ -7,7 +7,7 @@ const crypto = require('crypto');
 require('dotenv').config();
 
 const { seedDatabaseIfEmpty, testCredentials } = require('./seed');
-const { User, Event, Track, Prize, Team, Submission, JudgeInvite, JudgeAssignment } = require('./models');
+const { User, Event, Track, Prize, Team, Submission, JudgeInvite, JudgeAssignment, RubricCriterion, EvaluationScore } = require('./models');
 const { generateToken, authenticate, requireRole, optionalAuth } = require('./auth');
 
 const app = express();
@@ -1250,16 +1250,155 @@ const handleJudgeGetSubmission = async (req, res) => {
 app.get('/api/judges/submissions/:id', authenticate, requireRole('judge', 'admin'), handleJudgeGetSubmission);
 app.get('/api/v1/judges/submissions/:id', authenticate, requireRole('judge', 'admin'), handleJudgeGetSubmission);
 
-// POST /api/judges/submissions/:id/score (Score evaluation route)
-// STRICT CHECK: Returns 403 for unassigned project
-const handleJudgeScoreSubmission = async (req, res) => {
+// ==========================================
+// 9. CONFIGURABLE JUDGING RUBRICS & WEIGHTED EVALUATIONS
+// ==========================================
+
+// --- A. RUBRIC CRITERIA MANAGEMENT ---
+// POST /api/rubrics (and /api/v1/rubrics)
+// Organizer creates criteria with a name, weight, and min/max score
+const handleCreateRubric = async (req, res) => {
   try {
-    const { id } = req.params;
-    const submission = await Submission.findById(id);
-    if (!submission) {
-      return res.status(404).json({ error: 'Not Found', message: 'Submission not found' });
+    const { event_id, name, description, weight, min_score, max_score } = req.body;
+
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ error: 'Bad Request', message: 'Criterion name is required.' });
     }
 
+    let targetEventId = event_id;
+    if (!targetEventId) {
+      const defaultEvent = await Event.findOne().sort({ created_at: -1 });
+      if (defaultEvent) targetEventId = defaultEvent._id;
+    }
+
+    const minScoreNum = min_score !== undefined ? Number(min_score) : 0;
+    const maxScoreNum = max_score !== undefined ? Number(max_score) : 10;
+    const weightNum = weight !== undefined ? Number(weight) : 1.0;
+
+    if (minScoreNum >= maxScoreNum) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'min_score must be strictly less than max_score.'
+      });
+    }
+
+    if (weightNum <= 0) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Criterion weight must be greater than zero.'
+      });
+    }
+
+    const criterion = await RubricCriterion.create({
+      event_id: targetEventId,
+      name: name.trim(),
+      description: description || '',
+      weight: weightNum,
+      min_score: minScoreNum,
+      max_score: maxScoreNum
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Rubric criterion created successfully',
+      criterion,
+      data: criterion
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+app.post('/api/rubrics', authenticate, requireRole('organizer', 'admin'), handleCreateRubric);
+app.post('/api/v1/rubrics', authenticate, requireRole('organizer', 'admin'), handleCreateRubric);
+app.post('/api/rubric-criteria', authenticate, requireRole('organizer', 'admin'), handleCreateRubric);
+
+// GET /api/rubrics (List criteria for event)
+const handleGetRubrics = async (req, res) => {
+  try {
+    let filter = {};
+    if (req.query.event_id) {
+      filter.event_id = req.query.event_id;
+    } else {
+      const defaultEvent = await Event.findOne().sort({ created_at: -1 });
+      if (defaultEvent) filter.event_id = defaultEvent._id;
+    }
+
+    const criteria = await RubricCriterion.find(filter).sort({ created_at: 1 }).lean();
+    return res.status(200).json({
+      success: true,
+      count: criteria.length,
+      criteria,
+      data: criteria
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+app.get('/api/rubrics', handleGetRubrics);
+app.get('/api/v1/rubrics', handleGetRubrics);
+
+// PUT /api/rubrics/:id (Organizer updates criterion)
+app.put('/api/rubrics/:id', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
+  try {
+    const { name, description, weight, min_score, max_score } = req.body;
+    const criterion = await RubricCriterion.findById(req.params.id);
+    if (!criterion) {
+      return res.status(404).json({ error: 'Not Found', message: 'Rubric criterion not found.' });
+    }
+
+    if (name !== undefined) criterion.name = name.trim();
+    if (description !== undefined) criterion.description = description;
+    if (weight !== undefined) criterion.weight = Number(weight);
+    if (min_score !== undefined) criterion.min_score = Number(min_score);
+    if (max_score !== undefined) criterion.max_score = Number(max_score);
+
+    if (criterion.min_score >= criterion.max_score) {
+      return res.status(400).json({ error: 'Bad Request', message: 'min_score must be less than max_score.' });
+    }
+
+    await criterion.save();
+    return res.status(200).json({ success: true, message: 'Criterion updated successfully', criterion });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
+// DELETE /api/rubrics/:id (Organizer deletes criterion)
+app.delete('/api/rubrics/:id', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
+  try {
+    const criterion = await RubricCriterion.findByIdAndDelete(req.params.id);
+    if (!criterion) {
+      return res.status(404).json({ error: 'Not Found', message: 'Rubric criterion not found.' });
+    }
+    return res.status(200).json({ success: true, message: 'Rubric criterion deleted successfully' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
+// --- B. JUDGING EVALUATION & SCORING ---
+// Requirements:
+// - Judge scores each criterion for an assigned project and adds a comment
+// - Judge can save a draft and then submit
+// - Scores are locked after submit (organizer can reopen)
+// - Weighted total is calculated on the backend
+// - Judge A can never see Judge B's scores (backend enforced)
+
+const handleSaveEvaluation = async (req, res) => {
+  try {
+    const submissionId = req.params.id || req.body.submission_id;
+    const { criteria_scores, scores, comment, feedback, is_draft, status } = req.body;
+
+    if (!submissionId) {
+      return res.status(400).json({ error: 'Bad Request', message: 'submission_id is required.' });
+    }
+
+    const submission = await Submission.findById(submissionId);
+    if (!submission) {
+      return res.status(404).json({ error: 'Not Found', message: 'Submission not found.' });
+    }
+
+    // 1. Check Judge Assignment Isolation (Judge must be assigned to this project)
     if (req.user.role === 'JUDGE') {
       const assignment = await JudgeAssignment.findOne({
         submission_id: submission._id,
@@ -1268,34 +1407,272 @@ const handleJudgeScoreSubmission = async (req, res) => {
       if (!assignment) {
         return res.status(403).json({
           success: false,
-          error: {
-            code: 'FORBIDDEN',
-            message: 'Access Denied: You are not assigned to evaluate this project.'
-          },
+          error: 'Forbidden',
           message: 'Access Denied: You are not assigned to evaluate this project.'
         });
       }
     }
 
-    const { scores, feedback } = req.body;
+    // 2. Check if evaluation is already locked after submission
+    const existing = await EvaluationScore.findOne({
+      submission_id: submission._id,
+      judge_id: req.user.id
+    });
+
+    if (existing && existing.status === 'submitted' && req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Scores are locked after submit. An organizer must reopen the evaluation to make changes.'
+      });
+    }
+
+    let calculatedWeightedTotal = 0;
+    const validatedCriteriaScores = [];
+
+    // 3. Process Rubric Criteria Scores & Compute Weighted Total on Backend
+    if (Array.isArray(criteria_scores) && criteria_scores.length > 0) {
+      for (const item of criteria_scores) {
+        if (!item.criterion_id || item.score === undefined) {
+          return res.status(400).json({
+            error: 'Bad Request',
+            message: 'Each criterion score must contain criterion_id and a numeric score.'
+          });
+        }
+
+        const criterion = await RubricCriterion.findById(item.criterion_id);
+        if (!criterion) {
+          return res.status(400).json({
+            error: 'Bad Request',
+            message: `Rubric criterion '${item.criterion_id}' not found.`
+          });
+        }
+
+        const scoreNum = Number(item.score);
+        if (isNaN(scoreNum) || scoreNum < criterion.min_score || scoreNum > criterion.max_score) {
+          return res.status(400).json({
+            error: 'Validation Error',
+            message: `Score ${item.score} for '${criterion.name}' must be between ${criterion.min_score} and ${criterion.max_score}.`
+          });
+        }
+
+        // WEIGHTED TOTAL CALCULATED ON BACKEND: score * weight
+        const weight = criterion.weight !== undefined ? criterion.weight : 1.0;
+        calculatedWeightedTotal += (scoreNum * weight);
+
+        validatedCriteriaScores.push({
+          criterion_id: criterion._id,
+          name: criterion.name,
+          score: scoreNum,
+          weight: weight
+        });
+      }
+    } else if (scores && typeof scores === 'object') {
+      // Backwards-compatibility with simple key-value score object
+      let sum = 0;
+      for (const [key, val] of Object.entries(scores)) {
+        const num = Number(val) || 0;
+        sum += num;
+        validatedCriteriaScores.push({
+          criterion_id: new mongoose.Types.ObjectId(),
+          name: key,
+          score: num,
+          weight: 1.0
+        });
+      }
+      calculatedWeightedTotal = sum;
+    } else {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'criteria_scores must be provided as an array of criterion scores.'
+      });
+    }
+
+    const roundedWeightedTotal = Math.round(calculatedWeightedTotal * 100) / 100;
+    const targetStatus = (is_draft === true || status === 'draft') ? 'draft' : 'submitted';
+    const finalComment = (comment !== undefined ? comment : (feedback || ''));
+
+    let savedScore;
+    if (existing) {
+      existing.criteria_scores = validatedCriteriaScores;
+      existing.comment = finalComment;
+      existing.weighted_total = roundedWeightedTotal;
+      existing.status = targetStatus;
+      existing.updated_at = new Date();
+      if (targetStatus === 'submitted') existing.submitted_at = new Date();
+      savedScore = await existing.save();
+    } else {
+      savedScore = await EvaluationScore.create({
+        event_id: submission.event_id,
+        submission_id: submission._id,
+        judge_id: req.user.id,
+        criteria_scores: validatedCriteriaScores,
+        comment: finalComment,
+        weighted_total: roundedWeightedTotal,
+        status: targetStatus,
+        created_at: new Date(),
+        updated_at: new Date(),
+        submitted_at: targetStatus === 'submitted' ? new Date() : undefined
+      });
+    }
+
+    // Update assignment status
     await JudgeAssignment.updateOne(
       { submission_id: submission._id, judge_id: req.user.id },
-      { status: 'completed' }
+      { status: targetStatus === 'submitted' ? 'completed' : 'in_progress' }
     );
 
     return res.status(200).json({
       success: true,
-      message: 'Scores submitted successfully',
-      submission_id: id,
-      scores,
-      feedback
+      message: targetStatus === 'draft' ? 'Evaluation saved as draft' : 'Scores submitted successfully',
+      status: targetStatus,
+      weighted_total: roundedWeightedTotal,
+      score: savedScore,
+      data: savedScore
     });
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
 };
-app.post('/api/judges/submissions/:id/score', authenticate, requireRole('judge', 'admin'), handleJudgeScoreSubmission);
-app.post('/api/v1/scores/submission/:id', authenticate, requireRole('judge', 'admin'), handleJudgeScoreSubmission);
+
+app.post('/api/scores', authenticate, requireRole('judge', 'admin'), handleSaveEvaluation);
+app.post('/api/judges/submissions/:id/score', authenticate, requireRole('judge', 'admin'), handleSaveEvaluation);
+app.post('/api/judges/submissions/:id/evaluate', authenticate, requireRole('judge', 'admin'), handleSaveEvaluation);
+app.post('/api/v1/scores/submission/:id', authenticate, requireRole('judge', 'admin'), handleSaveEvaluation);
+
+// --- C. LOCKING & REOPENING SCORES (ORGANIZER REOPENS) ---
+// POST /api/scores/:id/reopen (and /api/v1/scores/:id/reopen)
+const handleReopenScore = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let score = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      score = await EvaluationScore.findById(id);
+    }
+    if (!score) {
+      score = await EvaluationScore.findOne({
+        $or: [{ _id: id }, { submission_id: id }]
+      });
+    }
+
+    if (!score) {
+      return res.status(404).json({ error: 'Not Found', message: 'Evaluation score record not found.' });
+    }
+
+    // Reopen score by setting status back to 'draft'
+    score.status = 'draft';
+    score.updated_at = new Date();
+    await score.save();
+
+    // Reopen assignment to 'in_progress'
+    await JudgeAssignment.updateOne(
+      { submission_id: score.submission_id, judge_id: score.judge_id },
+      { status: 'in_progress' }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Evaluation score reopened successfully. The judge may now edit and resubmit.',
+      status: 'draft',
+      score,
+      data: score
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+app.post('/api/scores/:id/reopen', authenticate, requireRole('organizer', 'admin'), handleReopenScore);
+app.post('/api/v1/scores/:id/reopen', authenticate, requireRole('organizer', 'admin'), handleReopenScore);
+app.post('/api/organizer/scores/:id/reopen', authenticate, requireRole('organizer', 'admin'), handleReopenScore);
+
+// --- D. ISOLATION: JUDGE A CAN NEVER SEE JUDGE B'S SCORES ---
+// GET /api/scores/submission/:submissionId
+const handleGetSubmissionScores = async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+
+    // STRICT ISOLATION: Judge A receives ONLY their own score
+    if (req.user.role === 'JUDGE') {
+      const myScore = await EvaluationScore.findOne({
+        submission_id: submissionId,
+        judge_id: req.user.id
+      }).populate('criteria_scores.criterion_id', 'name weight min_score max_score');
+
+      return res.status(200).json({
+        success: true,
+        data: myScore ? [myScore] : [],
+        score: myScore
+      });
+    }
+
+    // Organizers & Admins can view all evaluations and aggregate metrics
+    if (req.user.role === 'ORGANIZER' || req.user.role === 'ADMIN') {
+      const allScores = await EvaluationScore.find({ submission_id: submissionId })
+        .populate('judge_id', 'username full_name email')
+        .populate('criteria_scores.criterion_id', 'name weight min_score max_score')
+        .lean();
+
+      const aggregateWeightedTotal = allScores.length > 0
+        ? allScores.reduce((acc, s) => acc + (s.weighted_total || 0), 0) / allScores.length
+        : 0;
+
+      return res.status(200).json({
+        success: true,
+        total_evaluations: allScores.length,
+        aggregate_score: Math.round(aggregateWeightedTotal * 100) / 100,
+        scores: allScores,
+        data: allScores
+      });
+    }
+
+    // Participants & unauthorized roles are forbidden
+    return res.status(403).json({
+      success: false,
+      error: 'Forbidden',
+      message: 'Access Denied: Scores are confidential and accessible only to assigned evaluators and organizers.'
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+app.get('/api/scores/submission/:submissionId', authenticate, handleGetSubmissionScores);
+app.get('/api/v1/scores/submission/:submissionId', authenticate, handleGetSubmissionScores);
+
+// GET /api/scores/:id
+// STRICT CHECK: Judge A requesting Judge B's score ID returns 403 Forbidden!
+app.get('/api/scores/:id', authenticate, async (req, res) => {
+  try {
+    const score = await EvaluationScore.findById(req.params.id)
+      .populate('judge_id', 'username full_name email')
+      .populate('submission_id', 'title team_id track_id');
+
+    if (!score) {
+      return res.status(404).json({ error: 'Not Found', message: 'Score not found.' });
+    }
+
+    // STRICT CHECK: Judge A can NEVER see Judge B's score
+    const judgeIdStr = String(score.judge_id?._id || score.judge_id);
+    if (req.user.role === 'JUDGE' && judgeIdStr !== String(req.user.id)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Access Denied: You cannot view scores submitted by another judge.'
+      });
+    }
+
+    if (req.user.role === 'PARTICIPANT' || req.user.role === 'VISITOR') {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Access Denied: You do not have permission to view evaluation scores.'
+      });
+    }
+
+    return res.status(200).json({ success: true, score, data: score });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
 
 // DELETE /api/judges/assignments/:id (Unassign)
 app.delete('/api/judges/assignments/:id', authenticate, requireRole('organizer', 'admin'), async (req, res) => {

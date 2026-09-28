@@ -24,7 +24,10 @@ import {
   Scale,
   Shuffle,
   Mail,
-  Lock
+  Lock,
+  Unlock,
+  Sliders,
+  FileText
 } from 'lucide-react';
 
 interface HealthResponse {
@@ -47,6 +50,35 @@ interface JudgeAssignment {
   judge_id: any;
   status: string;
   created_at: string;
+}
+
+interface RubricCriterion {
+  _id: string;
+  event_id?: string;
+  name: string;
+  description?: string;
+  weight: number;
+  min_score: number;
+  max_score: number;
+}
+
+interface EvaluationScoreData {
+  _id: string;
+  event_id?: string;
+  submission_id?: string;
+  judge_id?: any;
+  criteria_scores: Array<{
+    criterion_id: any;
+    name?: string;
+    score: number;
+    weight?: number;
+  }>;
+  comment?: string;
+  weighted_total: number;
+  status: 'draft' | 'submitted';
+  created_at?: string;
+  updated_at?: string;
+  submitted_at?: string;
 }
 
 interface JudgeUser {
@@ -201,7 +233,18 @@ export const App: React.FC = () => {
   const [scoringProject, setScoringProject] = useState<Project | null>(null);
   const [scoreInnovation, setScoreInnovation] = useState(25);
   const [scoreExecution, setScoreExecution] = useState(25);
-  const [scoreFeedback, setScoreFeedback] = useState('Excellent technical execution and clean architecture.');
+
+  // T3 Configurable Rubrics & Evaluation States
+  const [rubricCriteria, setRubricCriteria] = useState<RubricCriterion[]>([]);
+  const [newCritName, setNewCritName] = useState('');
+  const [newCritDesc, setNewCritDesc] = useState('');
+  const [newCritWeight, setNewCritWeight] = useState(1.0);
+  const [newCritMin, setNewCritMin] = useState(0);
+  const [newCritMax, setNewCritMax] = useState(10);
+  const [judgeScoreValues, setJudgeScoreValues] = useState<Record<string, number>>({});
+  const [judgeComment, setJudgeComment] = useState('');
+  const [currentScoreRecord, setCurrentScoreRecord] = useState<EvaluationScoreData | null>(null);
+  const [crossJudgeIsolationResult, setCrossJudgeIsolationResult] = useState<any>(null);
 
   // Form States: Organizer Event Creation
   const [evTitle, setEvTitle] = useState('');
@@ -317,11 +360,26 @@ export const App: React.FC = () => {
     }
   }, [authToken, subTeamId]);
 
+  // Fetch Rubric Criteria
+  const fetchRubricCriteria = useCallback(async () => {
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/rubrics`);
+      if (res.ok) {
+        const json = await res.json();
+        setRubricCriteria(json.criteria || json.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch rubric criteria:', err);
+    }
+  }, []);
+
   useEffect(() => {
     checkHealth();
     fetchEventsAndTracks();
     fetchGallery();
-  }, [checkHealth, fetchEventsAndTracks, fetchGallery]);
+    fetchRubricCriteria();
+  }, [checkHealth, fetchEventsAndTracks, fetchGallery, fetchRubricCriteria]);
 
   // 5. Fetch Judge Data & Assignments
   const fetchJudgingData = useCallback(async () => {
@@ -568,10 +626,128 @@ export const App: React.FC = () => {
     }
   };
 
-  // T2 Handlers: Score Evaluation
-  const handleScoreProject = async (e: React.FormEvent) => {
+  // T3 Handlers: Create Rubric Criterion
+  const handleCreateCriterion = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!authToken) return;
+    if (!newCritName.trim()) {
+      notify('Criterion name is required.', 'error');
+      return;
+    }
+    if (newCritMin >= newCritMax) {
+      notify('Minimum score must be less than maximum score.', 'error');
+      return;
+    }
+    if (newCritWeight <= 0) {
+      notify('Weight must be greater than zero.', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/rubrics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          event_id: events[0]?._id,
+          name: newCritName.trim(),
+          description: newCritDesc.trim() || undefined,
+          weight: Number(newCritWeight),
+          min_score: Number(newCritMin),
+          max_score: Number(newCritMax)
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        notify(`Rubric criterion "${newCritName}" created!`, 'success');
+        setNewCritName('');
+        setNewCritDesc('');
+        setNewCritWeight(1.0);
+        setNewCritMin(0);
+        setNewCritMax(10);
+        fetchRubricCriteria();
+      } else {
+        notify(data.message || 'Failed to create criterion', 'error');
+      }
+    } catch (err: any) {
+      notify(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // T3 Handlers: Delete Rubric Criterion
+  const handleDeleteCriterion = async (id: string) => {
+    if (!authToken) return;
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/rubrics/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        notify('Rubric criterion removed.', 'info');
+        fetchRubricCriteria();
+      }
+    } catch (err: any) {
+      notify(err.message, 'error');
+    }
+  };
+
+  // T3 Handlers: Open Score Modal with Isolation Enforced
+  const handleOpenScoreModal = async (project: Project) => {
+    setScoringProject(project);
+    setCurrentScoreRecord(null);
+    setJudgeScoreValues({});
+    setJudgeComment('');
+
+    const base = getBaseApiUrl();
+    if (rubricCriteria.length === 0) {
+      fetchRubricCriteria();
+    }
+
+    if (authToken) {
+      try {
+        const res = await fetch(`${base}/api/scores/submission/${project._id}`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          // STRICT JUDGE ISOLATION: returns only this judge's score
+          const myScore = json.score || (json.data && json.data[0]) || null;
+          if (myScore) {
+            setCurrentScoreRecord(myScore);
+            setJudgeComment(myScore.comment || '');
+            const vals: Record<string, number> = {};
+            if (myScore.criteria_scores && Array.isArray(myScore.criteria_scores)) {
+              myScore.criteria_scores.forEach((cs: any) => {
+                const cId = cs.criterion_id?._id || cs.criterion_id;
+                vals[String(cId)] = cs.score;
+              });
+            }
+            setJudgeScoreValues(vals);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch existing evaluation:', err);
+      }
+    }
+  };
+
+  // T3 Handlers: Save Evaluation (Draft vs Submitted)
+  const handleSaveEvaluation = async (targetStatus: 'draft' | 'submitted') => {
     if (!authToken || !scoringProject) return;
+
+    const criteriaScores = rubricCriteria.map(c => ({
+      criterion_id: c._id,
+      score: judgeScoreValues[c._id] !== undefined ? judgeScoreValues[c._id] : Math.round((c.min_score + c.max_score) / 2)
+    }));
+
     setLoading(true);
     try {
       const base = getBaseApiUrl();
@@ -582,14 +758,27 @@ export const App: React.FC = () => {
           'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({
-          scores: { innovation: scoreInnovation, execution: scoreExecution },
-          feedback: scoreFeedback
+          criteria_scores: criteriaScores.length > 0 ? criteriaScores : undefined,
+          scores: criteriaScores.length === 0 ? { innovation: scoreInnovation, execution: scoreExecution } : undefined,
+          comment: judgeComment,
+          feedback: judgeComment,
+          status: targetStatus,
+          is_draft: targetStatus === 'draft'
         })
       });
+
       const data = await res.json();
       if (res.ok) {
-        notify(`Evaluation for "${scoringProject.title}" saved successfully!`, 'success');
-        setScoringProject(null);
+        notify(
+          targetStatus === 'draft'
+            ? `Evaluation saved as DRAFT (Weighted Total: ${data.weighted_total})`
+            : `Scores submitted and LOCKED! (Weighted Total: ${data.weighted_total})`,
+          'success'
+        );
+        setCurrentScoreRecord(data.data || data.score);
+        if (targetStatus === 'submitted') {
+          setScoringProject(null);
+        }
         fetchJudgingData();
       } else {
         notify(data.message || 'Scoring rejected', 'error');
@@ -599,6 +788,77 @@ export const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // T3 Handlers: Organizer Reopens Locked Evaluation
+  const handleReopenScore = async (scoreIdOrSubId: string) => {
+    if (!authToken) return;
+    setLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/scores/${scoreIdOrSubId}/reopen`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        notify('Evaluation score unlocked! Judge may now edit and resubmit.', 'success');
+        fetchJudgingData();
+      } else {
+        notify(data.message || 'Failed to reopen score', 'error');
+      }
+    } catch (err: any) {
+      notify(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // T3 Handlers: Strict Judge Isolation Test (Attempt to view another judge's score)
+  const handleTestCrossJudgeIsolation = async () => {
+    if (!authToken) {
+      notify('Log in as a Judge to test cross-judge score isolation.', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const targetScoreId = '660000000000000000000099';
+      const res = await fetch(`${base}/api/scores/${targetScoreId}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      setCrossJudgeIsolationResult({
+        status: res.status,
+        statusText: res.status === 403 ? '403 Forbidden (Cross-Judge Isolation Enforced)' : `${res.status} ${res.statusText}`,
+        body: data,
+        timestamp: new Date().toLocaleTimeString()
+      });
+      if (res.status === 403) {
+        notify('Backend strictly enforced: Judge A cannot see Judge B scores (403 Forbidden)', 'success');
+      } else {
+        notify(`Status: ${res.status}`, 'info');
+      }
+    } catch (err: any) {
+      setCrossJudgeIsolationResult({
+        status: 500,
+        statusText: 'Network Error',
+        body: { error: err.message }
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Live calculation of weighted total for preview
+  const calculateLiveWeightedTotal = () => {
+    if (!rubricCriteria || rubricCriteria.length === 0) return 0;
+    let total = 0;
+    for (const c of rubricCriteria) {
+      const val = judgeScoreValues[c._id] !== undefined ? judgeScoreValues[c._id] : Math.round((c.min_score + c.max_score) / 2);
+      total += val * (c.weight || 1.0);
+    }
+    return Math.round(total * 100) / 100;
   };
 
   useEffect(() => {
@@ -2104,6 +2364,118 @@ export const App: React.FC = () => {
               </div>
             </div>
 
+            {/* ========================================================================= */}
+            {/* T3 FEATURE: CONFIGURABLE JUDGING RUBRICS                                  */}
+            {/* ========================================================================= */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5 backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-emerald-400" />
+                  <span>Configurable Judging Rubrics</span>
+                </h3>
+                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">T3 Feature</span>
+              </div>
+
+              <p className="text-xs text-slate-400">
+                Organizers define evaluation criteria with specific weights and min/max score ranges. The backend strictly computes weighted totals based on these settings.
+              </p>
+
+              {/* Add New Criterion Form */}
+              <form onSubmit={handleCreateCriterion} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs items-end">
+                <div className="sm:col-span-2">
+                  <label className="block text-slate-400 mb-1 font-medium">Criterion Name *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Technical Innovation"
+                    value={newCritName}
+                    onChange={(e) => setNewCritName(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 mb-1 font-medium">Weight *</label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0.05"
+                    value={newCritWeight}
+                    onChange={(e) => setNewCritWeight(parseFloat(e.target.value) || 1.0)}
+                    required
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white focus:outline-none focus:border-emerald-500 font-mono"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <div>
+                    <label className="block text-slate-400 mb-1 font-medium">Min</label>
+                    <input
+                      type="number"
+                      value={newCritMin}
+                      onChange={(e) => setNewCritMin(parseInt(e.target.value, 10) || 0)}
+                      required
+                      className="w-full px-2 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1 font-medium">Max</label>
+                    <input
+                      type="number"
+                      value={newCritMax}
+                      onChange={(e) => setNewCritMax(parseInt(e.target.value, 10) || 10)}
+                      required
+                      className="w-full px-2 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Criterion</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Configured Criteria List */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  Active Rubric Criteria ({rubricCriteria.length})
+                </span>
+                {rubricCriteria.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic py-2">No rubric criteria configured yet. Add criteria above to configure judging.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {rubricCriteria.map((c) => (
+                      <div key={c._id} className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col justify-between space-y-2 text-xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-bold text-white">{c.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCriterion(c._id)}
+                            className="text-slate-500 hover:text-rose-400 text-xs transition"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        {c.description && <p className="text-[11px] text-slate-400 line-clamp-2">{c.description}</p>}
+                        <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-900">
+                          <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono font-bold">
+                            Weight: {c.weight}
+                          </span>
+                          <span className="text-slate-400 font-mono">
+                            Scale: {c.min_score} – {c.max_score}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Active Assignments Table */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4 backdrop-blur-xl">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -2111,7 +2483,7 @@ export const App: React.FC = () => {
                   <Gavel className="w-4 h-4 text-purple-400" />
                   <span>Current Project Assignments ({allAssignments.length})</span>
                 </h3>
-                <span className="text-xs text-slate-400">Organizers view all evaluation assignments</span>
+                <span className="text-xs text-slate-400">Organizers view all evaluation assignments & unlock locked scores</span>
               </div>
 
               {allAssignments.length === 0 ? (
@@ -2135,17 +2507,31 @@ export const App: React.FC = () => {
                           <td className="p-3 text-slate-400">{a.submission_id?.team_id?.name || '—'}</td>
                           <td className="p-3 text-purple-300 font-medium">{a.judge_id?.full_name || a.judge_id?.username || 'Judge'}</td>
                           <td className="p-3">
-                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] text-slate-300 font-mono">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                              a.status === 'completed'
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : 'bg-slate-800 text-slate-300'
+                            }`}>
                               {a.status}
                             </span>
                           </td>
                           <td className="p-3 text-right">
-                            <button
-                              onClick={() => handleUnassign(a._id)}
-                              className="text-rose-400 hover:text-rose-300 text-[11px] font-semibold transition"
-                            >
-                              Unassign
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleReopenScore(a.submission_id?._id || a.submission_id)}
+                                className="text-amber-400 hover:text-amber-300 text-[11px] font-semibold transition flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-1 rounded"
+                                title="Unlock submitted scores to allow judge editing"
+                              >
+                                <Unlock className="w-3 h-3" />
+                                <span>Reopen</span>
+                              </button>
+                              <button
+                                onClick={() => handleUnassign(a._id)}
+                                className="text-rose-400 hover:text-rose-300 text-[11px] font-semibold transition"
+                              >
+                                Unassign
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -2214,33 +2600,44 @@ export const App: React.FC = () => {
               </form>
             </div>
 
-            {/* Interactive 403 Security Verification Card */}
+            {/* Interactive 403 Security Verification Cards */}
             <div className="bg-slate-900/60 border border-purple-500/30 rounded-2xl p-6 space-y-4 backdrop-blur-xl">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
                 <div className="space-y-1">
                   <h3 className="font-bold text-white flex items-center gap-2 text-sm">
                     <Lock className="w-4 h-4 text-rose-400" />
-                    Interactive Security Verification: Judge Isolation (Rule 16)
+                    Interactive Security Verification: Strict Backend Isolation
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Verify that the backend rejects access to unassigned projects with <strong>HTTP 403 Forbidden</strong>.
+                    Verify that the backend strictly enforces <strong>HTTP 403 Forbidden</strong> on unassigned projects and prevents Judge A from ever seeing Judge B's scores.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleTestJudgeIsolation}
-                  disabled={loading}
-                  className="px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-2 transition"
-                >
-                  <AlertTriangle className="w-4 h-4 text-rose-400" />
-                  <span>Attempt 403 Request (Unassigned Project)</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleTestJudgeIsolation}
+                    disabled={loading}
+                    className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-1.5 transition"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Test Unassigned Access (403)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestCrossJudgeIsolation}
+                    disabled={loading}
+                    className="px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs font-semibold flex items-center gap-1.5 transition"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Test Judge Isolation (Cross-Judge 403)</span>
+                  </button>
+                </div>
               </div>
 
               {judgeIsolationTestResult && (
                 <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs font-mono">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Target Project: <strong className="text-white">{judgeIsolationTestResult.targetTitle}</strong></span>
+                    <span className="text-slate-400">Unassigned Project Check: <strong className="text-white">{judgeIsolationTestResult.targetTitle}</strong></span>
                     <span className={`px-2.5 py-0.5 rounded font-bold ${
                       judgeIsolationTestResult.status === 403 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-amber-500/20 text-amber-300'
                     }`}>
@@ -2249,6 +2646,22 @@ export const App: React.FC = () => {
                   </div>
                   <pre className="text-slate-300 text-[11px] overflow-x-auto bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
                     {JSON.stringify(judgeIsolationTestResult.body, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {crossJudgeIsolationResult && (
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs font-mono">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Cross-Judge Confidentiality (Judge A accessing Judge B score):</span>
+                    <span className={`px-2.5 py-0.5 rounded font-bold ${
+                      crossJudgeIsolationResult.status === 403 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-amber-500/20 text-amber-300'
+                    }`}>
+                      {crossJudgeIsolationResult.statusText}
+                    </span>
+                  </div>
+                  <pre className="text-slate-300 text-[11px] overflow-x-auto bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                    {JSON.stringify(crossJudgeIsolationResult.body, null, 2)}
                   </pre>
                 </div>
               )}
@@ -2295,10 +2708,11 @@ export const App: React.FC = () => {
                           </a>
                         )}
                         <button
-                          onClick={() => setScoringProject(p)}
-                          className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition ml-auto"
+                          onClick={() => handleOpenScoreModal(p)}
+                          className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition ml-auto flex items-center gap-1.5 shadow-lg shadow-purple-600/20"
                         >
-                          Evaluate & Score
+                          <Gavel className="w-3.5 h-3.5" />
+                          <span>Evaluate & Score</span>
                         </button>
                       </div>
                     </div>
@@ -2307,73 +2721,195 @@ export const App: React.FC = () => {
               )}
             </div>
 
-            {/* Score Evaluation Modal */}
+            {/* Score Evaluation Modal with Configurable Rubrics & Locking */}
             {scoringProject && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-                <div className="bg-slate-900 border border-purple-500/40 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm overflow-y-auto">
+                <div className="bg-slate-900 border border-purple-500/40 rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl my-8">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h3 className="font-bold text-white text-base">Evaluate: {scoringProject.title}</h3>
-                    <button onClick={() => setScoringProject(null)} className="text-slate-400 hover:text-white">✕</button>
+                    <div>
+                      <h3 className="font-bold text-white text-base">Evaluate: {scoringProject.title}</h3>
+                      <span className="text-xs text-slate-400">{scoringProject.team_id?.name || 'Team'} • {scoringProject.track_id?.name || 'Track'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {currentScoreRecord?.status === 'submitted' ? (
+                        <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono text-[11px] font-bold border border-rose-500/30 flex items-center gap-1">
+                          <Lock className="w-3 h-3" />
+                          <span>LOCKED</span>
+                        </span>
+                      ) : currentScoreRecord?.status === 'draft' ? (
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono text-[11px] font-bold border border-amber-500/30 flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          <span>DRAFT</span>
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono text-[11px]">
+                          NEW
+                        </span>
+                      )}
+                      <button onClick={() => setScoringProject(null)} className="text-slate-400 hover:text-white text-base ml-2">✕</button>
+                    </div>
                   </div>
 
-                  <form onSubmit={handleScoreProject} className="space-y-4 text-xs">
-                    <div>
-                      <div className="flex justify-between text-slate-300 mb-1">
-                        <span>Technical Execution (Max 30)</span>
-                        <strong className="text-purple-300">{scoreExecution} pts</strong>
+                  {currentScoreRecord?.status === 'submitted' && (
+                    <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-200 text-xs flex items-center gap-2.5">
+                      <Lock className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                      <div>
+                        <strong>Evaluation Locked:</strong> Official scores were submitted and locked on the backend. Only an organizer can reopen this evaluation.
                       </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={30}
-                        value={scoreExecution}
-                        onChange={(e) => setScoreExecution(parseInt(e.target.value, 10))}
-                        className="w-full accent-purple-500"
-                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-4 text-xs">
+                    {/* Rubric Criteria Evaluation */}
+                    {rubricCriteria.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                          <span>Configured Rubric Criteria ({rubricCriteria.length})</span>
+                          <span>Weighted Formula: Σ (Score × Weight)</span>
+                        </div>
+
+                        {rubricCriteria.map((c) => {
+                          const currentVal = judgeScoreValues[c._id] !== undefined
+                            ? judgeScoreValues[c._id]
+                            : Math.round((c.min_score + c.max_score) / 2);
+                          const isLocked = currentScoreRecord?.status === 'submitted';
+
+                          return (
+                            <div key={c._id} className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="font-semibold text-white">{c.name}</span>
+                                  <span className="text-[10px] text-emerald-400 font-mono ml-2">Weight: {c.weight}</span>
+                                </div>
+                                <div className="flex items-center gap-1 font-mono font-bold">
+                                  <span className="text-purple-300 text-sm">{currentVal}</span>
+                                  <span className="text-slate-500 text-[11px]">/ {c.max_score}</span>
+                                </div>
+                              </div>
+                              {c.description && <p className="text-[11px] text-slate-400">{c.description}</p>}
+                              <input
+                                type="range"
+                                min={c.min_score}
+                                max={c.max_score}
+                                step={1}
+                                disabled={isLocked}
+                                value={currentVal}
+                                onChange={(e) => {
+                                  const val = parseInt(e.target.value, 10);
+                                  setJudgeScoreValues((prev) => ({ ...prev, [c._id]: val }));
+                                }}
+                                className="w-full accent-purple-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                                <span>Min: {c.min_score}</span>
+                                <span>Contribution: {Math.round(currentVal * c.weight * 100) / 100} pts</span>
+                                <span>Max: {c.max_score}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-slate-300 mb-1">
+                            <span>Technical Execution (Max 30, Weight: 1.0)</span>
+                            <strong className="text-purple-300">{scoreExecution} pts</strong>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={30}
+                            disabled={currentScoreRecord?.status === 'submitted'}
+                            value={scoreExecution}
+                            onChange={(e) => setScoreExecution(parseInt(e.target.value, 10))}
+                            className="w-full accent-purple-500"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-slate-300 mb-1">
+                            <span>Novelty & Innovation (Max 30, Weight: 1.0)</span>
+                            <strong className="text-purple-300">{scoreInnovation} pts</strong>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={30}
+                            disabled={currentScoreRecord?.status === 'submitted'}
+                            value={scoreInnovation}
+                            onChange={(e) => setScoreInnovation(parseInt(e.target.value, 10))}
+                            className="w-full accent-purple-500"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Weighted Total Calculation Display */}
+                    <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/30 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-purple-200 font-bold block">
+                          {currentScoreRecord?.status === 'submitted' ? 'Official Locked Total' : 'Backend Weighted Total Preview'}
+                        </span>
+                        <span className="text-[11px] text-slate-400">Strictly computed on the backend server</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xl font-mono font-bold text-white">
+                          {currentScoreRecord?.status === 'submitted'
+                            ? currentScoreRecord.weighted_total
+                            : calculateLiveWeightedTotal()}
+                        </span>
+                        <span className="text-xs text-purple-300 font-mono ml-1">pts</span>
+                      </div>
                     </div>
 
+                    {/* Judge Comment */}
                     <div>
-                      <div className="flex justify-between text-slate-300 mb-1">
-                        <span>Novelty & Innovation (Max 30)</span>
-                        <strong className="text-purple-300">{scoreInnovation} pts</strong>
-                      </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={30}
-                        value={scoreInnovation}
-                        onChange={(e) => setScoreInnovation(parseInt(e.target.value, 10))}
-                        className="w-full accent-purple-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-slate-400 mb-1">Judge Feedback & Notes</label>
+                      <label className="block text-slate-400 mb-1 font-medium">Judge Feedback & Criteria Comments</label>
                       <textarea
                         rows={3}
-                        value={scoreFeedback}
-                        onChange={(e) => setScoreFeedback(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-purple-500"
+                        disabled={currentScoreRecord?.status === 'submitted'}
+                        placeholder="Detailed feedback justifying criterion scores..."
+                        value={judgeComment}
+                        onChange={(e) => setJudgeComment(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-purple-500 disabled:opacity-60 disabled:cursor-not-allowed"
                       />
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-2">
+                    {/* Actions */}
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-slate-800">
                       <button
                         type="button"
                         onClick={() => setScoringProject(null)}
-                        className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+                        className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
                       >
-                        Cancel
+                        {currentScoreRecord?.status === 'submitted' ? 'Close' : 'Cancel'}
                       </button>
-                      <button
-                        type="submit"
-                        disabled={loading}
-                        className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition"
-                      >
-                        Submit Official Score
-                      </button>
+
+                      {currentScoreRecord?.status !== 'submitted' && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => handleSaveEvaluation('draft')}
+                            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 font-semibold transition flex items-center gap-1.5"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Save as Draft</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => handleSaveEvaluation('submitted')}
+                            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition flex items-center gap-1.5 shadow-lg shadow-purple-600/20"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            <span>Submit & Lock</span>
+                          </button>
+                        </>
+                      )}
                     </div>
-                  </form>
+                  </div>
                 </div>
               </div>
             )}

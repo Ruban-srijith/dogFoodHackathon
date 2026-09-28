@@ -7,7 +7,7 @@ process.env.JWT_SECRET = 'test-secret-key-t2-judge';
 
 const app = require('../src/server');
 const { generateToken } = require('../src/auth');
-const { User, Event, Track, Prize, Team, Submission, JudgeInvite, JudgeAssignment } = require('../src/models');
+const { User, Event, Track, Prize, Team, Submission, JudgeInvite, JudgeAssignment, EvaluationScore } = require('../src/models');
 
 test('T2 Feature Suite: Judge Invitations, Assignments (Manual/Batch/Auto), and Strict 403 Isolation', async (t) => {
 
@@ -296,6 +296,13 @@ test('T2 Feature Suite: Judge Invitations, Assignments (Manual/Batch/Auto), and 
     }
     return null;
   };
+
+  EvaluationScore.findOne = async () => null;
+  EvaluationScore.create = async (doc) => ({
+    _id: 'mock_eval_score_1',
+    ...doc,
+    save: async function() { return this; }
+  });
 
   let generatedInviteCode = '';
 
