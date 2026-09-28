@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
-import { Palette, Check } from 'lucide-react';
+import { Palette, Check, Crown } from 'lucide-react';
 
 export const ThemeSelector: React.FC = () => {
   const { theme, setTheme } = useTheme();
@@ -8,6 +8,7 @@ export const ThemeSelector: React.FC = () => {
 
   const themeOptions: { id: ThemeMode; name: string; tag: string; bg: string; accent: string }[] = [
     { id: 'telemetry', name: 'Telemetry CRT', tag: 'SCREENSHOT DEFAULT', bg: '#060911', accent: '#ff2a5f' },
+    { id: 'royal', name: 'Royal Imperial 👑', tag: 'REGAL GOLD & SAPPHIRE', bg: '#070b16', accent: '#ffd700' },
     { id: 'swiss', name: 'Swiss Print', tag: 'LIGHT NEWSPRINT', bg: '#f4f4f0', accent: '#e61919' },
     { id: 'matrix', name: 'Matrix Terminal', tag: 'CYBER GREEN', bg: '#040a04', accent: '#4af626' },
     { id: 'obsidian', name: 'Obsidian Tech', tag: 'DARK SLATE', bg: '#080c14', accent: '#38bdf8' },
@@ -49,7 +50,9 @@ export const ThemeSelector: React.FC = () => {
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="w-3 h-3 rounded-full border border-slate-600 shrink-0" style={{ backgroundColor: opt.bg }} />
+                  <span className="w-3 h-3 rounded-full border border-slate-600 shrink-0 flex items-center justify-center" style={{ backgroundColor: opt.bg }}>
+                    {opt.id === 'royal' && <Crown className="w-2 h-2 text-amber-400" />}
+                  </span>
                   <div>
                     <span className="block font-semibold text-slate-200 leading-none">{opt.name}</span>
                     <span className="text-[9px] text-slate-400 block mt-0.5">{opt.tag}</span>
