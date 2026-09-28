@@ -8,7 +8,10 @@ import {
   Layout, 
   Activity, 
   ShieldCheck,
-  Radio
+  Radio,
+  Key,
+  Trophy,
+  Calendar
 } from 'lucide-react';
 
 interface HealthResponse {
@@ -16,21 +19,44 @@ interface HealthResponse {
   [key: string]: any;
 }
 
+interface OverviewData {
+  counts: {
+    users: number;
+    events: number;
+    tracks: number;
+    prizes: number;
+    teams: number;
+    projects: number;
+  };
+  event: any;
+  tracks: any[];
+  prizes: any[];
+  teams: any[];
+  projects: any[];
+  testCredentials: {
+    role: string;
+    email: string;
+    password: string;
+    name: string;
+  }[];
+}
+
 export const App: React.FC = () => {
   const [data, setData] = useState<HealthResponse | null>(null);
+  const [overview, setOverview] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [activeUrl, setActiveUrl] = useState<string>('/api/health');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const checkHealth = useCallback(async () => {
+  const fetchHealth = useCallback(async () => {
     setLoading(true);
     setError(null);
     const start = performance.now();
 
-    // Priority order: configured env URL, relative /api/health, fallback to port 5000
     const envUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/health` : null;
     const candidates = [
       envUrl,
@@ -45,9 +71,7 @@ export const App: React.FC = () => {
       try {
         const response = await fetch(url, {
           method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
+          headers: { 'Accept': 'application/json' },
         });
 
         if (response.ok) {
@@ -75,17 +99,47 @@ export const App: React.FC = () => {
     setLoading(false);
   }, []);
 
+  const fetchOverview = useCallback(async () => {
+    const envUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api/overview` : null;
+    const candidates = [
+      envUrl,
+      '/api/overview',
+      'http://localhost:5000/api/overview'
+    ].filter(Boolean) as string[];
+
+    for (const url of candidates) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          setOverview(json);
+          break;
+        }
+      } catch {
+        // continue
+      }
+    }
+  }, []);
+
   useEffect(() => {
-    checkHealth();
-  }, [checkHealth]);
+    fetchHealth();
+    fetchOverview();
+  }, [fetchHealth, fetchOverview]);
 
   useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
-      checkHealth();
+      fetchHealth();
+      fetchOverview();
     }, 5000);
     return () => clearInterval(interval);
-  }, [autoRefresh, checkHealth]);
+  }, [autoRefresh, fetchHealth, fetchOverview]);
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(id);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   const isHealthy = data?.status === 'ok';
 
@@ -121,7 +175,7 @@ export const App: React.FC = () => {
             </label>
 
             <button
-              onClick={checkHealth}
+              onClick={() => { fetchHealth(); fetchOverview(); }}
               disabled={loading}
               className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs transition shadow-md shadow-emerald-500/20 disabled:opacity-50"
             >
@@ -342,6 +396,135 @@ export const App: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Seeded Data Statistics & Test Credentials */}
+        {overview && (
+          <div className="space-y-6 pt-4">
+            <div className="border border-slate-800 bg-slate-900/40 rounded-2xl p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-400" />
+                    Seeded Hackathon Database Overview
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Automatically populated on initial Docker startup if the database is empty.
+                  </p>
+                </div>
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 self-start sm:self-auto">
+                  Auto-Seeded
+                </span>
+              </div>
+
+              {/* Seed Counts */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl text-center">
+                  <span className="text-slate-400 text-xs block">Users</span>
+                  <span className="text-xl font-extrabold text-white">{overview.counts.users}</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">1 Admin, 1 Org, 3 J, 10 P</span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl text-center">
+                  <span className="text-slate-400 text-xs block">Events</span>
+                  <span className="text-xl font-extrabold text-emerald-400">{overview.counts.events}</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Active with dates</span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl text-center">
+                  <span className="text-slate-400 text-xs block">Tracks</span>
+                  <span className="text-xl font-extrabold text-cyan-400">{overview.counts.tracks}</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Thematic tracks</span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl text-center">
+                  <span className="text-slate-400 text-xs block">Prizes</span>
+                  <span className="text-xl font-extrabold text-amber-400">{overview.counts.prizes}</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">$17,500 total pool</span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl text-center">
+                  <span className="text-slate-400 text-xs block">Teams</span>
+                  <span className="text-xl font-extrabold text-purple-400">{overview.counts.teams}</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Competing teams</span>
+                </div>
+                <div className="bg-slate-950/70 border border-slate-800 p-3.5 rounded-xl text-center">
+                  <span className="text-slate-400 text-xs block">Projects</span>
+                  <span className="text-xl font-extrabold text-pink-400">{overview.counts.projects}</span>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Submitted entries</span>
+                </div>
+              </div>
+
+              {/* Event Details Card */}
+              {overview.event && (
+                <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-emerald-400" />
+                      {overview.event.title}
+                    </h4>
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                      Status: {overview.event.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">{overview.event.description}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] font-mono pt-1 text-slate-400">
+                    <div>Start: <span className="text-slate-300">{new Date(overview.event.start_date).toLocaleDateString()}</span></div>
+                    <div>Deadline: <span className="text-amber-300">{new Date(overview.event.submission_deadline).toLocaleDateString()}</span></div>
+                    <div>End: <span className="text-slate-300">{new Date(overview.event.end_date).toLocaleDateString()}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Test Credentials Table */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                    <Key className="w-4 h-4 text-amber-400" />
+                    Test Login Accounts (Logged in Backend Output)
+                  </h4>
+                  <span className="text-[11px] text-slate-400">Click any row to copy credentials</span>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-900/80 text-slate-400 border-b border-slate-800 font-semibold uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="py-2.5 px-4">Role</th>
+                        <th className="py-2.5 px-4">Name</th>
+                        <th className="py-2.5 px-4">Email</th>
+                        <th className="py-2.5 px-4">Password</th>
+                        <th className="py-2.5 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-mono">
+                      {overview.testCredentials.map((cred, idx) => (
+                        <tr key={idx} className="hover:bg-slate-900/40 transition">
+                          <td className="py-2.5 px-4">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              cred.role === 'ADMIN' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                              cred.role === 'ORGANIZER' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                              cred.role === 'JUDGE' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                              'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            }`}>
+                              {cred.role}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 font-sans text-slate-200">{cred.name}</td>
+                          <td className="py-2.5 px-4 text-slate-300">{cred.email}</td>
+                          <td className="py-2.5 px-4 text-emerald-400">{cred.password}</td>
+                          <td className="py-2.5 px-4 text-right font-sans">
+                            <button
+                              onClick={() => copyToClipboard(`${cred.email}:${cred.password}`, cred.email)}
+                              className="px-2.5 py-1 text-[11px] rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                            >
+                              {copiedKey === cred.email ? 'Copied!' : 'Copy'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Footer */}

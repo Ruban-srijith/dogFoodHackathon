@@ -1,14 +1,23 @@
 {
   "events": [
     {
-      "id": "e0000000-0000-0000-0000-000000000001",
       "slug": "global-ai-hackathon-2026",
       "title": "Global AI & Open Source Hackathon 2026",
-      "status": "ongoing"
+      "description": "The premier self-hosted engineering hackathon pushing the frontiers of autonomous agents, developer tooling, and distributed systems.",
+      "start_date": "2026-09-25T00:00:00.000Z",
+      "end_date": "2026-10-05T23:59:59.000Z",
+      "submission_deadline": "2026-10-02T23:59:59.000Z",
+      "status": "ongoing",
+      "location": "Global / Decentralized"
     }
   ],
   "tracks": [
-    { "name": "Autonomous AI Agents", "prize_pool": "$10,000" },
-    { "name": "Developer Tooling & Infrastructure", "prize_pool": "$7,500" }
+    { "name": "Autonomous AI Agents", "description": "Multi-agent frameworks, tool use, reasoning loops, and intelligent local sidecars.", "prize_pool": "$10,000 + Cloud Credits" },
+    { "name": "Developer Tooling & Infrastructure", "description": "Compilers, package managers, testing frameworks, and reproducible environments.", "prize_pool": "$7,500" }
+  ],
+  "prizes": [
+    { "title": "Grand Prize — 1st Place Overall", "award_amount": "$10,000", "description": "Awarded to the most impactful, technically rigorous open-source platform." },
+    { "title": "Runner-Up — 2nd Place Overall", "award_amount": "$5,000", "description": "Awarded to the project demonstrating outstanding engineering depth." },
+    { "title": "Community Choice Award", "award_amount": "$2,500", "description": "Voted by the participants and peer evaluators across all active tracks." }
   ]
 }

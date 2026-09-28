@@ -1,0 +1,18 @@
+{
+  "teams": [
+    { "name": "Team Antigravity", "slug": "team-antigravity", "invite_code": "GRAV2026", "leader": "alice" },
+    { "name": "Team ByteForge", "slug": "team-byteforge", "invite_code": "BYTE2026", "leader": "charlie" },
+    { "name": "Team NeuralFlow", "slug": "team-neuralflow", "invite_code": "FLOW2026", "leader": "emma" },
+    { "name": "Team CyberPulse", "slug": "team-cyberpulse", "invite_code": "PULSE2026", "leader": "grace" }
+  ],
+  "projects": [
+    { "team": "Team Antigravity", "track": "Autonomous AI Agents", "title": "Antigravity Autonomous Core", "tagline": "Self-correcting pair-programming agent with deterministic execution sandbox", "status": "submitted" },
+    { "team": "Team Antigravity", "track": "Autonomous AI Agents", "title": "Agentic Workflow Orchestrator", "tagline": "Hierarchical DAG coordinator for complex multi-agent reasoning tasks", "status": "submitted" },
+    { "team": "Team ByteForge", "track": "Developer Tooling & Infrastructure", "title": "ByteForge High-Throughput Log Engine", "tagline": "Append-only distributed immutable ledger for real-time audit compliance", "status": "submitted" },
+    { "team": "Team ByteForge", "track": "Developer Tooling & Infrastructure", "title": "HotReload Micro-Bundler", "tagline": "Sub-millisecond Rust-based asset compiler for offline edge containers", "status": "submitted" },
+    { "team": "Team NeuralFlow", "track": "Autonomous AI Agents", "title": "NeuralGraph Semantic Visualizer", "tagline": "Interactive 3D representation of latent attention heads and vector databases", "status": "submitted" },
+    { "team": "Team NeuralFlow", "track": "Autonomous AI Agents", "title": "Cognitive Prompt Sandbox", "tagline": "Deterministic benchmark playground for local LLM inference validation", "status": "submitted" },
+    { "team": "Team CyberPulse", "track": "Developer Tooling & Infrastructure", "title": "CyberPulse Distributed Tracer", "tagline": "Zero-overhead eBPF request tracing across multi-container topologies", "status": "submitted" },
+    { "team": "Team CyberPulse", "track": "Developer Tooling & Infrastructure", "title": "EdgeGuard Offline Secrets Vault", "tagline": "Hardware-encrypted local secret broker for air-gapped development stacks", "status": "submitted" }
+  ]
+}

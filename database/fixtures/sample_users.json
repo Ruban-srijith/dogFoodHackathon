@@ -1,8 +1,17 @@
 {
-  "admin": { "email": "admin@dogfood.local", "role": "ADMIN" },
-  "organizer": { "email": "organizer@dogfood.local", "role": "ORGANIZER" },
-  "judge1": { "email": "judge1@dogfood.local", "role": "JUDGE" },
-  "judge2": { "email": "judge2@dogfood.local", "role": "JUDGE" },
-  "participant": { "email": "alice@dogfood.local", "role": "PARTICIPANT" },
-  "visitor": { "email": "visitor@dogfood.local", "role": "VISITOR" }
+  "admin": { "username": "admin", "email": "admin@dogfood.local", "role": "ADMIN", "full_name": "Platform Administrator" },
+  "organizer": { "username": "organizer", "email": "organizer@dogfood.local", "role": "ORGANIZER", "full_name": "Lead Event Organizer" },
+  "judge1": { "username": "judge1", "email": "judge1@dogfood.local", "role": "JUDGE", "full_name": "Dr. Sarah Chen" },
+  "judge2": { "username": "judge2", "email": "judge2@dogfood.local", "role": "JUDGE", "full_name": "Marcus Vance" },
+  "judge3": { "username": "judge3", "email": "judge3@dogfood.local", "role": "JUDGE", "full_name": "Elena Rostova" },
+  "participant1": { "username": "alice", "email": "alice@dogfood.local", "role": "PARTICIPANT", "full_name": "Alice Walker" },
+  "participant2": { "username": "bob", "email": "bob@dogfood.local", "role": "PARTICIPANT", "full_name": "Bob Smith" },
+  "participant3": { "username": "charlie", "email": "charlie@dogfood.local", "role": "PARTICIPANT", "full_name": "Charlie Zhang" },
+  "participant4": { "username": "david", "email": "david@dogfood.local", "role": "PARTICIPANT", "full_name": "David Kim" },
+  "participant5": { "username": "emma", "email": "emma@dogfood.local", "role": "PARTICIPANT", "full_name": "Emma Watson" },
+  "participant6": { "username": "frank", "email": "frank@dogfood.local", "role": "PARTICIPANT", "full_name": "Frank Miller" },
+  "participant7": { "username": "grace", "email": "grace@dogfood.local", "role": "PARTICIPANT", "full_name": "Grace Hopper" },
+  "participant8": { "username": "henry", "email": "henry@dogfood.local", "role": "PARTICIPANT", "full_name": "Henry Ford" },
+  "participant9": { "username": "isabella", "email": "isabella@dogfood.local", "role": "PARTICIPANT", "full_name": "Isabella Garcia" },
+  "participant10": { "username": "jack", "email": "jack@dogfood.local", "role": "PARTICIPANT", "full_name": "Jack Ryan" }
 }
