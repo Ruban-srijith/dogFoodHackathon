@@ -53,8 +53,9 @@ const teamSchema = new mongoose.Schema({
   slug: { type: String, required: true },
   description: { type: String },
   leader_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  invite_code: { type: String, required: true },
-  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+  invite_code: { type: String, required: true, unique: true },
+  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  created_at: { type: Date, default: Date.now }
 });
 
 const submissionSchema = new mongoose.Schema({
@@ -67,8 +68,13 @@ const submissionSchema = new mongoose.Schema({
   repo_url: { type: String },
   demo_url: { type: String },
   tech_stack: [{ type: String }],
-  status: { type: String, default: 'submitted' },
-  submitted_at: { type: Date, default: Date.now }
+  status: { 
+    type: String, 
+    enum: ['draft', 'submitted'],
+    default: 'draft' 
+  },
+  submitted_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', userSchema);

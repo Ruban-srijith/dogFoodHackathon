@@ -1,8 +1,8 @@
-# Three-Tier Microservices Platform
+# Three-Tier Microservices Hackathon Platform
 
 A local-first, offline-ready microservices architecture composed of 3 isolated services orchestrated via Docker Compose:
-- **Frontend**: React + Vite (Served via Nginx)
-- **Backend**: Node.js + Express (JWT + Cookie Auth & Role-Based Access Control)
+- **Frontend**: React 18 + Vite (SPA served via Nginx with T1 UI: Gallery, Teams, Submissions, Organizer Studio)
+- **Backend**: Node.js + Express (JWT + Cookie Auth, RBAC, Deadline Enforcement, Event & Team Orchestration)
 - **Database**: MongoDB 6.0
 
 ---
@@ -17,8 +17,8 @@ docker compose up --build
 
 Everything starts automatically in dependency order:
 1. `database` (MongoDB) initializes and reports healthy via `mongosh ping`.
-2. `backend` waits for MongoDB connection, automatically seeds the database (if empty), prints test credentials to the console, and exposes `GET /api/health` and the auth/RBAC endpoints.
-3. `frontend` starts up and displays the live health response, seeded database metrics, and an interactive RBAC middleware tester on the web page.
+2. `backend` waits for MongoDB connection, automatically seeds the database (if empty), prints test credentials to the console, and exposes the REST endpoints.
+3. `frontend` starts up and serves the UI at `http://localhost:5173` (and `http://localhost:3000`).
 
 To run in the background (detached mode):
 ```bash
@@ -39,7 +39,7 @@ docker compose down
 
 ## Running Automated Tests
 
-Run the complete backend test suite (testing register, login, logout, 401 unauthorized, and 403 forbidden for all roles):
+Run the complete backend test suite (33 automated unit & integration tests covering auth, RBAC, team limits, drafts, and deadline checks):
 
 ```bash
 npm test
@@ -47,54 +47,54 @@ npm test
 
 ---
 
-## Service Endpoints & Authentication API
+## T1 Feature Implementation
+
+### 1. Organizer Event Creation
+- **Endpoint**: `POST /api/events` (Protected: `ORGANIZER`, `ADMIN`)
+- **Capabilities**: Configures competition title, description, location, `start_date`, `end_date`, and `submission_deadline`. Supports dynamic assignment of thematic tracks and prize tiers.
+
+### 2. Team Creation & Max 4 Member Enforcement
+- **Endpoints**:
+  - `POST /api/teams` (Protected: `PARTICIPANT`, `ADMIN`): Creates a team and returns a unique 8-character `invite_code` and `invite_link`.
+  - `POST /api/teams/join` (Protected: `PARTICIPANT`, `ADMIN`): Allows teammates to join using the invite code.
+- **Member Cap**: Strictly enforces a maximum of 4 members per team. Attempting to add a 5th member returns **HTTP 400 Bad Request** (`Team is full. A maximum of 4 members are allowed per team.`).
+
+### 3. Project Submissions & Draft Status
+- **Endpoint**: `POST /api/submissions` (Protected: `PARTICIPANT`, `ADMIN`)
+- **Fields**: `title`, `tagline`, `description`, `repo_url`, `demo_url`, `tech_stack`, and `track_id`.
+- **Drafts**: Setting `is_draft: true` saves the project in `draft` state (excluded from public gallery until finalized).
+
+### 4. Strict Deadline Check (HTTP 403 Forbidden)
+- **Endpoint**: `PUT /api/submissions/:id` (Protected: `PARTICIPANT`, `ADMIN`)
+- **Rule**: Edits are permitted while `now <= event.submission_deadline`.
+- **Enforcement**: Once `now > event.submission_deadline`, the backend immediately rejects any edit or new submission with **HTTP 403 Forbidden** (`Submission deadline has passed. Edits are no longer allowed.`).
+
+### 5. Public Gallery (Search & Filter by Track)
+- **Endpoint**: `GET /api/gallery` (Public)
+- **Capabilities**:
+  - Case-insensitive search on title, tagline, description, and tech stack (`?search=...`).
+  - Track-based filtering by track ID or track name (`?track=...`).
+  - Excludes draft projects from public view.
+
+---
+
+## Service Endpoints & API Reference
 
 | Method | Endpoint | Access / Role | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/health` | **Public** | Healthcheck returning `{"status":"ok"}` |
-| `POST` | `/api/auth/register` | **Public** | Register user (hashes password with bcrypt, sets session cookie) |
-| `POST` | `/api/auth/login` | **Public** | Login with email & password (returns JWT & session cookie) |
-| `POST` | `/api/auth/logout` | **Public** | Clears session cookie |
-| `GET` | `/api/auth/me` | **Authenticated** | Returns current user profile (401 if unauthenticated) |
-| `GET` | `/api/participant/dashboard` | **PARTICIPANT, ADMIN** | 401 if not logged in, 403 if wrong role |
-| `GET` | `/api/judge/evaluations` | **JUDGE, ADMIN** | 401 if not logged in, 403 if wrong role |
-| `GET` | `/api/organizer/events` | **ORGANIZER, ADMIN** | 401 if not logged in, 403 if wrong role |
-| `GET` | `/api/admin/system` | **ADMIN exclusively** | 401 if not logged in, 403 if wrong role |
-| `GET` | `/api/overview` | **Public** | Returns database counts and test credentials |
-
----
-
-## Role-Based Access Control (RBAC) Middleware
-
-The backend enforces strict server-side authorization through two composable middlewares in [`backend/src/auth.js`](file:///Users/rubansrijith/IdeaProjects/projects/dogFoodHackathon/backend/src/auth.js):
-
-1. **`authenticate(req, res, next)`**:
-   - Inspects `Authorization: Bearer <token>` header or `req.cookies.token`.
-   - If token is missing, invalid, or expired: immediately aborts with **HTTP 401 Unauthorized**.
-2. **`requireRole(...roles)`**:
-   - Validates that `req.user.role` matches one of the allowed roles (case-insensitive).
-   - If the user's role does not match: aborts with **HTTP 403 Forbidden**.
-
----
-
-## Automatic Database Seeding
-
-When `docker compose up` starts the backend, the seed script checks if the database is empty. If empty, it automatically populates:
-- **15 Users**:
-  - **1 Admin**: `admin@dogfood.local`
-  - **1 Organizer**: `organizer@dogfood.local`
-  - **3 Judges**: `judge1@dogfood.local`, `judge2@dogfood.local`, `judge3@dogfood.local`
-  - **10 Participants**: `alice@dogfood.local`, `bob@dogfood.local`, `charlie@dogfood.local`, `david@dogfood.local`, `emma@dogfood.local`, `frank@dogfood.local`, `grace@dogfood.local`, `henry@dogfood.local`, `isabella@dogfood.local`, `jack@dogfood.local`
-- **1 Event with Dates**: `Global AI & Open Source Hackathon 2026` (with `start_date`, `end_date`, and `submission_deadline`)
-- **2 Tracks**:
-  - `Autonomous AI Agents` ($10,000 + Cloud Credits)
-  - `Developer Tooling & Infrastructure` ($7,500)
-- **3 Prizes**:
-  - `Grand Prize — 1st Place Overall` ($10,000)
-  - `Runner-Up — 2nd Place Overall` ($5,000)
-  - `Community Choice Award` ($2,500)
-- **4 Teams**: `Team Antigravity`, `Team ByteForge`, `Team NeuralFlow`, `Team CyberPulse`
-- **8 Submitted Projects**: 2 projects per team assigned across the thematic tracks.
+| `GET` | `/api/gallery` | **Public** | Public project showcase with search & track filter |
+| `GET` | `/api/events` | **Public** | List all hackathons with tracks and prizes |
+| `POST` | `/api/events` | **ORGANIZER, ADMIN** | Create event with configurable dates, tracks, prizes |
+| `POST` | `/api/teams` | **PARTICIPANT, ADMIN** | Create team and get invite link |
+| `POST` | `/api/teams/join` | **PARTICIPANT, ADMIN** | Join team via invite code (max 4 members) |
+| `GET` | `/api/teams/my` | **Authenticated** | Get current user's teams |
+| `POST` | `/api/submissions` | **PARTICIPANT, ADMIN** | Submit project as draft or final |
+| `PUT` | `/api/submissions/:id` | **PARTICIPANT, ADMIN** | Edit project before deadline (**403 after deadline**) |
+| `POST` | `/api/auth/register` | **Public** | Register user with hashed password and session |
+| `POST` | `/api/auth/login` | **Public** | Login (returns JWT and HTTP-only cookie) |
+| `POST` | `/api/auth/logout` | **Public** | Clear session cookie |
+| `GET` | `/api/auth/me` | **Authenticated** | Current user session details |
 
 ---
 
