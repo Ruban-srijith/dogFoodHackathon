@@ -40,7 +40,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <ToastProvider>
             <Routes>
