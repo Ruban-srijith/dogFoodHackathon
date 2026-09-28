@@ -1674,6 +1674,60 @@ app.get('/api/scores/:id', authenticate, async (req, res) => {
   }
 });
 
+// --- E. CROSS-JUDGE SCORE NORMALIZATION & RANKINGS (Z-SCORE & 0-100 RESCALING) ---
+const { normalizeScores } = require('./normalization');
+
+const handleGetLeaderboard = async (req, res) => {
+  try {
+    const { event_id } = req.query;
+
+    let eventFilter = {};
+    if (event_id) {
+      eventFilter = { event_id };
+    } else {
+      const activeEvent = await Event.findOne().sort({ created_at: -1 });
+      if (activeEvent) eventFilter = { event_id: activeEvent._id };
+    }
+
+    // 1. Fetch all submissions for the event
+    const submissions = await Submission.find(eventFilter)
+      .populate('team_id', 'name slug')
+      .populate('track_id', 'name prize_pool')
+      .lean();
+
+    // 2. Fetch all evaluation scores for these submissions
+    const subIds = submissions.map(s => s._id);
+    const scores = await EvaluationScore.find({ submission_id: { $in: subIds } })
+      .populate('judge_id', 'username full_name email role')
+      .lean();
+
+    // 3. Compute z-scores, 0-100 rescaled scores, and side-by-side rankings
+    const result = normalizeScores(submissions, scores);
+
+    // 4. Confidentiality rule:
+    // If user is not Organizer or Admin, mask individual judge identity details for confidential isolation
+    const isOrganizerOrAdmin = req.user && (req.user.role === 'ORGANIZER' || req.user.role === 'ADMIN');
+    if (!isOrganizerOrAdmin) {
+      result.rankings = result.rankings.map(r => ({
+        ...r,
+        evaluations: r.evaluations.map(e => ({
+          raw_score: e.raw_score,
+          normalized_score: e.normalized_score
+        }))
+      }));
+    }
+
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+
+app.get('/api/leaderboard', optionalAuth, handleGetLeaderboard);
+app.get('/api/v1/leaderboard', optionalAuth, handleGetLeaderboard);
+app.get('/api/scores/rankings', optionalAuth, handleGetLeaderboard);
+app.get('/api/scores/normalization', optionalAuth, handleGetLeaderboard);
+
 // DELETE /api/judges/assignments/:id (Unassign)
 app.delete('/api/judges/assignments/:id', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
   try {

@@ -27,7 +27,13 @@ import {
   Lock,
   Unlock,
   Sliders,
-  FileText
+  FileText,
+  BarChart3,
+  TrendingUp,
+  Award,
+  ArrowUp,
+  ArrowDown,
+  Minus
 } from 'lucide-react';
 
 interface HealthResponse {
@@ -79,6 +85,30 @@ interface EvaluationScoreData {
   created_at?: string;
   updated_at?: string;
   submitted_at?: string;
+}
+
+interface RankingItem {
+  submission_id: string;
+  title: string;
+  team_name: string;
+  track_name: string;
+  raw_score: number | null;
+  raw_rank: number | null;
+  normalized_score: number | null;
+  normalized_rank: number | null;
+  rank_delta: number;
+  evaluations_count: number;
+  has_scores: boolean;
+  evaluations?: any[];
+}
+
+interface JudgeStat {
+  judge_id: string;
+  judge_name: string;
+  count: number;
+  mean: number;
+  std_dev: number;
+  edge_case: string | null;
 }
 
 interface JudgeUser {
@@ -161,7 +191,7 @@ interface Project {
 
 export const App: React.FC = () => {
   // Navigation
-  const [activeTab, setActiveTab] = useState<'gallery' | 'teams' | 'submit' | 'judging' | 'organizer' | 'health'>('gallery');
+  const [activeTab, setActiveTab] = useState<'gallery' | 'teams' | 'submit' | 'judging' | 'organizer' | 'leaderboard' | 'health'>('gallery');
 
   // Health State
   const [healthData, setHealthData] = useState<HealthResponse | null>(null);
@@ -182,6 +212,13 @@ export const App: React.FC = () => {
   const [myTeams, setMyTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  // Leaderboard & Normalization States
+  const [leaderboardData, setLeaderboardData] = useState<RankingItem[]>([]);
+  const [leaderboardStats, setLeaderboardStats] = useState<JudgeStat[]>([]);
+  const [leaderboardSummary, setLeaderboardSummary] = useState<any>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardTrackFilter, setLeaderboardTrackFilter] = useState<string>('all');
 
   // Gallery Filters
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -374,12 +411,34 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Fetch Normalized Leaderboard & Cross-Judge Standings
+  const fetchLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/leaderboard`, {
+        headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setLeaderboardData(json.rankings || []);
+        setLeaderboardStats(json.judge_stats || []);
+        setLeaderboardSummary(json.summary || null);
+      }
+    } catch (err) {
+      console.error('Failed to fetch leaderboard:', err);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, [authToken]);
+
   useEffect(() => {
     checkHealth();
     fetchEventsAndTracks();
     fetchGallery();
     fetchRubricCriteria();
-  }, [checkHealth, fetchEventsAndTracks, fetchGallery, fetchRubricCriteria]);
+    fetchLeaderboard();
+  }, [checkHealth, fetchEventsAndTracks, fetchGallery, fetchRubricCriteria, fetchLeaderboard]);
 
   // 5. Fetch Judge Data & Assignments
   const fetchJudgingData = useCallback(async () => {
@@ -1308,6 +1367,21 @@ export const App: React.FC = () => {
             >
               <Trophy className="w-4 h-4" />
               <span>Organizer Studio</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('leaderboard');
+                fetchLeaderboard();
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+                activeTab === 'leaderboard'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 text-cyan-400" />
+              <span>Leaderboard (Normalized)</span>
             </button>
 
             <button
@@ -2913,6 +2987,266 @@ export const App: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 4.8: CROSS-JUDGE LEADERBOARD (RAW VS NORMALIZED STANDINGS)             */}
+        {/* ========================================================================= */}
+        {activeTab === 'leaderboard' && (
+          <div className="space-y-6">
+            {/* Header & Controls */}
+            <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                  <BarChart3 className="w-6 h-6 text-cyan-400" />
+                  <span>Cross-Judge Score Normalization</span>
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Side-by-side comparison of <strong>Raw Scores</strong> vs <strong>Z-Score Normalized Scores (0–100 Scale)</strong>. Eliminates evaluator bias where harsh judges penalize projects and generous judges elevate them.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={leaderboardTrackFilter}
+                  onChange={(e) => setLeaderboardTrackFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 text-xs focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="all">All Tracks</option>
+                  {tracks.map((t) => (
+                    <option key={t._id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={fetchLeaderboard}
+                  disabled={leaderboardLoading}
+                  className="px-3.5 py-1.5 rounded-xl bg-cyan-600/30 hover:bg-cyan-600 text-cyan-200 border border-cyan-500/40 text-xs font-semibold flex items-center gap-1.5 transition"
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>{leaderboardLoading ? 'Refreshing...' : 'Refresh Standings'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Educational Math & Edge-Case Card */}
+            <div className="bg-slate-950/80 border border-cyan-500/20 rounded-2xl p-5 space-y-3 text-xs">
+              <div className="flex items-center gap-2 text-cyan-300 font-bold">
+                <TrendingUp className="w-4 h-4" />
+                <span>How Cross-Judge Normalization Works (JUDGING.md Section 3.1)</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-slate-400 text-[11px] leading-relaxed">
+                <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1">
+                  <strong className="text-white block text-xs">1. Per-Judge Mean & StdDev</strong>
+                  <p>For each judge, we compute their average evaluation μ and standard deviation σ across all projects they scored.</p>
+                </div>
+                <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1">
+                  <strong className="text-white block text-xs">2. Z-Score Standardization</strong>
+                  <p>z = (score - μ) / σ. Scores are evaluated by how far they stand above or below that specific evaluator's baseline.</p>
+                </div>
+                <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1">
+                  <strong className="text-white block text-xs">3. 0–100 Rescaling & Edge Cases</strong>
+                  <p>All z-scores are rescaled to 0–100. Judges with 1 score (N=1) or identical scores (σ=0) default safely to z=0 (50.0), and unscored projects remain safely unranked.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Judge Calibration Stats */}
+            {leaderboardStats.length > 0 && (
+              <div className="space-y-3">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+                  Evaluator Calibration Baselines ({leaderboardStats.length} Judges)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {leaderboardStats.map((j) => (
+                    <div key={j.judge_id} className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between space-y-2 text-xs backdrop-blur-xl">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-white truncate">{j.judge_name}</span>
+                        {j.edge_case ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            {j.edge_case}
+                          </span>
+                        ) : j.mean < 6 ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            Harsh
+                          </span>
+                        ) : j.mean > 7.5 ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            Generous
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300">
+                            Balanced
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center font-mono">
+                        <div>
+                          <span className="text-[10px] text-slate-500 block">Mean (μ)</span>
+                          <span className="font-bold text-purple-300">{j.mean}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 block">StdDev (σ)</span>
+                          <span className="font-bold text-cyan-300">{j.std_dev}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 block">Scored</span>
+                          <span className="font-bold text-white">{j.count}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Side-by-Side Standings Table */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4 backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Award className="w-4 h-4 text-amber-400" />
+                  <span>Official Standings (Side-by-Side Comparison)</span>
+                </h3>
+                {leaderboardSummary && (
+                  <span className="text-xs text-slate-400">
+                    {leaderboardSummary.evaluated_submissions} of {leaderboardSummary.total_submissions} projects evaluated
+                  </span>
+                )}
+              </div>
+
+              {leaderboardData.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 space-y-2">
+                  <BarChart3 className="w-8 h-8 mx-auto text-slate-600" />
+                  <p className="font-semibold text-white">No Evaluation Standings Available Yet</p>
+                  <p className="text-xs">Once judges submit official scores for projects, raw and normalized rankings will populate here automatically.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 font-semibold">
+                      <tr>
+                        <th className="p-3 text-center">Norm Rank</th>
+                        <th className="p-3 text-center">Raw Rank</th>
+                        <th className="p-3 text-center">Shift (Δ)</th>
+                        <th className="p-3">Project Title & Team</th>
+                        <th className="p-3">Track</th>
+                        <th className="p-3">Normalized Score (0–100)</th>
+                        <th className="p-3 text-right">Raw Score</th>
+                        <th className="p-3 text-right">Judges</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {leaderboardData
+                        .filter(r => leaderboardTrackFilter === 'all' || r.track_name === leaderboardTrackFilter)
+                        .map((r) => {
+                          const isTop3 = r.normalized_rank && r.normalized_rank <= 3;
+                          return (
+                            <tr key={r.submission_id} className="hover:bg-slate-950/40 transition">
+                              {/* Normalized Rank */}
+                              <td className="p-3 text-center">
+                                {r.normalized_rank ? (
+                                  <span className={`inline-flex items-center justify-center font-bold px-2 py-0.5 rounded-full font-mono ${
+                                    r.normalized_rank === 1 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
+                                    r.normalized_rank === 2 ? 'bg-slate-300/20 text-slate-200 border border-slate-300/40' :
+                                    r.normalized_rank === 3 ? 'bg-amber-700/20 text-amber-500 border border-amber-700/40' :
+                                    'text-slate-400'
+                                  }`}>
+                                    {r.normalized_rank === 1 ? '🥇 #1' :
+                                     r.normalized_rank === 2 ? '🥈 #2' :
+                                     r.normalized_rank === 3 ? '🥉 #3' : `#${r.normalized_rank}`}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-600 font-mono">—</span>
+                                )}
+                              </td>
+
+                              {/* Raw Rank */}
+                              <td className="p-3 text-center font-mono">
+                                {r.raw_rank ? (
+                                  <span className="text-slate-400">#{r.raw_rank}</span>
+                                ) : (
+                                  <span className="text-slate-600">—</span>
+                                )}
+                              </td>
+
+                              {/* Rank Delta */}
+                              <td className="p-3 text-center font-mono font-bold">
+                                {r.rank_delta > 0 ? (
+                                  <span className="text-emerald-400 inline-flex items-center gap-0.5">
+                                    <ArrowUp className="w-3 h-3" />
+                                    <span>+{r.rank_delta}</span>
+                                  </span>
+                                ) : r.rank_delta < 0 ? (
+                                  <span className="text-rose-400 inline-flex items-center gap-0.5">
+                                    <ArrowDown className="w-3 h-3" />
+                                    <span>{r.rank_delta}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-600 inline-flex items-center gap-0.5">
+                                    <Minus className="w-3 h-3" />
+                                    <span>0</span>
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Project & Team */}
+                              <td className="p-3">
+                                <span className={`font-semibold block ${isTop3 ? 'text-white' : 'text-slate-200'}`}>
+                                  {r.title}
+                                </span>
+                                <span className="text-[11px] text-slate-400">{r.team_name}</span>
+                              </td>
+
+                              {/* Track */}
+                              <td className="p-3">
+                                <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] text-slate-300 font-medium">
+                                  {r.track_name}
+                                </span>
+                              </td>
+
+                              {/* Normalized Score (0-100) with visual bar */}
+                              <td className="p-3">
+                                {r.normalized_score !== null ? (
+                                  <div className="space-y-1 max-w-xs">
+                                    <div className="flex justify-between font-mono font-bold text-xs">
+                                      <span className="text-cyan-300">{r.normalized_score}</span>
+                                      <span className="text-slate-500 text-[10px]">/ 100</span>
+                                    </div>
+                                    <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                                      <div
+                                        className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full"
+                                        style={{ width: `${Math.min(100, Math.max(0, r.normalized_score))}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-600 font-mono italic">Unscored</span>
+                                )}
+                              </td>
+
+                              {/* Raw Score */}
+                              <td className="p-3 text-right font-mono font-bold">
+                                {r.raw_score !== null ? (
+                                  <span className="text-slate-300">{r.raw_score}</span>
+                                ) : (
+                                  <span className="text-slate-600">—</span>
+                                )}
+                              </td>
+
+                              {/* Evaluations Count */}
+                              <td className="p-3 text-right font-mono text-slate-400">
+                                {r.evaluations_count}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
