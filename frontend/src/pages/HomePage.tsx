@@ -8,14 +8,13 @@ import { StatusBadge } from '../components/Badge';
 import { Loading } from '../components/Loading';
 import { ErrorState } from '../components/ErrorState';
 import { WireframeCanvas } from '../components/WireframeCanvas';
-import { WaveformVisualizer } from '../components/WaveformVisualizer';
 import { CyberpunkGlitchText } from '../components/CyberpunkGlitchText';
 import { StatementSection } from '../components/StatementSection';
 import { ScrubTextSection } from '../components/ScrubTextSection';
 import { ProjectCard } from '../components/ProjectCard';
 import { RoyalCrest } from '../components/RoyalCrest';
 import { formatDate, formatDaysRemaining } from '../utils/formatters';
-import { ShieldCheck, Terminal, Cpu, Activity, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Terminal, Cpu, ArrowRight } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -121,15 +120,6 @@ export const HomePage: React.FC = () => {
               <div className="text-xs font-mono text-slate-400 space-y-1 font-semibold">
                 <p>SEPTEMBER 26-29, 2026 • ONLINE</p>
                 <p className="text-cyan-400 font-bold">FREE • $2,500 IN PRIZES</p>
-              </div>
-
-              {/* Telemetry Waveform Visualizer */}
-              <div className="pt-1">
-                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 uppercase tracking-widest mb-1">
-                  <Activity className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Telemetry Spectrum Wave</span>
-                </div>
-                <WaveformVisualizer />
               </div>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
