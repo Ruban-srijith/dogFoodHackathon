@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { RoleBadge } from './Badge';
 import { Button } from './Button';
-import { LogOut, Trophy, Compass, Layers, Shield, User as UserIcon, Menu, X, UserPlus } from 'lucide-react';
+import { ThemeSelector } from './ThemeSelector';
+import { LogOut, Trophy, Shield, User as UserIcon, Menu, X } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -16,66 +16,54 @@ export const Navbar: React.FC = () => {
     navigate('/');
   };
 
-  const isActive = (path: string) => location.pathname === path;
-
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-[#080c14]/85 backdrop-blur-xl transition-all">
+    <nav className="sticky top-0 z-40 w-full border-b border-cyan-500/20 bg-[var(--bg-surface)] backdrop-blur-xl transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Brand */}
-          <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 via-sky-500 to-indigo-500 p-[1.5px] transition-transform group-hover:scale-105">
-                <div className="w-full h-full bg-[#080c14] rounded-[10px] flex items-center justify-center">
-                  <span className="font-extrabold text-emerald-400 text-lg tracking-tighter">DF</span>
-                </div>
+          
+          {/* Brand & T-Rex Dinosaur Logo */}
+          <div className="flex items-center gap-6">
+            <Link to="/" className="flex items-center gap-2.5 group">
+              {/* T-Rex Dinosaur Icon (from Screenshot) */}
+              <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-500 group-hover:scale-105 transition-transform">
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M19 3h-4v2h-2v2h-2v2H9v2H7v2H5v2H3v6h2v-2h2v-2h2v4h2v-4h2v2h2v-2h2v-4h2v-2h2V9h-2V7h-2V5h-2V3z"/>
+                </svg>
               </div>
-              <div className="flex flex-col">
-                <span className="font-black text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+              <div className="flex items-center gap-1">
+                <span className="font-extrabold text-lg tracking-wider text-[var(--text-main)] font-mono">
                   DOGFOOD
                 </span>
-                <span className="text-[9px] uppercase tracking-widest text-emerald-400 font-semibold -mt-1">
-                  Hackathon Core
-                </span>
+                <span className="text-[10px] font-mono text-rose-500 font-bold">®</span>
               </div>
             </Link>
 
-            {/* Desktop Navigation Links */}
-            <div className="hidden md:flex items-center gap-1">
-              <Link
-                to="/events"
-                className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition flex items-center gap-2 ${
-                  isActive('/events')
-                    ? 'bg-slate-800/90 text-emerald-400 border border-slate-700/80 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
-                }`}
-              >
-                <Compass className="w-4 h-4 text-emerald-400" />
-                Hackathons
-              </Link>
-              <Link
-                to="/gallery"
-                className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition flex items-center gap-2 ${
-                  isActive('/gallery')
-                    ? 'bg-slate-800/90 text-sky-400 border border-slate-700/80 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
-                }`}
-              >
-                <Layers className="w-4 h-4 text-sky-400" />
-                Project Gallery
-              </Link>
+            {/* Brutalist Monospace Navigation Links (from Screenshot) */}
+            <div className="hidden lg:flex items-center gap-4 text-[11px] font-mono font-bold tracking-widest text-slate-300">
+              <Link to="/events" className="hover:text-rose-500 transition">ABOUT</Link>
+              <Link to="/events" className="hover:text-rose-500 transition">TIERS</Link>
+              <Link to="/events" className="hover:text-rose-500 transition">TIMELINE</Link>
+              <Link to="/gallery" className="hover:text-rose-500 transition">SCORING</Link>
+              <Link to="/events" className="hover:text-rose-500 transition">PRIZES</Link>
+              <Link to="/events" className="hover:text-rose-500 transition">RULES</Link>
+              <Link to="/gallery" className="hover:text-rose-500 transition">JUDGES</Link>
+              <Link to="/events" className="hover:text-rose-500 transition">FAQ</Link>
+              <Link to="/events" className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">SPEC</Link>
             </div>
           </div>
 
-          {/* Right Action / Auth State */}
+          {/* Right Actions, Multi-Theme Switcher & Auth State */}
           <div className="flex items-center gap-3">
+            {/* Theme Selector Component */}
+            <ThemeSelector />
+
+            {/* Quick Action Button (From Screenshot: "GO TO DISCORD" / "REGISTER") */}
             {user ? (
-              <div className="hidden md:flex items-center gap-3">
-                {/* Role Specific Quick Portals */}
+              <div className="hidden md:flex items-center gap-2.5">
                 {['JUDGE', 'ORGANIZER', 'ADMIN'].includes(user.role) && (
                   <Link
                     to="/judge/dashboard"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 transition"
+                    className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 transition"
                   >
                     <Trophy className="w-3.5 h-3.5" />
                     Judge Portal
@@ -85,22 +73,16 @@ export const Navbar: React.FC = () => {
                 {['ORGANIZER', 'ADMIN'].includes(user.role) && (
                   <Link
                     to="/organizer/dashboard"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20 transition"
+                    className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20 transition"
                   >
                     <Shield className="w-3.5 h-3.5" />
                     Organizer
                   </Link>
                 )}
 
-                {/* User Pill */}
-                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800">
-                  <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
-                    <UserIcon className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="flex flex-col text-left leading-none">
-                    <span className="text-xs font-semibold text-slate-200">{user.full_name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono mt-0.5">@{user.username}</span>
-                  </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono">
+                  <UserIcon className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className="font-semibold text-slate-200">{user.full_name}</span>
                   <RoleBadge role={user.role} />
                 </div>
 
@@ -108,31 +90,33 @@ export const Navbar: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={handleLogout}
-                  className="text-slate-400 hover:text-rose-400 p-2"
+                  className="text-slate-400 hover:text-rose-500 p-2"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
                 </Button>
               </div>
             ) : (
-              <div className="hidden md:flex items-center gap-2.5">
+              <div className="hidden md:flex items-center gap-2">
                 <Link to="/login">
-                  <Button variant="ghost" size="sm">
-                    Sign In
+                  <Button variant="ghost" size="sm" className="font-mono text-xs">
+                    SIGN IN
                   </Button>
                 </Link>
-                <Link to="/register">
-                  <Button variant="primary" size="sm" leftIcon={<UserPlus className="w-3.5 h-3.5" />}>
-                    Register
-                  </Button>
-                </Link>
+                {/* Hot Pink / Neon Red CTA Button matching screenshot */}
+                <a
+                  href="#register"
+                  className="px-3.5 py-1.5 rounded-lg bg-[#ff2a5f] hover:bg-[#e0224f] text-white text-xs font-mono font-black tracking-wider uppercase transition shadow-md shadow-rose-500/20"
+                >
+                  GO TO DISCORD
+                </a>
               </div>
             )}
 
-            {/* Mobile Hamburger Button */}
+            {/* Mobile Menu Toggle Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 transition"
+              className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -141,68 +125,29 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Menu Panel */}
+      {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-slate-800 bg-[#080c14]/95 backdrop-blur-2xl px-4 pt-3 pb-6 space-y-4">
-          <div className="space-y-1">
-            <Link
-              to="/events"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium ${
-                isActive('/events') ? 'bg-emerald-500/10 text-emerald-400 font-semibold' : 'text-slate-300'
-              }`}
-            >
-              <Compass className="w-4 h-4 text-emerald-400" />
-              Hackathons
-            </Link>
-            <Link
-              to="/gallery"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium ${
-                isActive('/gallery') ? 'bg-sky-500/10 text-sky-400 font-semibold' : 'text-slate-300'
-              }`}
-            >
-              <Layers className="w-4 h-4 text-sky-400" />
-              Project Gallery
-            </Link>
+        <div className="lg:hidden border-b border-cyan-500/20 bg-[var(--bg-primary)] px-4 pt-3 pb-6 space-y-3 font-mono text-xs">
+          <div className="grid grid-cols-2 gap-2 text-slate-300">
+            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">ABOUT</Link>
+            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">TIERS</Link>
+            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">TIMELINE</Link>
+            <Link to="/gallery" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">SCORING</Link>
+            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">PRIZES</Link>
+            <Link to="/gallery" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800">JUDGES</Link>
           </div>
-
-          <div className="pt-3 border-t border-slate-800/80">
-            {user ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-900 border border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <UserIcon className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-semibold text-slate-200">{user.full_name}</span>
-                  </div>
-                  <RoleBadge role={user.role} />
-                </div>
-                {['JUDGE', 'ORGANIZER', 'ADMIN'].includes(user.role) && (
-                  <Link
-                    to="/judge/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block text-center text-xs font-semibold py-2 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20"
-                  >
-                    Judge Portal
-                  </Link>
-                )}
-                <Button variant="danger" size="sm" onClick={handleLogout} className="w-full">
-                  Sign Out
-                </Button>
-              </div>
-            ) : (
+          <div className="pt-2">
+            {!user ? (
               <div className="grid grid-cols-2 gap-2">
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Sign In
-                  </Button>
+                  <Button variant="outline" size="sm" className="w-full font-mono text-xs">SIGN IN</Button>
                 </Link>
                 <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="primary" size="sm" className="w-full">
-                    Register
-                  </Button>
+                  <Button variant="primary" size="sm" className="w-full font-mono text-xs">REGISTER</Button>
                 </Link>
               </div>
+            ) : (
+              <Button variant="danger" size="sm" onClick={handleLogout} className="w-full font-mono text-xs">SIGN OUT</Button>
             )}
           </div>
         </div>
