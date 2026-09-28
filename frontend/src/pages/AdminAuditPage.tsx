@@ -96,11 +96,19 @@ export const AdminAuditPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-            <ShieldCheck className="w-3.5 h-3.5" /> Immutable Security Ledger
+          <div className="flex items-center gap-4 text-xs font-mono tracking-widest text-[var(--text-muted)] border-b border-[var(--border-color)] pb-2 mb-2">
+            <span className="text-[var(--accent-cyan)] font-bold">[ UNIT / ADM-02 ]</span>
+            <span>SEC_LEVEL_01</span>
+            <span className="text-[var(--accent-green)] font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-green)] animate-ping" /> IMMUTABLE LEDGER
+            </span>
           </div>
-          <h1 className="text-3xl font-extrabold text-white mt-1">Audit Trail & Compliance</h1>
-          <p className="text-xs text-slate-400">
+
+          <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-[var(--accent-green)] uppercase tracking-wider">
+            <ShieldCheck className="w-3.5 h-3.5 text-[var(--accent-green)]" /> Security Governance
+          </div>
+          <h1 className="text-3xl font-black text-[var(--text-main)] font-mono mt-1">Audit Trail & Compliance</h1>
+          <p className="text-xs text-[var(--text-muted)] font-sans">
             Append-only security log recording every critical state transition across the platform
           </p>
         </div>
@@ -115,7 +123,7 @@ export const AdminAuditPage: React.FC = () => {
       ) : error ? (
         <ErrorState message={error} onRetry={() => fetchLogs(page)} fullScreen />
       ) : (
-        <Card className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden theme-card">
           <Table columns={columns} data={logs} keyExtractor={(l) => l.id} />
           <div className="px-5">
             <Pagination

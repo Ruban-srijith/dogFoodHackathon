@@ -115,8 +115,8 @@ export const OrganizerJudgesPage: React.FC = () => {
       accessor: 'submission_title',
       render: (row) => (
         <div>
-          <span className="font-bold text-white block">{row.submission_title}</span>
-          <span className="text-xs text-slate-400">Team: {row.team_name}</span>
+          <span className="font-bold text-[var(--text-main)] block font-mono">{row.submission_title}</span>
+          <span className="text-xs text-[var(--text-muted)] font-mono">Team: {row.team_name}</span>
         </div>
       ),
     },
@@ -125,8 +125,8 @@ export const OrganizerJudgesPage: React.FC = () => {
       accessor: 'judge_name',
       render: (row) => (
         <div>
-          <span className="font-semibold text-slate-200 block">{row.judge_name}</span>
-          <span className="text-xs text-slate-400 font-mono">{row.judge_email}</span>
+          <span className="font-semibold text-[var(--text-main)] block font-mono">{row.judge_name}</span>
+          <span className="text-xs text-[var(--text-muted)] font-mono">{row.judge_email}</span>
         </div>
       ),
     },
@@ -139,7 +139,7 @@ export const OrganizerJudgesPage: React.FC = () => {
       header: 'Scored Criteria',
       accessor: 'scored_criteria_count',
       render: (row) => (
-        <span className="font-mono text-xs text-emerald-400">
+        <span className="font-mono text-xs text-[var(--accent-green)] font-bold">
           {row.scored_criteria_count ?? 0} criteria scored
         </span>
       ),
@@ -151,7 +151,7 @@ export const OrganizerJudgesPage: React.FC = () => {
           variant="ghost"
           size="sm"
           onClick={() => handleRemoveAssignment(row.id)}
-          className="text-slate-400 hover:text-rose-400 p-1.5"
+          className="text-[var(--text-muted)] hover:text-[var(--accent-red)] p-1.5"
           title="Remove Assignment"
         >
           <Trash2 className="w-4 h-4" />
@@ -165,21 +165,29 @@ export const OrganizerJudgesPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-amber-400 uppercase tracking-wider">
-            <Gavel className="w-3.5 h-3.5" /> Judge Isolation & Assignments
+          <div className="flex items-center gap-4 text-xs font-mono tracking-widest text-[var(--text-muted)] border-b border-[var(--border-color)] pb-2 mb-2">
+            <span className="text-[var(--accent-cyan)] font-bold">[ UNIT / ORG-03 ]</span>
+            <span>SEC_LEVEL_01</span>
+            <span className="text-[var(--accent-green)] font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-green)] animate-ping" /> ISOLATION ENGAGED
+            </span>
           </div>
-          <h1 className="text-3xl font-extrabold text-white mt-1">Judge Assignments</h1>
-          <p className="text-xs text-slate-400">
+
+          <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-[var(--accent-cyan)] uppercase tracking-wider">
+            <Gavel className="w-3.5 h-3.5 text-[var(--accent-cyan)]" /> Judge Isolation & Assignments
+          </div>
+          <h1 className="text-3xl font-black text-[var(--text-main)] font-mono mt-1">Judge Assignments</h1>
+          <p className="text-xs text-[var(--text-muted)] font-sans">
             Control which judges have access to evaluate specific project submissions
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 font-mono">
           {events.length > 0 && (
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="rounded-xl bg-slate-900 border border-slate-800 text-xs px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-xs px-3 py-2 text-[var(--text-main)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-cyan)]"
             >
               {events.map((e) => (
                 <option key={e.id} value={e.id}>
@@ -206,14 +214,14 @@ export const OrganizerJudgesPage: React.FC = () => {
         <ErrorState message={error} onRetry={fetchAssignments} fullScreen />
       ) : assignments.length === 0 ? (
         <EmptyState
-          icon={<Gavel className="w-8 h-8 text-amber-400" />}
+          icon={<Gavel className="w-8 h-8 text-[var(--accent-cyan)]" />}
           title="No Judge Assignments"
           description="Click 'Assign Judge' to map evaluator credentials to project submissions."
           actionText="Assign First Judge"
           onAction={() => setIsModalOpen(true)}
         />
       ) : (
-        <Card className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden theme-card">
           <Table
             columns={columns}
             data={assignments}
@@ -228,7 +236,7 @@ export const OrganizerJudgesPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         title="Assign Judge to Submission"
       >
-        <form onSubmit={handleCreateAssignment} className="space-y-4">
+        <form onSubmit={handleCreateAssignment} className="space-y-4 font-mono">
           <Select
             label="Select Judge"
             value={selectedJudgeId}
