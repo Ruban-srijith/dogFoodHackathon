@@ -13,6 +13,7 @@ import { CyberpunkGlitchText } from '../components/CyberpunkGlitchText';
 import { StatementSection } from '../components/StatementSection';
 import { ScrubTextSection } from '../components/ScrubTextSection';
 import { ProjectCard } from '../components/ProjectCard';
+import { RoyalCrest } from '../components/RoyalCrest';
 import { formatDate, formatDaysRemaining } from '../utils/formatters';
 import { ShieldCheck, Terminal, Cpu, Activity, ArrowRight } from 'lucide-react';
 
@@ -163,6 +164,9 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* ROYAL IMPERIAL CREST GRAPHICS BANNER */}
+      <RoyalCrest />
 
       {/* 2. STATEMENT SECTION (GSAP Word-by-Word Opacity & Blur Scrubbing) */}
       <StatementSection text="Transcend anything seen or felt before by crafting unparalleled digital experiences for ambitious hackathon builders." />

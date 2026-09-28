@@ -50,15 +50,15 @@ export const AdminUsersPage: React.FC = () => {
       accessor: 'full_name',
       render: (row) => (
         <div>
-          <span className="font-bold text-white block">{row.full_name}</span>
-          <span className="text-xs text-slate-400 font-mono">@{row.username}</span>
+          <span className="font-bold text-[var(--text-main)] block font-mono">{row.full_name}</span>
+          <span className="text-xs text-[var(--text-muted)] font-mono">@{row.username}</span>
         </div>
       ),
     },
     {
       header: 'Email',
       accessor: 'email',
-      render: (row) => <span className="font-mono text-xs text-slate-300">{row.email}</span>,
+      render: (row) => <span className="font-mono text-xs text-[var(--text-muted)]">{row.email}</span>,
     },
     {
       header: 'Current Role',
@@ -67,7 +67,7 @@ export const AdminUsersPage: React.FC = () => {
     },
     {
       header: 'Created At',
-      render: (row) => <span className="text-xs text-slate-400">{formatDate(row.created_at)}</span>,
+      render: (row) => <span className="text-xs text-[var(--text-muted)] font-mono">{formatDate(row.created_at)}</span>,
     },
     {
       header: 'Change Role (Admin Control)',
@@ -75,7 +75,7 @@ export const AdminUsersPage: React.FC = () => {
         <select
           value={row.role}
           onChange={(e) => handleRoleChange(row.id, e.target.value as UserRole)}
-          className="rounded-lg bg-slate-900 border border-slate-700 text-xs px-2.5 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+          className="rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-xs px-2.5 py-1 text-[var(--text-main)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-cyan)] font-mono"
         >
           <option value="VISITOR">VISITOR</option>
           <option value="PARTICIPANT">PARTICIPANT</option>
@@ -91,11 +91,11 @@ export const AdminUsersPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div>
-        <div className="inline-flex items-center gap-2 text-xs font-semibold text-rose-400 uppercase tracking-wider">
-          <Users className="w-3.5 h-3.5" /> Identity & Access Governance
+        <div className="inline-flex items-center gap-2 text-xs font-bold text-[var(--accent-red)] uppercase tracking-wider font-mono">
+          <Users className="w-3.5 h-3.5 text-[var(--accent-red)]" /> Identity & Access Governance
         </div>
-        <h1 className="text-3xl font-extrabold text-white mt-1">User Directory & Roles</h1>
-        <p className="text-xs text-slate-400">
+        <h1 className="text-3xl font-black text-[var(--text-main)] font-mono mt-1">User Directory & Roles</h1>
+        <p className="text-xs text-[var(--text-muted)] font-sans">
           Manage system privileges and promote users to Judges, Organizers, or System Administrators
         </p>
       </div>
@@ -105,7 +105,7 @@ export const AdminUsersPage: React.FC = () => {
       ) : error ? (
         <ErrorState message={error} onRetry={fetchUsers} fullScreen />
       ) : (
-        <Card className="p-0 overflow-hidden">
+        <Card className="p-0 overflow-hidden theme-card">
           <Table columns={columns} data={users} keyExtractor={(u) => u.id} />
         </Card>
       )}

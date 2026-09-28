@@ -48,14 +48,18 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <Card className="p-8 shadow-2xl border-slate-800 bg-slate-900/80">
-      <div className="text-center space-y-1 mb-6">
-        <h2 className="text-2xl font-bold text-white">Create an Account</h2>
-        <p className="text-xs text-slate-400">Join the hackathon community as a builder or evaluator</p>
+    <Card className="p-8 shadow-2xl theme-card rounded-2xl backdrop-blur-xl relative z-10 border border-[var(--border-color)] bg-[var(--bg-surface)]">
+      <div className="text-center space-y-1.5 mb-6">
+        <h2 className="text-2xl font-black tracking-tight text-[var(--text-main)] font-mono">
+          Create an Account
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] font-sans">
+          Join the hackathon community as a builder or evaluator
+        </p>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs">
+        <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-[var(--accent-red)] text-xs font-mono">
           {error}
         </div>
       )}
@@ -66,7 +70,7 @@ export const RegisterPage: React.FC = () => {
           placeholder="Ada Lovelace"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          leftIcon={<User className="w-4 h-4" />}
+          leftIcon={<User className="w-4 h-4 text-[var(--accent-cyan)]" />}
           required
         />
 
@@ -75,7 +79,7 @@ export const RegisterPage: React.FC = () => {
           placeholder="adalovelace"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          leftIcon={<AtSign className="w-4 h-4" />}
+          leftIcon={<AtSign className="w-4 h-4 text-[var(--accent-cyan)]" />}
           required
         />
 
@@ -85,7 +89,7 @@ export const RegisterPage: React.FC = () => {
           placeholder="ada@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          leftIcon={<Mail className="w-4 h-4" />}
+          leftIcon={<Mail className="w-4 h-4 text-[var(--accent-cyan)]" />}
           required
         />
 
@@ -95,7 +99,7 @@ export const RegisterPage: React.FC = () => {
           placeholder="••••••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          leftIcon={<Lock className="w-4 h-4" />}
+          leftIcon={<Lock className="w-4 h-4 text-[var(--accent-cyan)]" />}
           required
         />
 
@@ -116,9 +120,9 @@ export const RegisterPage: React.FC = () => {
         </Button>
       </form>
 
-      <div className="mt-6 text-center text-xs text-slate-400">
+      <div className="mt-6 text-center text-xs text-[var(--text-muted)]">
         Already have an account?{' '}
-        <Link to="/login" className="font-semibold text-emerald-400 hover:text-emerald-300">
+        <Link to="/login" className="font-semibold text-[var(--accent-cyan)] hover:underline font-mono">
           Sign In
         </Link>
       </div>

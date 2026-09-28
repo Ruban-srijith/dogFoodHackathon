@@ -82,6 +82,21 @@
   --shadow-extrusion: 4px 4px 0px #ffffff, 8px 8px 0px #333333;
 }
 
+[data-theme="royal"] {
+  --bg-primary: #070b16;
+  --bg-surface: rgba(13, 20, 38, 0.92);
+  --bg-card: rgba(17, 26, 48, 0.85);
+  --border-color: rgba(255, 215, 0, 0.35);
+  --border-hover: rgba(255, 215, 0, 0.85);
+  --text-main: #fffdfa;
+  --text-muted: #c5a880;
+  --accent-red: #e11d48;
+  --accent-cyan: #ffd700;
+  --accent-green: #10b981;
+  --grid-line: rgba(255, 215, 0, 0.09);
+  --shadow-extrusion: 4px 4px 0px #ffd700, 8px 8px 0px #0d1426;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -117,7 +132,7 @@
   border-radius: 9999px;
 }
 
-/* Extruded 3D Master Typography (From Screenshot) */
+/* Extruded 3D Master Typography */
 .extruded-hero-title {
   font-family: 'Outfit', sans-serif;
   font-weight: 900;
@@ -162,7 +177,7 @@
   background-size: 32px 32px;
 }
 
-/* Brutalist Border Panels */
+/* Brutalist & Royal Border Panels */
 .theme-card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -173,3 +188,29 @@
   border-color: var(--border-hover);
   box-shadow: 0 10px 30px -10px var(--border-color);
 }
+
+/* Royal Gold Filigree Shimmer */
+@keyframes royal-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.royal-gold-gradient-text {
+  background: linear-gradient(135deg, #fff7ad 0%, #ffd700 25%, #ffae00 50%, #ffd700 75%, #fff7ad 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: royal-shimmer 6s linear infinite;
+}
+
+.royal-card-glow {
+  position: relative;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.15), inset 0 0 15px rgba(255, 215, 0, 0.05);
+}
+
+.royal-card-glow:hover {
+  border-color: #ffd700;
+  box-shadow: 0 0 35px rgba(255, 215, 0, 0.35), inset 0 0 25px rgba(255, 215, 0, 0.1);
+}
+

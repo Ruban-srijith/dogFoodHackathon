@@ -20,21 +20,21 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#080c14] disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98] cursor-pointer';
+  const baseClasses = 'inline-flex items-center justify-center font-bold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)] disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98] cursor-pointer font-mono';
 
   const sizeClasses = {
     sm: 'text-xs px-3 py-1.5 gap-1.5',
     md: 'text-sm px-4 py-2.5 gap-2',
-    lg: 'text-base px-6 py-3.5 gap-2.5 font-semibold',
+    lg: 'text-base px-6 py-3.5 gap-2.5 font-bold',
   }[size];
 
   const variantClasses = {
-    primary: 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/35 focus:ring-emerald-400',
-    secondary: 'bg-slate-800/80 hover:bg-slate-700/90 text-slate-100 border border-slate-700/80 hover:border-slate-600 focus:ring-slate-400 shadow-sm',
-    outline: 'border border-slate-700/90 hover:border-slate-500 bg-transparent text-slate-200 hover:bg-slate-800/60 focus:ring-slate-400',
-    danger: 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20 focus:ring-rose-400',
-    ghost: 'bg-transparent hover:bg-slate-800/60 text-slate-300 hover:text-slate-100 focus:ring-slate-500',
-    glow: 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:brightness-110 focus:ring-cyan-400',
+    primary: 'bg-[var(--accent-cyan)] text-[var(--bg-primary)] hover:brightness-110 font-bold shadow-lg border border-[var(--border-hover)]',
+    secondary: 'bg-[var(--bg-card)] text-[var(--text-main)] border border-[var(--border-color)] hover:border-[var(--border-hover)] hover:bg-[var(--bg-surface)] shadow-sm',
+    outline: 'border border-[var(--border-color)] hover:border-[var(--border-hover)] bg-transparent text-[var(--text-main)] hover:bg-[var(--bg-card)]',
+    danger: 'bg-[var(--accent-red)] text-white font-bold shadow-lg border border-red-400/30',
+    ghost: 'bg-transparent hover:bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)]',
+    glow: 'bg-[var(--accent-red)] text-white font-black uppercase tracking-wider shadow-lg border border-[var(--border-hover)] hover:scale-105 transition-transform',
   }[variant];
 
   return (

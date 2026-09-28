@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-export type ThemeMode = 'telemetry' | 'swiss' | 'matrix' | 'obsidian' | 'monochrome';
+export type ThemeMode = 'telemetry' | 'swiss' | 'matrix' | 'obsidian' | 'monochrome' | 'royal';
 
 export interface ThemeContextType {
   theme: ThemeMode;
@@ -14,9 +14,9 @@ const THEME_STORAGE_KEY = 'dogfood_theme_mode';
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode;
-    return saved && ['telemetry', 'swiss', 'matrix', 'obsidian', 'monochrome'].includes(saved)
+    return saved && ['telemetry', 'swiss', 'matrix', 'obsidian', 'monochrome', 'royal'].includes(saved)
       ? saved
-      : 'telemetry'; // Default to the exact Telemetry CRT theme from screenshot!
+      : 'telemetry'; // Default to Telemetry CRT theme!
   });
 
   const setTheme = (newTheme: ThemeMode) => {

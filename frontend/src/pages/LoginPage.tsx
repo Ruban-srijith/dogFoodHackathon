@@ -55,14 +55,18 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <Card className="p-8 shadow-2xl border-slate-800 bg-slate-900/80">
-      <div className="text-center space-y-1 mb-6">
-        <h2 className="text-2xl font-bold text-white">Sign In to DOGFOOD</h2>
-        <p className="text-xs text-slate-400">Access your hackathon dashboard and assigned submissions</p>
+    <Card className="p-8 shadow-2xl theme-card rounded-2xl backdrop-blur-xl relative z-10 border border-[var(--border-color)] bg-[var(--bg-surface)]">
+      <div className="text-center space-y-1.5 mb-6">
+        <h2 className="text-2xl font-black tracking-tight text-[var(--text-main)] font-mono">
+          Sign In to DOG<span className="text-[var(--accent-red)]">FOOD</span>
+        </h2>
+        <p className="text-xs text-[var(--text-muted)] font-sans">
+          Access your hackathon dashboard and assigned submissions
+        </p>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs">
+        <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-[var(--accent-red)] text-xs font-mono">
           {error}
         </div>
       )}
@@ -74,7 +78,7 @@ export const LoginPage: React.FC = () => {
           placeholder="developer@dogfood.local"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          leftIcon={<Mail className="w-4 h-4" />}
+          leftIcon={<Mail className="w-4 h-4 text-[var(--accent-cyan)]" />}
           required
         />
 
@@ -84,7 +88,7 @@ export const LoginPage: React.FC = () => {
           placeholder="••••••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          leftIcon={<Lock className="w-4 h-4" />}
+          leftIcon={<Lock className="w-4 h-4 text-[var(--accent-cyan)]" />}
           required
         />
 
@@ -94,50 +98,50 @@ export const LoginPage: React.FC = () => {
       </form>
 
       {/* Demo Credentials Quick-Fill for instant judging/testing exploration */}
-      <div className="mt-6 pt-6 border-t border-slate-800/80">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+      <div className="mt-6 pt-6 border-t border-[var(--border-color)]">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3 font-mono">
+          <Sparkles className="w-3.5 h-3.5 text-[var(--accent-cyan)] animate-pulse" />
           <span>Demo Quick Login</span>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <button
             type="button"
             onClick={() => handleQuickLogin('admin@dogfood.local', 'DogfoodAdmin123!')}
-            className="p-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 text-left transition"
+            className="p-3 rounded-xl bg-[var(--bg-card)] hover:border-[var(--border-hover)] border border-[var(--border-color)] text-left transition hover:scale-[1.02]"
           >
-            <span className="font-semibold text-rose-400 block">Admin</span>
-            <span className="text-[10px] text-slate-400 truncate block">admin@dogfood.local</span>
+            <span className="font-bold text-[var(--accent-red)] block font-mono">Admin</span>
+            <span className="text-[10px] text-[var(--text-muted)] truncate block font-mono">admin@dogfood.local</span>
           </button>
           <button
             type="button"
             onClick={() => handleQuickLogin('organizer@dogfood.local', 'DogfoodOrg123!')}
-            className="p-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 text-left transition"
+            className="p-3 rounded-xl bg-[var(--bg-card)] hover:border-[var(--border-hover)] border border-[var(--border-color)] text-left transition hover:scale-[1.02]"
           >
-            <span className="font-semibold text-indigo-400 block">Organizer</span>
-            <span className="text-[10px] text-slate-400 truncate block">organizer@dogfood.local</span>
+            <span className="font-bold text-[var(--accent-cyan)] block font-mono">Organizer</span>
+            <span className="text-[10px] text-[var(--text-muted)] truncate block font-mono">organizer@dogfood.local</span>
           </button>
           <button
             type="button"
             onClick={() => handleQuickLogin('judge1@dogfood.local', 'DogfoodJudge123!')}
-            className="p-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 text-left transition"
+            className="p-3 rounded-xl bg-[var(--bg-card)] hover:border-[var(--border-hover)] border border-[var(--border-color)] text-left transition hover:scale-[1.02]"
           >
-            <span className="font-semibold text-amber-400 block">Judge 1</span>
-            <span className="text-[10px] text-slate-400 truncate block">judge1@dogfood.local</span>
+            <span className="font-bold text-[var(--accent-green)] block font-mono">Judge 1</span>
+            <span className="text-[10px] text-[var(--text-muted)] truncate block font-mono">judge1@dogfood.local</span>
           </button>
           <button
             type="button"
             onClick={() => handleQuickLogin('alice@dogfood.local', 'DogfoodUser123!')}
-            className="p-2 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/60 text-slate-300 text-left transition"
+            className="p-3 rounded-xl bg-[var(--bg-card)] hover:border-[var(--border-hover)] border border-[var(--border-color)] text-left transition hover:scale-[1.02]"
           >
-            <span className="font-semibold text-sky-400 block">Participant</span>
-            <span className="text-[10px] text-slate-400 truncate block">alice@dogfood.local</span>
+            <span className="font-bold text-[var(--text-main)] block font-mono">Participant</span>
+            <span className="text-[10px] text-[var(--text-muted)] truncate block font-mono">alice@dogfood.local</span>
           </button>
         </div>
       </div>
 
-      <div className="mt-6 text-center text-xs text-slate-400">
+      <div className="mt-6 text-center text-xs text-[var(--text-muted)]">
         Don&apos;t have an account?{' '}
-        <Link to="/register" className="font-semibold text-emerald-400 hover:text-emerald-300">
+        <Link to="/register" className="font-semibold text-[var(--accent-cyan)] hover:underline font-mono">
           Create one now
         </Link>
       </div>
