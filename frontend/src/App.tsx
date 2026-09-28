@@ -33,7 +33,10 @@ import {
   Award,
   ArrowUp,
   ArrowDown,
-  Minus
+  Minus,
+  Download,
+  FileSpreadsheet,
+  CheckCheck
 } from 'lucide-react';
 
 interface HealthResponse {
@@ -189,6 +192,38 @@ interface Project {
   event_id?: { _id: string; title: string; submission_deadline: string };
 }
 
+interface JudgeProgressProject {
+  submission_id: string;
+  title: string;
+  team_name: string;
+  status: string;
+  score: number | null;
+}
+
+interface JudgeProgressItem {
+  judge_id: string;
+  username: string;
+  full_name: string;
+  email: string;
+  assigned: number;
+  scored: number;
+  pending: number;
+  drafts: number;
+  progress_percent: number;
+  average_score: number | null;
+  status: 'completed' | 'in_progress' | 'pending' | 'unassigned';
+  assigned_projects: JudgeProgressProject[];
+}
+
+interface JudgeProgressSummary {
+  total_judges: number;
+  total_assignments: number;
+  total_scored: number;
+  total_pending: number;
+  total_drafts: number;
+  overall_completion_rate: number;
+}
+
 export const App: React.FC = () => {
   // Navigation
   const [activeTab, setActiveTab] = useState<'gallery' | 'teams' | 'submit' | 'judging' | 'organizer' | 'leaderboard' | 'health'>('gallery');
@@ -282,6 +317,14 @@ export const App: React.FC = () => {
   const [judgeComment, setJudgeComment] = useState('');
   const [currentScoreRecord, setCurrentScoreRecord] = useState<EvaluationScoreData | null>(null);
   const [crossJudgeIsolationResult, setCrossJudgeIsolationResult] = useState<any>(null);
+
+  // T5 Judge Progress & CSV Export States
+  const [judgeProgressData, setJudgeProgressData] = useState<{
+    summary: JudgeProgressSummary;
+    judges: JudgeProgressItem[];
+  } | null>(null);
+  const [exportingResource, setExportingResource] = useState<string | null>(null);
+  const [selectedJudgeDetails, setSelectedJudgeDetails] = useState<string | null>(null);
 
   // Form States: Organizer Event Creation
   const [evTitle, setEvTitle] = useState('');
@@ -447,10 +490,11 @@ export const App: React.FC = () => {
 
     try {
       if (authUser?.role === 'ORGANIZER' || authUser?.role === 'ADMIN') {
-        const [invRes, jRes, asgnRes] = await Promise.all([
+        const [invRes, jRes, asgnRes, progRes] = await Promise.all([
           fetch(`${base}/api/judges/invites`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
           fetch(`${base}/api/judges`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
-          fetch(`${base}/api/judges/assignments`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+          fetch(`${base}/api/judges/assignments`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch(`${base}/api/organizer/judges/progress`, { headers: { 'Authorization': `Bearer ${authToken}` } })
         ]);
         if (invRes.ok) {
           const invData = await invRes.json();
@@ -466,6 +510,10 @@ export const App: React.FC = () => {
         if (asgnRes.ok) {
           const asgnData = await asgnRes.json();
           setAllAssignments(asgnData.assignments || []);
+        }
+        if (progRes.ok) {
+          const progData = await progRes.json();
+          setJudgeProgressData(progData);
         }
       }
 
@@ -487,6 +535,45 @@ export const App: React.FC = () => {
       console.error('Failed to fetch judging data:', err);
     }
   }, [authToken, authUser?.role, manualJudgeId]);
+
+  // Handle CSV Download
+  const handleDownloadCsv = async (resourceKey: string, resourceLabel: string) => {
+    if (!authToken) {
+      notify('Please log in as an Organizer or Admin to download CSV data.', 'error');
+      return;
+    }
+    setExportingResource(resourceKey);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/export/${resourceKey}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (!res.ok) {
+        let errMessage = 'Export failed';
+        try {
+          const errData = await res.json();
+          errMessage = errData.message || errMessage;
+        } catch {
+          errMessage = `Server returned status ${res.status}`;
+        }
+        throw new Error(errMessage);
+      }
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${resourceKey}_export.csv`;
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(link);
+      notify(`Downloaded ${resourceLabel} CSV successfully!`, 'success');
+    } catch (err: any) {
+      notify(`Export failed: ${err.message}`, 'error');
+    } finally {
+      setExportingResource(null);
+    }
+  };
 
   // T2 Handlers: Invite Judge
   const handleInviteJudge = async (e: React.FormEvent) => {
@@ -2613,6 +2700,363 @@ export const App: React.FC = () => {
                   </table>
                 </div>
               )}
+            </div>
+
+            {/* JUDGE PROGRESS DASHBOARD FOR ORGANIZERS */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6 backdrop-blur-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-emerald-400" />
+                    <span>Judge Progress Dashboard</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Real-time monitoring per judge: total projects assigned, completed evaluations, and pending workloads.
+                  </p>
+                </div>
+                <button
+                  onClick={fetchJudgingData}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition self-start sm:self-auto flex items-center gap-1.5"
+                >
+                  <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Refresh Metrics</span>
+                </button>
+              </div>
+
+              {/* Progress Summary KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 text-center">
+                  <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Judges</div>
+                  <div className="text-xl font-bold text-white mt-1">
+                    {judgeProgressData?.summary?.total_judges ?? allJudges.length}
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Active evaluators</div>
+                </div>
+
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 text-center">
+                  <div className="text-[11px] font-medium text-purple-400 uppercase tracking-wider">Assigned</div>
+                  <div className="text-xl font-bold text-purple-300 mt-1">
+                    {judgeProgressData?.summary?.total_assignments ?? allAssignments.length}
+                  </div>
+                  <div className="text-[10px] text-purple-400/60 mt-0.5">Total reviews</div>
+                </div>
+
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 text-center">
+                  <div className="text-[11px] font-medium text-emerald-400 uppercase tracking-wider">Scored</div>
+                  <div className="text-xl font-bold text-emerald-300 mt-1">
+                    {judgeProgressData?.summary?.total_scored ?? 0}
+                  </div>
+                  <div className="text-[10px] text-emerald-400/60 mt-0.5">Submitted scores</div>
+                </div>
+
+                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 text-center">
+                  <div className="text-[11px] font-medium text-amber-400 uppercase tracking-wider">Pending</div>
+                  <div className="text-xl font-bold text-amber-300 mt-1">
+                    {judgeProgressData?.summary?.total_pending ?? 0}
+                  </div>
+                  <div className="text-[10px] text-amber-400/60 mt-0.5">Awaiting review</div>
+                </div>
+
+                <div className="col-span-2 sm:col-span-1 bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 text-center">
+                  <div className="text-[11px] font-medium text-cyan-400 uppercase tracking-wider">Completion</div>
+                  <div className="text-xl font-bold text-cyan-300 mt-1">
+                    {judgeProgressData?.summary?.overall_completion_rate ?? 0}%
+                  </div>
+                  <div className="text-[10px] text-cyan-400/60 mt-0.5">Event progress</div>
+                </div>
+              </div>
+
+              {/* Overall Progress Bar */}
+              <div className="space-y-1.5 bg-slate-950/40 border border-slate-800/80 rounded-xl p-4">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                    <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    Overall Judging Completion Rate
+                  </span>
+                  <span className="font-mono font-bold text-white">
+                    {judgeProgressData?.summary?.total_scored ?? 0} / {judgeProgressData?.summary?.total_assignments ?? 0} scored ({judgeProgressData?.summary?.overall_completion_rate ?? 0}%)
+                  </span>
+                </div>
+                <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, judgeProgressData?.summary?.overall_completion_rate ?? 0)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Per Judge Detailed Cards */}
+              <div className="space-y-3">
+                <div className="text-xs font-semibold text-slate-300">Individual Judge Evaluation Workloads</div>
+                {(!judgeProgressData || judgeProgressData.judges.length === 0) ? (
+                  <p className="text-xs text-slate-500 italic py-3 text-center">No judge progress data available yet.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {judgeProgressData.judges.map((j) => (
+                      <div 
+                        key={j.judge_id}
+                        className="bg-slate-950/70 border border-slate-800 hover:border-slate-700 rounded-xl p-4 space-y-3 transition"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-semibold text-white text-xs">{j.full_name}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">@{j.username}</div>
+                            <div className="text-[10px] text-slate-500 truncate max-w-[180px]">{j.email}</div>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                            j.status === 'completed'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                              : j.status === 'in_progress'
+                              ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                              : j.status === 'pending'
+                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                          }`}>
+                            {j.status === 'completed' ? '✓ Completed' : j.status === 'in_progress' ? '⚡ In Progress' : j.status === 'pending' ? '⏳ Pending' : '— Unassigned'}
+                          </span>
+                        </div>
+
+                        {/* Counts Pill Grid */}
+                        <div className="grid grid-cols-3 gap-2 bg-slate-900/60 rounded-lg p-2 text-center text-[11px]">
+                          <div>
+                            <div className="text-slate-400 text-[10px]">Assigned</div>
+                            <div className="font-bold text-white mt-0.5">{j.assigned}</div>
+                          </div>
+                          <div>
+                            <div className="text-emerald-400 text-[10px]">Scored</div>
+                            <div className="font-bold text-emerald-300 mt-0.5">{j.scored}</div>
+                          </div>
+                          <div>
+                            <div className="text-amber-400 text-[10px]">Pending</div>
+                            <div className="font-bold text-amber-300 mt-0.5">{j.pending}</div>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] text-slate-400">
+                            <span>Progress</span>
+                            <span className="font-mono font-medium text-slate-300">{j.progress_percent}%</span>
+                          </div>
+                          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                j.progress_percent === 100 ? 'bg-emerald-400' : 'bg-purple-500'
+                              }`}
+                              style={{ width: `${j.progress_percent}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Assigned Projects List Toggle */}
+                        {j.assigned_projects && j.assigned_projects.length > 0 && (
+                          <div className="pt-2 border-t border-slate-800/80">
+                            <button
+                              onClick={() => setSelectedJudgeDetails(selectedJudgeDetails === j.judge_id ? null : j.judge_id)}
+                              className="text-[11px] text-purple-400 hover:text-purple-300 transition flex items-center justify-between w-full"
+                            >
+                              <span>{selectedJudgeDetails === j.judge_id ? 'Hide Assigned Projects' : `View Assigned Projects (${j.assigned_projects.length})`}</span>
+                              <span>{selectedJudgeDetails === j.judge_id ? '▲' : '▼'}</span>
+                            </button>
+
+                            {selectedJudgeDetails === j.judge_id && (
+                              <div className="mt-2 space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                                {j.assigned_projects.map((proj, pIdx) => (
+                                  <div key={pIdx} className="bg-slate-900/90 rounded p-1.5 text-[10px] flex items-center justify-between">
+                                    <div className="truncate max-w-[150px]">
+                                      <div className="text-slate-200 font-medium truncate">{proj.title}</div>
+                                      <div className="text-slate-500 text-[9px] truncate">{proj.team_name}</div>
+                                    </div>
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono ${
+                                      proj.status === 'scored'
+                                        ? 'bg-emerald-500/20 text-emerald-300'
+                                        : proj.status === 'draft'
+                                        ? 'bg-amber-500/20 text-amber-300'
+                                        : 'bg-slate-800 text-slate-400'
+                                    }`}>
+                                      {proj.status === 'scored' ? `Score: ${proj.score}` : proj.status}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* CSV EXPORT CENTER */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6 backdrop-blur-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <FileSpreadsheet className="w-5 h-5 text-cyan-400" />
+                    <span>CSV Export Center</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Official, audit-ready data exports with RFC-4180 compliance. Strictly restricted to Organizers and Platform Admins.
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Admin & Organizer Only</span>
+                </div>
+              </div>
+
+              {/* 7 Export Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* 1. Participants */}
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">Participants</span>
+                      <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded">users</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      User IDs, usernames, full names, emails, roles, team associations, and registration dates.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadCsv('participants', 'Participants')}
+                    disabled={exportingResource === 'participants'}
+                    className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>{exportingResource === 'participants' ? 'Exporting...' : 'Export Participants CSV'}</span>
+                  </button>
+                </div>
+
+                {/* 2. Teams */}
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">Teams</span>
+                      <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">rosters</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Team names, slugs, leader usernames & emails, member counts, full rosters, and invite codes.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadCsv('teams', 'Teams')}
+                    disabled={exportingResource === 'teams'}
+                    className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5 text-purple-400" />
+                    <span>{exportingResource === 'teams' ? 'Exporting...' : 'Export Teams CSV'}</span>
+                  </button>
+                </div>
+
+                {/* 3. Submissions */}
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">Submissions</span>
+                      <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">projects</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Project titles, taglines, teams, tracks, submission statuses, git repos, demo links, and tech stacks.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadCsv('submissions', 'Submissions')}
+                    disabled={exportingResource === 'submissions'}
+                    className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{exportingResource === 'submissions' ? 'Exporting...' : 'Export Submissions CSV'}</span>
+                  </button>
+                </div>
+
+                {/* 4. Assignments */}
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">Judge Assignments</span>
+                      <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">mappings</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Judge-to-project pairings, assignment statuses, scoring progress, and timestamps.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadCsv('assignments', 'Assignments')}
+                    disabled={exportingResource === 'assignments'}
+                    className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{exportingResource === 'assignments' ? 'Exporting...' : 'Export Assignments CSV'}</span>
+                  </button>
+                </div>
+
+                {/* 5. Raw Scores */}
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">Raw Scores</span>
+                      <span className="text-[10px] font-mono text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded">evaluations</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Uncalibrated criteria scores, weighted totals, judge feedback comments, and criteria breakdowns.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadCsv('raw_scores', 'Raw Scores')}
+                    disabled={exportingResource === 'raw_scores'}
+                    className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5 text-rose-400" />
+                    <span>{exportingResource === 'raw_scores' ? 'Exporting...' : 'Export Raw Scores CSV'}</span>
+                  </button>
+                </div>
+
+                {/* 6. Normalized Scores */}
+                <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">Normalized Scores</span>
+                      <span className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">z-scores</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Per-judge mean, standard deviation, individual standardized z-scores, and 0–100 cohort rescalings.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadCsv('normalized_scores', 'Normalized Scores')}
+                    disabled={exportingResource === 'normalized_scores'}
+                    className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>{exportingResource === 'normalized_scores' ? 'Exporting...' : 'Export Normalized Scores CSV'}</span>
+                  </button>
+                </div>
+
+                {/* 7. Final Results */}
+                <div className="col-span-1 md:col-span-2 lg:col-span-3 bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-emerald-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-bold text-white">Final Leaderboard & Results</span>
+                      <span className="text-[10px] font-mono text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded">official</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      Comprehensive final standings: Normalized Rank, Raw Rank, Rank Shift (Δ), Normalized Score (0–100), Raw Average Score, Judge Count, and Links.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDownloadCsv('final_results', 'Final Results')}
+                    disabled={exportingResource === 'final_results'}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition flex items-center justify-center gap-2 flex-shrink-0 shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4 text-slate-950" />
+                    <span>{exportingResource === 'final_results' ? 'Exporting...' : 'Export Final Results CSV'}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

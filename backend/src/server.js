@@ -1741,6 +1741,125 @@ app.delete('/api/judges/assignments/:id', authenticate, requireRole('organizer',
   }
 });
 
+// --- F. JUDGE PROGRESS DASHBOARD & CSV EXPORTS ---
+const {
+  getJudgeProgress,
+  exportParticipants,
+  exportTeams,
+  exportSubmissions,
+  exportAssignments,
+  exportRawScores,
+  exportNormalizedScores,
+  exportFinalResults
+} = require('./export');
+
+// GET /api/organizer/judges/progress (also /api/v1/organizer/judges/progress, /api/judges/progress)
+const handleGetJudgeProgress = async (req, res) => {
+  try {
+    const { event_id } = req.query;
+    const progress = await getJudgeProgress(event_id);
+    return res.status(200).json({ success: true, ...progress, data: progress });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+
+app.get('/api/organizer/judges/progress', authenticate, requireRole('organizer', 'admin'), handleGetJudgeProgress);
+app.get('/api/v1/organizer/judges/progress', authenticate, requireRole('organizer', 'admin'), handleGetJudgeProgress);
+app.get('/api/judges/progress', authenticate, requireRole('organizer', 'admin'), handleGetJudgeProgress);
+
+// CSV Export Handler: Only organizer/admin can export
+const handleExportCsv = async (req, res) => {
+  try {
+    const rawType = req.params.resource || req.query.type || req.query.resource;
+    if (!rawType) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Export resource type is required. Valid types: participants, teams, submissions, assignments, raw_scores, normalized_scores, final_results.'
+      });
+    }
+
+    const type = rawType.toLowerCase().replace(/-/g, '_').trim();
+    const eventId = req.query.event_id || null;
+
+    let csvData = null;
+    let filename = `${type}_export.csv`;
+
+    switch (type) {
+      case 'participants':
+      case 'participant':
+      case 'users':
+        csvData = await exportParticipants(eventId);
+        filename = 'participants_export.csv';
+        break;
+
+      case 'teams':
+      case 'team':
+        csvData = await exportTeams(eventId);
+        filename = 'teams_export.csv';
+        break;
+
+      case 'submissions':
+      case 'submission':
+      case 'projects':
+      case 'project':
+        csvData = await exportSubmissions(eventId);
+        filename = 'submissions_export.csv';
+        break;
+
+      case 'assignments':
+      case 'assignment':
+      case 'judge_assignments':
+        csvData = await exportAssignments(eventId);
+        filename = 'assignments_export.csv';
+        break;
+
+      case 'raw_scores':
+      case 'raw_score':
+      case 'scores':
+      case 'score':
+      case 'evaluations':
+        csvData = await exportRawScores(eventId);
+        filename = 'raw_scores_export.csv';
+        break;
+
+      case 'normalized_scores':
+      case 'normalized_score':
+      case 'normalized':
+        csvData = await exportNormalizedScores(eventId);
+        filename = 'normalized_scores_export.csv';
+        break;
+
+      case 'final_results':
+      case 'results':
+      case 'result':
+      case 'leaderboard':
+      case 'final':
+        csvData = await exportFinalResults(eventId);
+        filename = 'final_results_export.csv';
+        break;
+
+      default:
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: `Unknown export resource '${rawType}'. Supported types: participants, teams, submissions, assignments, raw_scores, normalized_scores, final_results.`
+        });
+    }
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.status(200).send(csvData);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+
+app.get('/api/export/:resource', authenticate, requireRole('organizer', 'admin'), handleExportCsv);
+app.get('/api/v1/export/:resource', authenticate, requireRole('organizer', 'admin'), handleExportCsv);
+app.get('/api/organizer/export/:resource', authenticate, requireRole('organizer', 'admin'), handleExportCsv);
+app.get('/api/export', authenticate, requireRole('organizer', 'admin'), handleExportCsv);
+
+
 // Compatibility aliases for acceptance test runners
 app.get('/api/v1/events', async (req, res) => {
   try {
