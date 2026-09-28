@@ -86,6 +86,7 @@ export const OrganizerEventsPage: React.FC = () => {
     {
       header: 'Title & Slug',
       accessor: 'title',
+      align: 'left',
       render: (row) => (
         <div>
           <span className="font-bold text-white block">{row.title}</span>
@@ -96,23 +97,26 @@ export const OrganizerEventsPage: React.FC = () => {
     {
       header: 'Status',
       accessor: 'status',
+      align: 'center',
       render: (row) => <StatusBadge status={row.status} />,
     },
     {
       header: 'Start – End Dates',
+      align: 'center',
       render: (row) => (
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-slate-400 font-mono">
           {formatDate(row.start_date)} – {formatDate(row.end_date)}
         </span>
       ),
     },
     {
       header: 'Transition State',
+      align: 'right',
       render: (row) => (
         <select
           value={row.status}
           onChange={(e) => handleStatusChange(row.id, e.target.value as EventStatus)}
-          className="rounded-lg bg-slate-900 border border-slate-700 text-xs px-2.5 py-1 text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+          className="rounded-lg bg-slate-900 border border-slate-700 text-xs px-2.5 py-1.5 text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-400 cursor-pointer transition hover:border-emerald-500/50"
         >
           <option value="draft">Draft</option>
           <option value="published">Published</option>
@@ -122,7 +126,7 @@ export const OrganizerEventsPage: React.FC = () => {
           <option value="closed">Closed</option>
         </select>
       ),
-      className: 'w-40',
+      className: 'w-48',
     },
   ];
 
@@ -155,7 +159,7 @@ export const OrganizerEventsPage: React.FC = () => {
         <ErrorState message={error} onRetry={fetchEvents} fullScreen />
       ) : (
         <Card className="p-0 overflow-hidden">
-          <Table columns={columns} data={events} keyExtractor={(e) => e.id} />
+          <Table borderless columns={columns} data={events} keyExtractor={(e) => e.id} />
         </Card>
       )}
 

@@ -47,6 +47,7 @@ export const AdminAuditPage: React.FC = () => {
   const columns: Column<AuditLog>[] = [
     {
       header: 'Timestamp',
+      align: 'left',
       render: (row) => (
         <span className="font-mono text-xs text-slate-400">
           {formatDateTime(row.created_at)}
@@ -57,6 +58,7 @@ export const AdminAuditPage: React.FC = () => {
     {
       header: 'Action',
       accessor: 'action',
+      align: 'center',
       render: (row) => (
         <Badge variant={getActionBadgeVariant(row.action)} size="sm">
           {row.action}
@@ -65,6 +67,7 @@ export const AdminAuditPage: React.FC = () => {
     },
     {
       header: 'Actor',
+      align: 'left',
       render: (row) => (
         <div>
           <span className="font-semibold text-slate-200 block text-xs">
@@ -76,6 +79,7 @@ export const AdminAuditPage: React.FC = () => {
     },
     {
       header: 'Entity',
+      align: 'left',
       render: (row) => (
         <span className="font-mono text-xs text-sky-400">
           {row.entity_type} {row.entity_id ? `(${row.entity_id.slice(0, 8)}...)` : ''}
@@ -84,6 +88,7 @@ export const AdminAuditPage: React.FC = () => {
     },
     {
       header: 'Audit Metadata (JSON)',
+      align: 'left',
       render: (row) => (
         <pre className="text-[10px] font-mono text-slate-400 max-w-xs truncate bg-slate-950/60 p-1.5 rounded border border-slate-800">
           {JSON.stringify(row.details || {})}
@@ -116,7 +121,7 @@ export const AdminAuditPage: React.FC = () => {
         <ErrorState message={error} onRetry={() => fetchLogs(page)} fullScreen />
       ) : (
         <Card className="p-0 overflow-hidden">
-          <Table columns={columns} data={logs} keyExtractor={(l) => l.id} />
+          <Table borderless columns={columns} data={logs} keyExtractor={(l) => l.id} />
           <div className="px-5">
             <Pagination
               currentPage={page}

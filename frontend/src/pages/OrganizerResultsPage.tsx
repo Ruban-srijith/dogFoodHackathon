@@ -57,32 +57,36 @@ export const OrganizerResultsPage: React.FC = () => {
   const columns: Column<EventResultsItem>[] = [
     {
       header: 'Rank',
+      align: 'center',
       render: (_row: EventResultsItem) => {
         const rank = results.indexOf(_row) + 1;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-1.5 font-mono">
             {rank === 1 && <Trophy className="w-4 h-4 text-amber-400" />}
             {rank === 2 && <Trophy className="w-4 h-4 text-slate-300" />}
             {rank === 3 && <Trophy className="w-4 h-4 text-amber-600" />}
-            <span className="font-mono font-bold text-slate-200">#{rank}</span>
+            <span className="font-bold text-slate-200">#{rank}</span>
           </div>
         );
       },
-      className: 'w-20',
+      className: 'w-24',
     },
     {
       header: 'Submission Title',
       accessor: 'submission_title',
+      align: 'left',
       render: (row) => <span className="font-bold text-white">{row.submission_title}</span>,
     },
     {
       header: 'Team',
       accessor: 'team_name',
+      align: 'left',
       render: (row) => <span className="text-slate-300">{row.team_name}</span>,
     },
     {
       header: 'Track',
       accessor: 'track_name',
+      align: 'center',
       render: (row) => (
         <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
           {row.track_name || 'General'}
@@ -92,8 +96,9 @@ export const OrganizerResultsPage: React.FC = () => {
     {
       header: 'Judges Evaluated',
       accessor: 'total_judges_scored',
+      align: 'center',
       render: (row) => (
-        <span className="text-slate-400 font-mono">
+        <span className="text-slate-400 font-mono text-xs">
           {row.total_judges_scored} {row.total_judges_scored === 1 ? 'judge' : 'judges'}
         </span>
       ),
@@ -101,6 +106,7 @@ export const OrganizerResultsPage: React.FC = () => {
     {
       header: 'Aggregate Weighted Score',
       accessor: 'avg_score',
+      align: 'right',
       render: (row) => (
         <span className="font-mono font-extrabold text-base text-amber-400">
           {row.avg_score} <span className="text-xs font-normal text-slate-500">pts</span>
@@ -157,6 +163,7 @@ export const OrganizerResultsPage: React.FC = () => {
       ) : (
         <Card className="p-0 overflow-hidden">
           <Table
+            borderless
             columns={columns}
             data={results}
             keyExtractor={(r) => r.submission_id}

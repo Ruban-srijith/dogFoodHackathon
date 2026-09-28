@@ -113,6 +113,7 @@ export const OrganizerJudgesPage: React.FC = () => {
     {
       header: 'Submission Title',
       accessor: 'submission_title',
+      align: 'left',
       render: (row) => (
         <div>
           <span className="font-bold text-white block">{row.submission_title}</span>
@@ -123,6 +124,7 @@ export const OrganizerJudgesPage: React.FC = () => {
     {
       header: 'Assigned Judge',
       accessor: 'judge_name',
+      align: 'left',
       render: (row) => (
         <div>
           <span className="font-semibold text-slate-200 block">{row.judge_name}</span>
@@ -133,11 +135,13 @@ export const OrganizerJudgesPage: React.FC = () => {
     {
       header: 'Evaluation Status',
       accessor: 'status',
+      align: 'center',
       render: (row) => <StatusBadge status={row.status} />,
     },
     {
       header: 'Scored Criteria',
       accessor: 'scored_criteria_count',
+      align: 'center',
       render: (row) => (
         <span className="font-mono text-xs text-emerald-400">
           {row.scored_criteria_count ?? 0} criteria scored
@@ -146,6 +150,7 @@ export const OrganizerJudgesPage: React.FC = () => {
     },
     {
       header: 'Actions',
+      align: 'right',
       render: (row) => (
         <Button
           variant="ghost"
@@ -157,7 +162,7 @@ export const OrganizerJudgesPage: React.FC = () => {
           <Trash2 className="w-4 h-4" />
         </Button>
       ),
-      className: 'w-16 text-right',
+      className: 'w-24',
     },
   ];
 
@@ -215,6 +220,7 @@ export const OrganizerJudgesPage: React.FC = () => {
       ) : (
         <Card className="p-0 overflow-hidden">
           <Table
+            borderless
             columns={columns}
             data={assignments}
             keyExtractor={(a) => a.id}

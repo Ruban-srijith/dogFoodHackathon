@@ -108,34 +108,54 @@ export const AdminUsersPage: React.FC = () => {
     {
       header: 'User',
       accessor: 'full_name',
-      render: (row) => (
-        <div>
-          <span className="font-bold text-[var(--text-main)] block font-mono">{row.full_name}</span>
-          <span className="text-xs text-[var(--text-muted)] font-mono">@{row.username}</span>
-        </div>
-      ),
+      align: 'left',
+      render: (row) => {
+        const displayName = row.full_name || row.username || 'User';
+        const initials = displayName
+          .split(' ')
+          .filter(Boolean)
+          .map((n: string) => n[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase() || 'U';
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-[var(--accent-cyan)]/15 border border-[var(--accent-cyan)]/30 flex items-center justify-center text-xs font-mono font-bold text-[var(--accent-cyan)] shrink-0 select-none">
+              {initials}
+            </div>
+            <div>
+              <span className="font-bold text-[var(--text-main)] block font-mono text-sm leading-tight">{row.full_name}</span>
+              <span className="text-xs text-[var(--text-muted)] font-mono">@{row.username}</span>
+            </div>
+          </div>
+        );
+      },
     },
     {
-      header: 'Email',
+      header: 'Email Address',
       accessor: 'email',
+      align: 'left',
       render: (row) => <span className="font-mono text-xs text-[var(--text-muted)]">{row.email}</span>,
     },
     {
       header: 'Current Role',
       accessor: 'role',
+      align: 'center',
       render: (row) => <RoleBadge role={row.role} />,
     },
     {
       header: 'Created At',
+      align: 'center',
       render: (row) => <span className="text-xs text-[var(--text-muted)] font-mono">{formatDate(row.created_at)}</span>,
     },
     {
       header: 'Change Role (Admin Control)',
+      align: 'right',
       render: (row) => (
         <select
           value={row.role}
           onChange={(e) => handleRoleChange(row.id || (row as any)._id, e.target.value as UserRole)}
-          className="rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-xs px-2.5 py-1 text-[var(--text-main)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-cyan)] font-mono cursor-pointer"
+          className="rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)] text-xs px-3 py-1.5 text-[var(--text-main)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-cyan)] font-mono cursor-pointer transition hover:border-[var(--accent-cyan)]/60"
         >
           <option value="VISITOR">VISITOR</option>
           <option value="PARTICIPANT">PARTICIPANT</option>
@@ -144,7 +164,7 @@ export const AdminUsersPage: React.FC = () => {
           <option value="ADMIN">ADMIN</option>
         </select>
       ),
-      className: 'w-48 text-right',
+      className: 'w-56',
     },
   ];
 
@@ -178,7 +198,7 @@ export const AdminUsersPage: React.FC = () => {
         <ErrorState message={error} onRetry={fetchUsers} fullScreen />
       ) : (
         <Card className="p-0 overflow-hidden theme-card">
-          <Table columns={columns} data={users} keyExtractor={(u) => u.id || (u as any)._id || u.username} />
+          <Table borderless columns={columns} data={users} keyExtractor={(u) => u.id || (u as any)._id || u.username} />
         </Card>
       )}
 
