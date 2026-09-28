@@ -102,16 +102,20 @@ app.post(['/api/auth/register', '/api/v1/auth/register'], async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
+    const userData = {
+      id: user._id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      full_name: user.full_name
+    };
+
     return res.status(201).json({
+      success: true,
       message: 'User registered successfully',
       token,
-      user: {
-        id: user._id,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-        full_name: user.full_name
-      }
+      user: userData,
+      data: { token, user: userData }
     });
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
@@ -199,9 +203,28 @@ app.post(['/api/auth/logout', '/api/v1/auth/logout'], (req, res) => {
 });
 
 // GET /api/auth/me & /api/v1/auth/me
-app.get(['/api/auth/me', '/api/v1/auth/me'], authenticate, (req, res) => {
-  return res.status(200).json({ success: true, user: req.user, data: req.user });
+app.get(['/api/auth/me', '/api/v1/auth/me'], authenticate, async (req, res) => {
+  // Build clean user data from JWT claims (strips iat/exp/etc)
+  const buildUserData = (src) => ({
+    id: src._id || src.id, email: src.email, username: src.username,
+    role: src.role, full_name: src.full_name, bio: src.bio || null,
+    avatar_url: src.avatar_url || null, created_at: src.created_at || null
+  });
+  try {
+    // Try DB refresh; fall back to JWT claims on CastError or test stubs
+    const query = User.findById(req.user.id);
+    const freshUser = typeof query?.lean === 'function' ? await query.lean() : await query;
+    const userData = freshUser ? buildUserData(freshUser) : buildUserData(req.user);
+    return res.status(200).json({ success: true, user: userData, data: userData });
+  } catch (_) {
+    // Graceful fallback: return JWT-derived fields without crashing
+    const userData = buildUserData(req.user);
+    return res.status(200).json({ success: true, user: userData, data: userData });
+  }
 });
+
+
+
 
 // ==========================================
 // 3. T1 FEATURE: ORGANIZER CREATES EVENTS
@@ -575,7 +598,11 @@ app.get(['/api/teams/event/:eventId', '/api/v1/teams/event/:eventId'], optionalA
     let targetEventId = eventId;
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       const foundEv = await Event.findOne({ slug: eventId }).lean();
-      if (foundEv) targetEventId = foundEv._id;
+      if (foundEv) {
+        targetEventId = foundEv._id;
+      } else {
+        return res.status(200).json({ success: true, data: [], teams: [] });
+      }
     }
     const teams = await Team.find({ event_id: targetEventId })
       .populate('members', 'username full_name email role')
@@ -776,8 +803,65 @@ app.put(['/api/submissions/:id', '/api/v1/submissions/:id'], authenticate, requi
   }
 });
 
+// GET /api/submissions/gallery/:eventId & /api/v1/submissions/gallery/:eventId (public – no auth required)
+const handleGetGallery = async (req, res) => {
+  try {
+    let { eventId } = req.params;
+    const filter = { status: { $ne: 'draft' } };
+
+    if (eventId && eventId !== 'all' && eventId !== 'null' && eventId !== 'undefined') {
+      if (mongoose.Types.ObjectId.isValid(eventId)) {
+        filter.event_id = eventId;
+      } else {
+        const ev = await Event.findOne({ slug: eventId }).lean();
+        if (ev) {
+          filter.event_id = ev._id;
+        } else {
+          return res.status(200).json({ success: true, data: [] });
+        }
+      }
+    }
+
+    const subs = await Submission.find(filter)
+      .populate('team_id', 'name slug')
+      .populate('track_id', 'name prize_pool description')
+      .populate('event_id', 'title slug')
+      .sort({ submitted_at: -1 })
+      .lean();
+
+    const safe = subs.map(s => {
+      let safeTeam = s.team_id;
+      if (safeTeam && safeTeam.invite_code) {
+        safeTeam = { ...safeTeam };
+        delete safeTeam.invite_code;
+      }
+      return {
+        ...s,
+        id: s._id ? s._id.toString() : s.id,
+        team_id: safeTeam,
+        team_name: safeTeam?.name || 'Independent Team',
+        track_name: s.track_id?.name || 'General Track'
+      };
+    });
+
+    return res.status(200).json({ success: true, data: safe });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+};
+
+app.get([
+  '/api/submissions/gallery/:eventId',
+  '/api/v1/submissions/gallery/:eventId',
+  '/api/submissions/gallery',
+  '/api/v1/submissions/gallery'
+], handleGetGallery);
+
 // GET /api/submissions/:id and /api/v1/submissions/:id
-app.get(['/api/submissions/:id', '/api/v1/submissions/:id'], optionalAuth, async (req, res) => {
+app.get(['/api/submissions/:id', '/api/v1/submissions/:id'], optionalAuth, async (req, res, next) => {
+  if (req.params.id === 'gallery' || req.params.id === 'event') {
+    return next();
+  }
   try {
     let submission;
     try {
@@ -2332,53 +2416,6 @@ app.get('/api/overview', async (req, res) => {
 // ===========================================================================
 
 // --- Submissions ---
-// GET /api/v1/submissions/gallery/:eventId  (public – no auth required)
-app.get(['/api/v1/submissions/gallery/:eventId', '/api/v1/submissions/gallery'], async (req, res) => {
-  try {
-    let { eventId } = req.params;
-    const filter = { status: { $ne: 'draft' } };
-
-    if (eventId && eventId !== 'all' && eventId !== 'null' && eventId !== 'undefined') {
-      if (mongoose.Types.ObjectId.isValid(eventId)) {
-        filter.event_id = eventId;
-      } else {
-        const ev = await Event.findOne({ slug: eventId }).lean();
-        if (ev) {
-          filter.event_id = ev._id;
-        } else {
-          // If no matching event found by slug or id, return empty array
-          return res.status(200).json({ success: true, data: [] });
-        }
-      }
-    }
-
-    const subs = await Submission.find(filter)
-      .populate('team_id', 'name slug')
-      .populate('track_id', 'name prize_pool description')
-      .populate('event_id', 'title slug')
-      .sort({ submitted_at: -1 })
-      .lean();
-
-    // Strip invite_code from populated teams and add id, team_name, track_name
-    const safe = subs.map(s => {
-      let safeTeam = s.team_id;
-      if (safeTeam && safeTeam.invite_code) {
-        safeTeam = { ...safeTeam };
-        delete safeTeam.invite_code;
-      }
-      return {
-        ...s,
-        id: s._id,
-        team_id: safeTeam,
-        team_name: safeTeam?.name || 'Independent Team',
-        track_name: s.track_id?.name || 'General Track'
-      };
-    });
-    return res.status(200).json({ success: true, data: safe });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
-  }
-});
 
 // PATCH /api/v1/submissions/:id  (participant)
 app.patch('/api/v1/submissions/:id', authenticate, requireRole('participant', 'admin'), async (req, res) => {

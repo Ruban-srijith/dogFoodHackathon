@@ -54,7 +54,7 @@ export const App: React.FC = () => {
                 <Route path="/teams/new" element={<ProtectedRoute><TeamCreatePage /></ProtectedRoute>} />
                 <Route path="/teams/join" element={<ProtectedRoute><TeamJoinPage /></ProtectedRoute>} />
                 <Route path="/teams/:id" element={<TeamPage />} />
-                <Route path="/submissions/new" element={<SubmissionCreatePage />} />
+                <Route path="/submissions/new" element={<ProtectedRoute allowedRoles={['PARTICIPANT', 'ADMIN']}><SubmissionCreatePage /></ProtectedRoute>} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
 
@@ -64,16 +64,16 @@ export const App: React.FC = () => {
                 <Route path="/register" element={<RegisterPage />} />
               </Route>
 
-              {/* Judge Portal */}
-              <Route path="/judge" element={<DashboardLayout portal="judge" />}>
+              {/* Judge Portal – requires JUDGE, ORGANIZER, or ADMIN */}
+              <Route path="/judge" element={<ProtectedRoute allowedRoles={['JUDGE', 'ORGANIZER', 'ADMIN']}><DashboardLayout portal="judge" /></ProtectedRoute>}>
                 <Route index element={<Navigate to="/judge/dashboard" replace />} />
                 <Route path="dashboard" element={<JudgeDashboardPage />} />
                 <Route path="submissions" element={<JudgeDashboardPage />} />
                 <Route path="submissions/:id" element={<JudgeSubmissionPage />} />
               </Route>
 
-              {/* Organizer Portal */}
-              <Route path="/organizer" element={<DashboardLayout portal="organizer" />}>
+              {/* Organizer Portal – requires ORGANIZER or ADMIN */}
+              <Route path="/organizer" element={<ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}><DashboardLayout portal="organizer" /></ProtectedRoute>}>
                 <Route index element={<Navigate to="/organizer/dashboard" replace />} />
                 <Route path="dashboard" element={<OrganizerDashboardPage />} />
                 <Route path="events" element={<OrganizerEventsPage />} />
@@ -81,8 +81,8 @@ export const App: React.FC = () => {
                 <Route path="results" element={<OrganizerResultsPage />} />
               </Route>
 
-              {/* Admin Console */}
-              <Route path="/admin" element={<DashboardLayout portal="admin" />}>
+              {/* Admin Console – requires ADMIN only */}
+              <Route path="/admin" element={<ProtectedRoute allowedRoles={['ADMIN']}><DashboardLayout portal="admin" /></ProtectedRoute>}>
                 <Route index element={<Navigate to="/admin/audit" replace />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="events" element={<OrganizerEventsPage />} />
