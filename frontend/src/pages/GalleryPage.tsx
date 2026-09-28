@@ -11,7 +11,7 @@ import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
-import { Heart, Github, ExternalLink, Trophy } from 'lucide-react';
+import { Heart, Github, ExternalLink, Trophy, Layers, ArrowRight } from 'lucide-react';
 
 export const GalleryPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -88,19 +88,24 @@ export const GalleryPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-800/80 pb-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-white">Project Showcase Gallery</h1>
+          <div className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-sky-400 uppercase tracking-wider mb-1">
+            <Layers className="w-3.5 h-3.5" />
+            <span>Public Showcase</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white">Project Gallery</h1>
           <p className="text-sm text-slate-400 mt-1">Explore, test, and vote for submitted hackathon innovations</p>
         </div>
 
         {events.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-semibold uppercase">Hackathon:</span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider font-mono">Hackathon:</span>
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="rounded-xl bg-slate-900 border border-slate-800 text-xs px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="rounded-xl bg-slate-900 border border-slate-800 text-xs px-3.5 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 font-medium cursor-pointer"
             >
               {events.map((e) => (
                 <option key={e.id} value={e.id}>
@@ -127,18 +132,18 @@ export const GalleryPage: React.FC = () => {
           {submissions.map((sub) => {
             const hasVoted = votedSubmissions[sub.id];
             return (
-              <Card key={sub.id} hover className="flex flex-col justify-between h-full p-6 space-y-4">
+              <Card key={sub.id} hover className="flex flex-col justify-between h-full p-6 space-y-4 group border-slate-800/90 hover:border-sky-500/30">
                 <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-sky-400 font-semibold px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20">
                       {sub.track_name || 'General Track'}
                     </span>
                     <button
                       onClick={() => handleVote(sub.id)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition active:scale-95 ${
                         hasVoted
-                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                          : 'bg-slate-800 text-slate-300 hover:text-rose-400 hover:bg-slate-700/60 border border-slate-700'
+                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
+                          : 'bg-slate-800/80 text-slate-300 hover:text-rose-400 hover:bg-slate-700/60 border border-slate-700/80'
                       }`}
                       title={hasVoted ? 'You voted for this project' : 'Vote for this project'}
                     >
@@ -148,11 +153,11 @@ export const GalleryPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold text-white hover:text-emerald-400 transition-colors">
+                    <h3 className="text-xl font-extrabold text-white group-hover:text-sky-400 transition-colors">
                       <Link to={`/submissions/${sub.id}`}>{sub.title}</Link>
                     </h3>
-                    <p className="text-xs text-slate-400 font-medium mt-1">by {sub.team_name}</p>
-                    <p className="text-xs text-slate-300 mt-2 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-emerald-400 font-semibold mt-1">by {sub.team_name}</p>
+                    <p className="text-xs text-slate-300 mt-2.5 line-clamp-2 leading-relaxed">
                       {sub.tagline}
                     </p>
                   </div>
@@ -162,7 +167,7 @@ export const GalleryPage: React.FC = () => {
                       {sub.tech_stack.slice(0, 4).map((tech) => (
                         <span
                           key={tech}
-                          className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/40"
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-900/90 text-slate-400 border border-slate-800"
                         >
                           {tech}
                         </span>
@@ -171,7 +176,7 @@ export const GalleryPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs">
+                <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
                   <div className="flex items-center gap-3">
                     {sub.repo_url && (
                       <a
@@ -197,7 +202,7 @@ export const GalleryPage: React.FC = () => {
                     )}
                   </div>
                   <Link to={`/submissions/${sub.id}`}>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
                       View Project
                     </Button>
                   </Link>

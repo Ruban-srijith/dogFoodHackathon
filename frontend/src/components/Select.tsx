@@ -31,13 +31,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
       <select
         ref={ref}
         id={selectId}
-        className={`w-full rounded-xl bg-slate-900/80 border text-slate-100 text-sm px-4 py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent ${
-          error ? 'border-rose-500/80' : 'border-slate-800 hover:border-slate-700'
+        className={`w-full rounded-xl bg-slate-900/90 border text-slate-100 text-sm px-4 py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-400 cursor-pointer ${
+          error ? 'border-rose-500/80' : 'border-slate-800 hover:border-slate-700/90'
         } ${className}`}
         {...props}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-slate-900 text-slate-100">
+          <option key={opt.value} value={opt.value} className="bg-slate-900 text-slate-100 py-1">
             {opt.label}
           </option>
         ))}
