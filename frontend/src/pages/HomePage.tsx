@@ -10,8 +10,11 @@ import { ErrorState } from '../components/ErrorState';
 import { WireframeCanvas } from '../components/WireframeCanvas';
 import { WaveformVisualizer } from '../components/WaveformVisualizer';
 import { CyberpunkGlitchText } from '../components/CyberpunkGlitchText';
+import { StatementSection } from '../components/StatementSection';
+import { ScrubTextSection } from '../components/ScrubTextSection';
+import { ProjectCard } from '../components/ProjectCard';
 import { formatDate, formatDaysRemaining } from '../utils/formatters';
-import { ShieldCheck, Terminal, Cpu, Activity } from 'lucide-react';
+import { ShieldCheck, Terminal, Cpu, Activity, ArrowRight } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -35,11 +38,53 @@ export const HomePage: React.FC = () => {
     fetchEvents();
   }, []);
 
+  const showcaseProjects = [
+    {
+      title: 'Unstop Flow Studio',
+      tagline: 'AI-Powered No-Code Product Development Platform compiling wireframes to production React in real time.',
+      category: 'AI & SaaS Product Innovation',
+      position: 'left' as const,
+      imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+      repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
+      demoUrl: 'https://unstop.org',
+      techStack: ['React', 'TypeScript', 'TailwindCSS', 'Node.js'],
+    },
+    {
+      title: 'Telemetry Mesh Pro',
+      tagline: 'Self-Hostable Product Analytics & Health Dashboard for microservice telemetry with zero SaaS fees.',
+      category: 'Developer Tools & Telemetry',
+      position: 'right' as const,
+      imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
+      repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
+      demoUrl: 'https://unstop.org',
+      techStack: ['TypeScript', 'Docker', 'Express', 'PostgreSQL'],
+    },
+    {
+      title: 'FinTech Checkout Core',
+      tagline: 'Friction-less merchant payment telemetry and real-time fraud prevention engine.',
+      category: 'FinTech & E-Commerce',
+      position: 'left' as const,
+      imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80',
+      repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
+      demoUrl: 'https://unstop.org',
+      techStack: ['React', 'PostgreSQL', 'Docker', 'TailwindCSS'],
+    },
+    {
+      title: 'DOGFOOD Judge Engine',
+      tagline: 'Cryptographically isolated judging queue with multi-dimensional weighted rubric evaluations.',
+      category: 'Hackathon Architecture',
+      position: 'center' as const,
+      imageUrl: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+      repoUrl: 'https://github.com/Ruban-srijith/dogFoodHackathon',
+      demoUrl: 'https://unstop.org',
+      techStack: ['TypeScript', 'Three.js', 'GSAP', 'Lenis'],
+    },
+  ];
+
   return (
     <div className="space-y-16 py-2">
-      {/* Immersive 3D Hero Section */}
+      {/* 1. HERO SECTION (Replicating Screenshot Layout Exactly) */}
       <section className="relative rounded-3xl border border-cyan-500/20 bg-[var(--bg-surface)] p-6 sm:p-12 overflow-hidden blueprint-grid-overlay shadow-2xl">
-        {/* Interactive 3D Wireframe Mesh Canvas */}
         <WireframeCanvas />
 
         <div className="relative z-10 space-y-8 max-w-6xl">
@@ -56,7 +101,7 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
 
-          {/* 3D Extruded DOGFOOD Master Title with Kinetic Glitch Effects */}
+          {/* Extruded 3D DOGFOOD Title (With Red 'F' from Screenshot!) */}
           <div className="pt-2 pb-4 select-none">
             <h1 className="text-6xl sm:text-8xl lg:text-9xl extruded-hero-title leading-none">
               DOG<span className="highlight-f">F</span>OOD
@@ -77,7 +122,7 @@ export const HomePage: React.FC = () => {
                 <p className="text-cyan-400 font-bold">FREE • $2,500 IN PRIZES</p>
               </div>
 
-              {/* Real-time Telemetry Waveform Visualizer Graphic */}
+              {/* Telemetry Waveform Visualizer */}
               <div className="pt-1">
                 <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 uppercase tracking-widest mb-1">
                   <Activity className="w-3.5 h-3.5 text-cyan-400" />
@@ -119,7 +164,41 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Featured Active Events Section */}
+      {/* 2. STATEMENT SECTION (GSAP Word-by-Word Opacity & Blur Scrubbing) */}
+      <StatementSection text="Transcend anything seen or felt before by crafting unparalleled digital experiences for ambitious hackathon builders." />
+
+      {/* 3. "OUR APPROACH" SCRUB SECTION */}
+      <ScrubTextSection
+        label="OUR APPROACH"
+        statement="We combine deterministic server-side judge isolation, weighted scoring rubrics, and real-time project galleries into a single self-hostable engine."
+      />
+
+      {/* 4. PROJECT SHOWCASE (16:10 Media Cards, Parallax Scrub, Inset Clip-path Reveals) */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between border-b border-cyan-500/20 pb-4">
+          <div>
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">[ PROJECT SHOWCASE ]</span>
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] font-mono mt-1">Curated Engineering Creations</h2>
+          </div>
+          <Link to="/gallery" className="text-xs font-mono font-bold uppercase tracking-wider text-rose-500 hover:text-rose-400 flex items-center gap-1.5 transition">
+            See All Projects <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        <div>
+          {showcaseProjects.map((project, idx) => (
+            <ProjectCard key={project.title} index={idx} {...project} />
+          ))}
+        </div>
+      </section>
+
+      {/* 5. "OUR MISSION" SCRUB SECTION */}
+      <ScrubTextSection
+        label="OUR MISSION"
+        statement="To empower organizers, judges, and developers globally with open, uncompromised, 100% Docker-native hackathon infrastructure."
+      />
+
+      {/* 6. FEATURED COMPETITIONS SECTION */}
       <section className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-cyan-500/20 pb-4">
           <div>
@@ -177,7 +256,7 @@ export const HomePage: React.FC = () => {
         )}
       </section>
 
-      {/* Telemetry Architecture Section */}
+      {/* 7. ARCHITECTURE HIGHLIGHTS */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="space-y-3 theme-card">
           <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-500 font-mono font-bold">
