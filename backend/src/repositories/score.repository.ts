@@ -69,7 +69,7 @@ export class ScoreRepository {
   }
 
   async getAggregateScoresForEvent(eventId: string): Promise<SubmissionScoreAggregate[]> {
-    const res = await db.query<any>(
+    const res = await db.query<SubmissionScoreAggregate>(
       `SELECT 
         s.id as submission_id,
         s.title as submission_title,
@@ -88,7 +88,7 @@ export class ScoreRepository {
       [eventId]
     );
 
-    return res.rows.map((row) => ({
+    return res.rows.map((row: SubmissionScoreAggregate) => ({
       ...row,
       scores_breakdown: [],
     }));

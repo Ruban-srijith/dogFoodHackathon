@@ -8,7 +8,7 @@ export const pool = new Pool({
   connectionTimeoutMillis: config.db.connectionTimeoutMillis,
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   console.error('[DB_POOL_ERROR] Unexpected error on idle client:', err.message);
 });
 

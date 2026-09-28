@@ -36,14 +36,8 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install Root Dependencies
-        run: npm ci || npm install
-
-      - name: Install Backend Dependencies
-        run: cd backend && npm ci || npm install
-
-      - name: Install Frontend Dependencies
-        run: cd frontend && npm ci || npm install
+      - name: Install Dependencies
+        run: npm install
 
       - name: Lint Backend & Frontend
         run: npm run lint
