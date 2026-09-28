@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dog Food Hackathon | Header Component</title>
+  <meta name="description" content="Modern, responsive Header component built for Dog Food Hackathon project.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- SITE HEADER COMPONENT -->
+  <header class="site-header" id="mainHeader">
+    <div class="header-container">
+      
+      <!-- Brand Logo -->
+      <a href="#" class="header-brand" aria-label="DogFood Home">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </div>
+        <span class="brand-title">DogFood</span>
+        <span class="brand-tag">Hackathon</span>
+      </a>
+
+      <!-- Desktop Navigation -->
+      <nav class="header-nav" aria-label="Main Navigation">
+        <ul class="nav-list">
+          <li><a href="#home" class="nav-link active">Home</a></li>
+          <li><a href="#recipes" class="nav-link">Recipes <span class="badge-new">NEW</span></a></li>
+          <li><a href="#plans" class="nav-link">Nutrition Plans</a></li>
+          <li><a href="#community" class="nav-link">Community</a></li>
+          <li><a href="#about" class="nav-link">About Us</a></li>
+        </ul>
+      </nav>
+
+      <!-- Search Input -->
+      <div class="header-search">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="headerSearchInput" class="search-input" placeholder="Search recipes..." aria-label="Search recipes">
+        <span class="search-shortcut">⌘K</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="header-actions">
+        <!-- Cart Button -->
+        <button class="icon-btn" aria-label="View Cart">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <span class="cart-badge">2</span>
+        </button>
+
+        <!-- CTA Button -->
+        <a href="#get-started" class="btn-cta">
+          <span>Get Started</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
+
+        <!-- Mobile Menu Toggle Button -->
+        <button class="icon-btn mobile-toggle" id="mobileMenuToggle" aria-label="Toggle Navigation Menu" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Mobile Navigation Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+      <ul class="nav-list">
+        <li><a href="#home" class="nav-link active">Home</a></li>
+        <li><a href="#recipes" class="nav-link">Recipes <span class="badge-new">NEW</span></a></li>
+        <li><a href="#plans" class="nav-link">Nutrition Plans</a></li>
+        <li><a href="#community" class="nav-link">Community</a></li>
+        <li><a href="#about" class="nav-link">About Us</a></li>
+      </ul>
+      <div class="header-search">
+        <input type="text" class="search-input" placeholder="Search recipes..." aria-label="Search recipes">
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN HERO DEMO CONTENT -->
+  <main class="hero-showcase">
+    <div class="hero-tag">
+      <span>✨ Initial Commit Ready</span>
+    </div>
+    <h1 class="hero-title">DogFood Hackathon Header</h1>
+    <p class="hero-subtitle">
+      A sleek, responsive, glassmorphic header component crafted for the Dog Food Hackathon project. Features smooth glassmorphism, responsive navigation drawer, interactive search shortcut, and CTA button.
+    </p>
+  </main>
+
+  <script src="header.js"></script>
+</body>
+</html>
