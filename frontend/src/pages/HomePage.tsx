@@ -125,25 +125,25 @@ export const HomePage: React.FC = () => {
               {/* Platform Capability Highlights */}
               <div className="pt-2 pb-1">
                 <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 block text-[10px] uppercase">Architecture</span>
-                    <span className="text-cyan-400 font-bold">100% Self-Hostable</span>
+                  <div className="p-2.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)]">
+                    <span className="text-[var(--text-muted)] block text-[10px] uppercase">Architecture</span>
+                    <span className="text-[var(--accent-cyan)] font-bold">100% Self-Hostable</span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 block text-[10px] uppercase">Judging Engine</span>
-                    <span className="text-emerald-400 font-bold">Z-Score Normalized</span>
+                  <div className="p-2.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-color)]">
+                    <span className="text-[var(--text-muted)] block text-[10px] uppercase">Judging Engine</span>
+                    <span className="text-[var(--accent-green)] font-bold">Z-Score Normalized</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <Link to="/events">
-                  <button className="px-5 py-2.5 rounded-lg bg-[#ff2a5f] hover:bg-[#e0224f] text-white text-xs font-mono font-black uppercase tracking-wider transition shadow-lg shadow-rose-500/20 cursor-pointer">
+                  <button className="px-5 py-2.5 rounded-lg bg-[var(--accent-red)] hover:opacity-90 text-white text-xs font-mono font-black uppercase tracking-wider transition shadow-lg cursor-pointer">
                     EXPLORE HACKATHONS →
                   </button>
                 </Link>
                 <Link to="/gallery">
-                  <button className="px-5 py-2.5 rounded-lg border border-slate-700 hover:border-slate-500 bg-slate-900/60 text-slate-200 text-xs font-mono font-bold tracking-wider uppercase transition cursor-pointer">
+                  <button className="px-5 py-2.5 rounded-lg border border-[var(--border-color)] hover:border-[var(--border-hover)] bg-[var(--bg-card)] text-[var(--text-main)] text-xs font-mono font-bold tracking-wider uppercase transition cursor-pointer">
                     SUBMISSIONS
                   </button>
                 </Link>
@@ -151,18 +151,18 @@ export const HomePage: React.FC = () => {
             </div>
 
             {/* Right Column: [ BRIEF / 00 ] */}
-            <div id="about" className="lg:col-span-7 space-y-3 p-5 rounded-2xl bg-[#03060c]/80 border border-slate-800 text-xs font-mono scroll-mt-24">
-              <div className="text-cyan-400 font-bold uppercase tracking-widest text-[11px] flex items-center justify-between">
+            <div id="about" className="lg:col-span-7 space-y-3 p-5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] text-xs font-mono scroll-mt-24 shadow-xl">
+              <div className="text-[var(--accent-cyan)] font-bold uppercase tracking-widest text-[11px] flex items-center justify-between">
                 <span>[ ABOUT DOGFOOD / BRIEF ]</span>
-                <span className="text-[10px] text-slate-500 font-normal">SEC_LEVEL_01</span>
+                <span className="text-[10px] text-[var(--text-muted)] font-normal">SEC_LEVEL_01</span>
               </div>
-              <p className="text-slate-300 leading-relaxed font-sans">
+              <p className="text-[var(--text-main)] leading-relaxed font-sans opacity-90">
                 Thirty-five hackathons in, across 85 countries, we know exactly what a submission and judging platform should do. So does every organizer who has ever run one. What none of us has is a modern, open, self-hostable platform that does it. This is the hackathon platform engineered to eliminate cloud SaaS dependency.
               </p>
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800/80 text-[10px] text-slate-400">
-                <div className="flex items-center gap-1.5"><span className="text-emerald-400 font-bold">01.</span> Isolated Judging</div>
-                <div className="flex items-center gap-1.5"><span className="text-cyan-400 font-bold">02.</span> Weighted Rubric</div>
-                <div className="flex items-center gap-1.5"><span className="text-rose-500 font-bold">03.</span> Docker Native</div>
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[var(--border-color)] text-[10px] text-[var(--text-muted)]">
+                <div className="flex items-center gap-1.5"><span className="text-[var(--accent-green)] font-bold">01.</span> Isolated Judging</div>
+                <div className="flex items-center gap-1.5"><span className="text-[var(--accent-cyan)] font-bold">02.</span> Weighted Rubric</div>
+                <div className="flex items-center gap-1.5"><span className="text-[var(--accent-red)] font-bold">03.</span> Docker Native</div>
               </div>
             </div>
           </div>

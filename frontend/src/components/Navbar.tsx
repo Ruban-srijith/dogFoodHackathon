@@ -18,15 +18,15 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-40 w-full border-b border-cyan-500/20 bg-[var(--bg-surface)] backdrop-blur-xl transition-all">
+    <nav className="sticky top-0 z-40 w-full border-b border-[var(--border-color)] bg-[var(--bg-surface)] backdrop-blur-xl transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
           {/* Brand & T-Rex Dinosaur Logo */}
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-2.5 group">
-              {/* T-Rex Dinosaur Icon (from Screenshot) */}
-              <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-500 group-hover:scale-105 transition-transform">
+              {/* T-Rex Dinosaur Icon */}
+              <div className="w-8 h-8 rounded-lg bg-[var(--accent-red)]/10 border border-[var(--accent-red)]/30 flex items-center justify-center text-[var(--accent-red)] group-hover:scale-105 transition-transform">
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
                   <path d="M19 3h-4v2h-2v2h-2v2H9v2H7v2H5v2H3v6h2v-2h2v-2h2v4h2v-4h2v2h2v-2h2v-4h2v-2h2V9h-2V7h-2V5h-2V3z"/>
                 </svg>
@@ -35,17 +35,17 @@ export const Navbar: React.FC = () => {
                 <span className="font-extrabold text-lg tracking-wider text-[var(--text-main)] font-mono">
                   DOGFOOD
                 </span>
-                <span className="text-[10px] font-mono text-rose-500 font-bold">®</span>
+                <span className="text-[10px] font-mono text-[var(--accent-red)] font-bold">®</span>
               </div>
             </Link>
 
             {/* Brutalist Monospace Navigation Links */}
-            <div className="hidden lg:flex items-center gap-4 text-[11px] font-mono font-bold tracking-widest text-slate-300">
-              <a href="/#about" className="hover:text-rose-500 transition">ABOUT</a>
-              <Link to="/events" className="hover:text-rose-500 transition">HACKATHONS</Link>
-              <Link to="/gallery" className="hover:text-rose-500 transition">GALLERY</Link>
-              <Link to="/teams/join" className="hover:text-rose-500 transition">JOIN TEAM</Link>
-              <a href="https://github.com/Ruban-srijith/dogFoodHackathon" target="_blank" rel="noopener noreferrer" className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition">SPEC</a>
+            <div className="hidden lg:flex items-center gap-4 text-[11px] font-mono font-bold tracking-widest text-[var(--text-muted)]">
+              <a href="/#about" className="hover:text-[var(--accent-red)] transition">ABOUT</a>
+              <Link to="/events" className="hover:text-[var(--accent-red)] transition">HACKATHONS</Link>
+              <Link to="/gallery" className="hover:text-[var(--accent-red)] transition">GALLERY</Link>
+              <Link to="/teams/join" className="hover:text-[var(--accent-red)] transition">JOIN TEAM</Link>
+              <a href="https://github.com/Ruban-srijith/dogFoodHackathon" target="_blank" rel="noopener noreferrer" className="px-2 py-0.5 rounded bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/30 hover:bg-[var(--accent-cyan)]/20 transition">SPEC</a>
             </div>
           </div>
 
@@ -54,7 +54,7 @@ export const Navbar: React.FC = () => {
             {/* Theme Selector Component */}
             <ThemeSelector />
 
-            {/* Quick Action Button (From Screenshot: "GO TO DISCORD" / "REGISTER") */}
+            {/* Quick Action Button */}
             {user ? (
               <div className="hidden md:flex items-center gap-2.5">
                 {['JUDGE', 'ORGANIZER', 'ADMIN'].includes(user.role) && (
@@ -77,9 +77,9 @@ export const Navbar: React.FC = () => {
                   </Link>
                 )}
 
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono">
-                  <UserIcon className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="font-semibold text-slate-200">{user.full_name}</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-xs font-mono">
+                  <UserIcon className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
+                  <span className="font-semibold text-[var(--text-main)]">{user.full_name}</span>
                   <RoleBadge role={user.role} />
                 </div>
 
@@ -87,7 +87,7 @@ export const Navbar: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={handleLogout}
-                  className="text-slate-400 hover:text-rose-500 p-2"
+                  className="text-[var(--text-muted)] hover:text-[var(--accent-red)] p-2"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
@@ -100,20 +100,19 @@ export const Navbar: React.FC = () => {
                     SIGN IN
                   </Button>
                 </Link>
-                {/* Hot Pink / Neon Red CTA Button matching screenshot */}
-                <a
-                  href="#register"
-                  className="px-3.5 py-1.5 rounded-lg bg-[#ff2a5f] hover:bg-[#e0224f] text-white text-xs font-mono font-black tracking-wider uppercase transition shadow-md shadow-rose-500/20"
+                <Link
+                  to="/events"
+                  className="px-3.5 py-1.5 rounded-lg bg-[var(--accent-red)] hover:opacity-90 text-white text-xs font-mono font-black tracking-wider uppercase transition shadow-md"
                 >
-                  GO TO DISCORD
-                </a>
+                  EXPLORE
+                </Link>
               </div>
             )}
 
             {/* Mobile Menu Toggle Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition"
+              className="lg:hidden p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-card)] transition"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -124,12 +123,12 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-b border-cyan-500/20 bg-[var(--bg-primary)] px-4 pt-3 pb-6 space-y-3 font-mono text-xs">
-          <div className="grid grid-cols-2 gap-2 text-slate-300">
-            <a href="/#about" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800 text-center">ABOUT</a>
-            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800 text-center">HACKATHONS</Link>
-            <Link to="/gallery" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800 text-center">GALLERY</Link>
-            <Link to="/teams/join" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-slate-900/60 border border-slate-800 text-center">JOIN TEAM</Link>
+        <div className="lg:hidden border-b border-[var(--border-color)] bg-[var(--bg-surface)] px-4 pt-3 pb-6 space-y-3 font-mono text-xs">
+          <div className="grid grid-cols-2 gap-2 text-[var(--text-muted)]">
+            <a href="/#about" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-[var(--bg-card)] border border-[var(--border-color)] text-center">ABOUT</a>
+            <Link to="/events" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-[var(--bg-card)] border border-[var(--border-color)] text-center">HACKATHONS</Link>
+            <Link to="/gallery" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-[var(--bg-card)] border border-[var(--border-color)] text-center">GALLERY</Link>
+            <Link to="/teams/join" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded bg-[var(--bg-card)] border border-[var(--border-color)] text-center">JOIN TEAM</Link>
           </div>
           <div className="pt-2">
             {!user ? (

@@ -2325,6 +2325,69 @@ app.get(['/api/users', '/api/v1/users'], authenticate, requireRole('admin'), asy
   }
 });
 
+// Admin User Creation: Strict admin authorization to provision new platform users
+app.post(['/api/users', '/api/v1/users'], authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    const { email, username, password, full_name, role } = req.body;
+
+    if (!email || !username || !password) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'email, username, and password are required'
+      });
+    }
+
+    const existingUser = await User.findOne({
+      $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'A user with this email or username already exists.'
+      });
+    }
+
+    let assignedRole = (role || 'PARTICIPANT').toUpperCase();
+    const validRoles = ['ADMIN', 'ORGANIZER', 'JUDGE', 'PARTICIPANT', 'VISITOR'];
+    if (!validRoles.includes(assignedRole)) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: `Invalid role '${role}'. Valid roles are: ${validRoles.join(', ')}.`
+      });
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      email: email.toLowerCase(),
+      username: username.toLowerCase(),
+      password_hash,
+      role: assignedRole,
+      full_name: full_name || username
+    });
+
+    const userData = {
+      id: user._id,
+      _id: user._id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      full_name: user.full_name,
+      created_at: user.created_at
+    };
+
+    return res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      user: userData,
+      data: userData,
+      ...userData
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
 // Admin User Role Update: Strict admin authorization
 app.patch(['/api/users/:id/role', '/api/v1/users/:id/role'], authenticate, requireRole('admin'), async (req, res) => {
   try {

@@ -1,8 +1,60 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { useTheme, ThemeMode } from '../contexts/ThemeContext';
+
+const THEME_PALETTES: Record<ThemeMode, { base: [number, number, number]; glow: [number, number, number]; highlight: [number, number, number]; alpha: number }> = {
+  telemetry: {
+    base: [0.024, 0.035, 0.067], // #060911
+    glow: [0.0, 0.94, 1.0],      // Cyan #00f0ff
+    highlight: [1.0, 0.16, 0.37], // Hot Pink #ff2a5f
+    alpha: 0.65,
+  },
+  royal: {
+    base: [0.027, 0.043, 0.086], // Regal Navy #070b16
+    glow: [1.0, 0.843, 0.0],      // Imperial Gold #ffd700
+    highlight: [0.88, 0.11, 0.28], // Ruby #e11d48
+    alpha: 0.65,
+  },
+  swiss: {
+    base: [0.957, 0.957, 0.941], // Crisp Swiss Paper #f4f4f0
+    glow: [0.12, 0.12, 0.12],     // Print Ink #111111
+    highlight: [0.90, 0.10, 0.10], // Swiss Red #e61919
+    alpha: 0.20,                  // Transparent watermark emboss
+  },
+  matrix: {
+    base: [0.015, 0.04, 0.015],  // Phosphor Black #040a04
+    glow: [0.29, 0.96, 0.15],     // Terminal Green #4af626
+    highlight: [0.0, 1.0, 0.3],   // Emerald
+    alpha: 0.70,
+  },
+  obsidian: {
+    base: [0.031, 0.047, 0.078], // Slate Void #080c14
+    glow: [0.22, 0.74, 0.97],     // Sky #38bdf8
+    highlight: [0.96, 0.25, 0.37], // Rose #f43f5e
+    alpha: 0.65,
+  },
+  monochrome: {
+    base: [0.0, 0.0, 0.0],        // Deep Black #000000
+    glow: [0.85, 0.85, 0.85],     // High Contrast White
+    highlight: [1.0, 1.0, 1.0],   // Crisp White
+    alpha: 0.55,
+  },
+};
 
 export const Relief: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const materialRef = useRef<THREE.ShaderMaterial | null>(null);
+  const { theme } = useTheme();
+
+  // Dynamically update WebGL Shader Uniforms when theme changes
+  useEffect(() => {
+    if (!materialRef.current) return;
+    const palette = THEME_PALETTES[theme] || THEME_PALETTES.telemetry;
+    materialRef.current.uniforms.uBaseColor.value.set(...palette.base);
+    materialRef.current.uniforms.uGlowColor.value.set(...palette.glow);
+    materialRef.current.uniforms.uHighlightColor.value.set(...palette.highlight);
+    materialRef.current.uniforms.uAlpha.value = palette.alpha;
+  }, [theme]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -80,6 +132,10 @@ export const Relief: React.FC = () => {
       uniform vec2 uMouse;
       uniform float uScroll;
       uniform float uTime;
+      uniform vec3 uBaseColor;
+      uniform vec3 uGlowColor;
+      uniform vec3 uHighlightColor;
+      uniform float uAlpha;
       varying vec2 vUv;
 
       // Pseudo-random noise
@@ -108,20 +164,21 @@ export const Relief: React.FC = () => {
         float diff = max(dot(normal, lightDir), 0.0);
         float spec = pow(max(dot(normal, lightDir), 0.0), 16.0);
 
-        // Theme Palette: Dark Telemetry Void (#060911) with Cyan (#00f0ff) & Hot Pink (#ff2a5f) highlights
-        vec3 baseColor = vec3(0.024, 0.035, 0.067); // Dark CRT background
-        vec3 cyanGlow = vec3(0.0, 0.94, 1.0) * (diff * 0.35 + spec * 0.4);
-        vec3 pinkHighlight = vec3(1.0, 0.16, 0.37) * (spec * 0.5);
+        // Dynamically themed lighting
+        vec3 dynamicGlow = uGlowColor * (diff * 0.35 + spec * 0.4);
+        vec3 dynamicHighlight = uHighlightColor * (spec * 0.5);
 
-        vec3 finalColor = baseColor + cyanGlow + pinkHighlight;
+        vec3 finalColor = uBaseColor + dynamicGlow + dynamicHighlight;
 
         // Subtle analog noise grain
-        float noise = (random(uv * uTime) - 0.5) * 0.03;
+        float noise = (random(uv * uTime) - 0.5) * 0.025;
         finalColor += vec3(noise);
 
-        gl_FragColor = vec4(finalColor, 0.65);
+        gl_FragColor = vec4(finalColor, uAlpha);
       }
     `;
+
+    const initialPalette = THEME_PALETTES[theme] || THEME_PALETTES.telemetry;
 
     const uniforms = {
       uMap: { value: reliefTexture },
@@ -129,6 +186,10 @@ export const Relief: React.FC = () => {
       uMouse: { value: new THREE.Vector2(0.5, 0.5) },
       uScroll: { value: 0 },
       uTime: { value: 0 },
+      uBaseColor: { value: new THREE.Vector3(...initialPalette.base) },
+      uGlowColor: { value: new THREE.Vector3(...initialPalette.glow) },
+      uHighlightColor: { value: new THREE.Vector3(...initialPalette.highlight) },
+      uAlpha: { value: initialPalette.alpha },
     };
 
     const geometry = new THREE.PlaneGeometry(2, 2);
@@ -138,6 +199,7 @@ export const Relief: React.FC = () => {
       uniforms,
       transparent: true,
     });
+    materialRef.current = material;
 
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);

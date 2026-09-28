@@ -28,4 +28,14 @@ export const adminService = {
   updateUserRole: async (userId: string, role: UserRole): Promise<User> => {
     return await apiClient.patch<User>(ENDPOINTS.USER_ROLE(userId), { role });
   },
+
+  createUser: async (userData: {
+    email: string;
+    username: string;
+    password: string;
+    full_name?: string;
+    role?: UserRole;
+  }): Promise<User> => {
+    return await apiClient.post<User>(ENDPOINTS.USERS, userData);
+  },
 };

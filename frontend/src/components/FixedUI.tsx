@@ -25,18 +25,15 @@ export const FixedUI: React.FC = () => {
       {/* Persistent Fixed UI Container */}
       <div className="fixed inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 sm:p-8">
         
-        {/* Top-Right: "Menu" Text Link with Monogram Fade-in */}
+        {/* Top-Right: "Menu" Text Link with Monogram (only appears when scrolled past Navbar) */}
         <div className="flex items-center justify-end">
           <button
             onClick={() => setMenuOpen(true)}
-            className="pointer-events-auto inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-slate-700/80 bg-[#060911]/90 backdrop-blur-md text-xs font-mono font-bold text-slate-200 hover:border-cyan-400 hover:text-cyan-400 transition shadow-lg cursor-pointer"
+            className={`pointer-events-auto inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] backdrop-blur-md text-xs font-mono font-bold text-[var(--text-main)] hover:border-[var(--border-hover)] transition-all duration-300 shadow-lg cursor-pointer mt-14 ${
+              scrolledPastHero ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
+            }`}
           >
-            {/* Monogram icon fades in when scrolled past hero */}
-            <span
-              className={`w-5 h-5 rounded-md bg-rose-500/20 text-rose-500 flex items-center justify-center text-[10px] font-black border border-rose-500/30 transition-all duration-300 ${
-                scrolledPastHero ? 'opacity-100 scale-100' : 'opacity-0 scale-75 w-0 px-0 overflow-hidden'
-              }`}
-            >
+            <span className="w-5 h-5 rounded-md bg-rose-500/20 text-rose-500 flex items-center justify-center text-[10px] font-black border border-rose-500/30">
               DF
             </span>
             <span>Menu</span>
