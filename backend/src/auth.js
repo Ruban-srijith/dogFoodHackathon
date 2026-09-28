@@ -90,9 +90,35 @@ function requireRole(...allowedRoles) {
   };
 }
 
+/**
+ * Optional Authentication Middleware:
+ * If token is present and valid, attaches req.user without rejecting unauthenticated requests.
+ */
+function optionalAuth(req, res, next) {
+  let token = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  }
+  if (!token && req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+    } catch (err) {
+      // Invalid token in optional mode does not block request
+    }
+  }
+  next();
+}
+
 module.exports = {
   JWT_SECRET,
   generateToken,
   authenticate,
-  requireRole
+  requireRole,
+  optionalAuth
 };

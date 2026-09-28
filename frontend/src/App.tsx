@@ -19,12 +19,42 @@ import {
   UserPlus, 
   Users, 
   FolderGit2, 
-  Sparkles 
+  Sparkles,
+  Gavel,
+  Scale,
+  Shuffle,
+  Mail,
+  Lock
 } from 'lucide-react';
 
 interface HealthResponse {
   status: string;
   [key: string]: any;
+}
+
+interface JudgeInvite {
+  _id: string;
+  email?: string;
+  invite_code: string;
+  status: string;
+  created_at: string;
+}
+
+interface JudgeAssignment {
+  _id: string;
+  event_id?: any;
+  submission_id: any;
+  judge_id: any;
+  status: string;
+  created_at: string;
+}
+
+interface JudgeUser {
+  _id: string;
+  username: string;
+  email: string;
+  full_name: string;
+  bio?: string;
 }
 
 interface AuthUser {
@@ -99,7 +129,7 @@ interface Project {
 
 export const App: React.FC = () => {
   // Navigation
-  const [activeTab, setActiveTab] = useState<'gallery' | 'teams' | 'submit' | 'organizer' | 'health'>('gallery');
+  const [activeTab, setActiveTab] = useState<'gallery' | 'teams' | 'submit' | 'judging' | 'organizer' | 'health'>('gallery');
 
   // Health State
   const [healthData, setHealthData] = useState<HealthResponse | null>(null);
@@ -149,6 +179,29 @@ export const App: React.FC = () => {
 
   // Deadline rejection test state
   const [deadlineTestResponse, setDeadlineTestResponse] = useState<any>(null);
+
+  // T2 Judge States
+  const [judgeInvites, setJudgeInvites] = useState<JudgeInvite[]>([]);
+  const [allJudges, setAllJudges] = useState<JudgeUser[]>([]);
+  const [allAssignments, setAllAssignments] = useState<JudgeAssignment[]>([]);
+  const [myAssignedProjects, setMyAssignedProjects] = useState<Project[]>([]);
+  const [inviteJudgeEmail, setInviteJudgeEmail] = useState('');
+  const [lastGeneratedJudgeLink, setLastGeneratedJudgeLink] = useState('');
+  const [judgeJoinCode, setJudgeJoinCode] = useState('');
+  
+  // Assignment form states
+  const [assignMode, setAssignMode] = useState<'manual' | 'batch' | 'auto'>('auto');
+  const [manualSubId, setManualSubId] = useState('');
+  const [manualJudgeId, setManualJudgeId] = useState('');
+  const [autoNJudges, setAutoNJudges] = useState(2);
+  const [autoAssignmentSummary, setAutoAssignmentSummary] = useState<any>(null);
+
+  // 403 Security Test State
+  const [judgeIsolationTestResult, setJudgeIsolationTestResult] = useState<any>(null);
+  const [scoringProject, setScoringProject] = useState<Project | null>(null);
+  const [scoreInnovation, setScoreInnovation] = useState(25);
+  const [scoreExecution, setScoreExecution] = useState(25);
+  const [scoreFeedback, setScoreFeedback] = useState('Excellent technical execution and clean architecture.');
 
   // Form States: Organizer Event Creation
   const [evTitle, setEvTitle] = useState('');
@@ -270,11 +323,290 @@ export const App: React.FC = () => {
     fetchGallery();
   }, [checkHealth, fetchEventsAndTracks, fetchGallery]);
 
+  // 5. Fetch Judge Data & Assignments
+  const fetchJudgingData = useCallback(async () => {
+    if (!authToken) return;
+    const base = getBaseApiUrl();
+
+    try {
+      if (authUser?.role === 'ORGANIZER' || authUser?.role === 'ADMIN') {
+        const [invRes, jRes, asgnRes] = await Promise.all([
+          fetch(`${base}/api/judges/invites`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch(`${base}/api/judges`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch(`${base}/api/judges/assignments`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+        ]);
+        if (invRes.ok) {
+          const invData = await invRes.json();
+          setJudgeInvites(invData.invites || []);
+        }
+        if (jRes.ok) {
+          const jData = await jRes.json();
+          setAllJudges(jData.judges || []);
+          if (jData.judges?.length > 0 && !manualJudgeId) {
+            setManualJudgeId(jData.judges[0]._id);
+          }
+        }
+        if (asgnRes.ok) {
+          const asgnData = await asgnRes.json();
+          setAllAssignments(asgnData.assignments || []);
+        }
+      }
+
+      if (authUser?.role === 'JUDGE' || authUser?.role === 'ADMIN') {
+        const [myAsgnRes, myProjRes] = await Promise.all([
+          fetch(`${base}/api/judges/assignments`, { headers: { 'Authorization': `Bearer ${authToken}` } }),
+          fetch(`${base}/api/judges/projects`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+        ]);
+        if (myAsgnRes.ok) {
+          const asgnData = await myAsgnRes.json();
+          setAllAssignments(asgnData.assignments || []);
+        }
+        if (myProjRes.ok) {
+          const pData = await myProjRes.json();
+          setMyAssignedProjects(pData.projects || []);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch judging data:', err);
+    }
+  }, [authToken, authUser?.role, manualJudgeId]);
+
+  // T2 Handlers: Invite Judge
+  const handleInviteJudge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authToken) return;
+    setLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/judges/invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          email: inviteJudgeEmail.trim() || undefined,
+          event_id: events[0]?._id
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLastGeneratedJudgeLink(`${window.location.origin}${data.invite_link}`);
+        notify(data.message || 'Judge invite created!', 'success');
+        setInviteJudgeEmail('');
+        fetchJudgingData();
+      } else {
+        notify(data.message || 'Failed to create judge invite', 'error');
+      }
+    } catch (err: any) {
+      notify(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // T2 Handlers: Join as Judge
+  const handleAcceptJudgeInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authToken) {
+      notify('Please log in first to accept a judge invitation.', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/judges/join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ invite_code: judgeJoinCode.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAuthToken(data.token);
+        setAuthUser(data.user);
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('auth_user', JSON.stringify(data.user));
+        notify('Congratulations! You are now verified as a Judge.', 'success');
+        setJudgeJoinCode('');
+        fetchJudgingData();
+      } else {
+        notify(data.message || 'Invalid judge invite code', 'error');
+      }
+    } catch (err: any) {
+      notify(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // T2 Handlers: Manual Project Assignment
+  const handleManualAssign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authToken || !manualSubId || !manualJudgeId) return;
+    setLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/judges/assignments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          submission_id: manualSubId,
+          judge_id: manualJudgeId,
+          event_id: events[0]?._id
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        notify(data.message || 'Judge assigned to project successfully!', 'success');
+        fetchJudgingData();
+      } else {
+        notify(data.message || 'Failed to assign judge (Check Conflict of Interest)', 'error');
+      }
+    } catch (err: any) {
+      notify(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // T2 Handlers: Automatic Project Assignment
+  const handleAutoAssign = async () => {
+    if (!authToken) return;
+    setLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/judges/assignments/automatic`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          event_id: events[0]?._id,
+          n_judges: autoNJudges
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAutoAssignmentSummary(data);
+        notify(`Auto-assignment completed! Configured ${autoNJudges} judges per project evenly.`, 'success');
+        fetchJudgingData();
+      } else {
+        notify(data.message || 'Failed automatic assignment', 'error');
+      }
+    } catch (err: any) {
+      notify(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // T2 Handlers: Unassign
+  const handleUnassign = async (assignmentId: string) => {
+    if (!authToken) return;
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/judges/assignments/${assignmentId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        notify('Judge assignment removed.', 'info');
+        fetchJudgingData();
+      }
+    } catch (err: any) {
+      notify(err.message, 'error');
+    }
+  };
+
+  // T2 Handlers: Test Judge Security Isolation (Attempt 403 Access)
+  const handleTestJudgeIsolation = async () => {
+    if (!authToken) {
+      notify('Log in as a Judge to test security isolation.', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const assignedIds = new Set(myAssignedProjects.map(p => p._id));
+      const unassigned = projects.find(p => !assignedIds.has(p._id));
+      const targetId = unassigned ? unassigned._id : (projects[0]?._id || 'sub_unassigned_test_id');
+      const targetTitle = unassigned ? unassigned.title : 'Unassigned Project';
+
+      const res = await fetch(`${base}/api/submissions/${targetId}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      setJudgeIsolationTestResult({
+        targetTitle,
+        targetId,
+        status: res.status,
+        statusText: res.status === 403 ? '403 Forbidden (Judge Isolation Enforced)' : `${res.status} ${res.statusText}`,
+        body: data,
+        timestamp: new Date().toLocaleTimeString()
+      });
+
+      if (res.status === 403) {
+        notify('Backend strictly enforced Rule 16: 403 Forbidden returned!', 'success');
+      } else {
+        notify(`Status: ${res.status}`, 'info');
+      }
+    } catch (err: any) {
+      setJudgeIsolationTestResult({
+        status: 500,
+        statusText: 'Network Error',
+        body: { error: err.message }
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // T2 Handlers: Score Evaluation
+  const handleScoreProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authToken || !scoringProject) return;
+    setLoading(true);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/judges/submissions/${scoringProject._id}/score`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          scores: { innovation: scoreInnovation, execution: scoreExecution },
+          feedback: scoreFeedback
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        notify(`Evaluation for "${scoringProject.title}" saved successfully!`, 'success');
+        setScoringProject(null);
+        fetchJudgingData();
+      } else {
+        notify(data.message || 'Scoring rejected', 'error');
+      }
+    } catch (err: any) {
+      notify(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (authToken) {
       fetchMyTeams();
+      fetchJudgingData();
     }
-  }, [authToken, fetchMyTeams]);
+  }, [authToken, fetchMyTeams, fetchJudgingData]);
 
   // Auth Handlers
   const handleQuickLogin = async (email: string, password: string) => {
@@ -601,7 +933,7 @@ export const App: React.FC = () => {
               </div>
               <div>
                 <span className="font-bold text-lg text-white tracking-tight">DOGFOOD Hackathon</span>
-                <span className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">T1 Live</span>
+                <span className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">T1 & T2 Live</span>
               </div>
             </div>
 
@@ -635,16 +967,16 @@ export const App: React.FC = () => {
                     Organizer
                   </button>
                   <button
+                    onClick={() => handleQuickLogin('judge1@dogfood.local', 'JudgeOnePassword123!')}
+                    className="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] font-semibold transition"
+                  >
+                    Judge (Dr. Chen)
+                  </button>
+                  <button
                     onClick={() => handleQuickLogin('alice@dogfood.local', 'AlicePassword123!')}
                     className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold transition"
                   >
-                    Participant (Alice)
-                  </button>
-                  <button
-                    onClick={() => handleQuickLogin('bob@dogfood.local', 'BobPassword123!')}
-                    className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold transition hidden sm:inline"
-                  >
-                    Bob
+                    Participant
                   </button>
                 </div>
               )}
@@ -692,10 +1024,25 @@ export const App: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('judging')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
+                activeTab === 'judging'
+                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+              }`}
+            >
+              <Gavel className="w-4 h-4" />
+              <span>Judge Portal</span>
+              {myAssignedProjects.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-purple-500/30 text-[10px] text-purple-300">{myAssignedProjects.length}</span>
+              )}
+            </button>
+
+            <button
               onClick={() => setActiveTab('organizer')}
               className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition ${
                 activeTab === 'organizer'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
               }`}
             >
@@ -1557,6 +1904,479 @@ export const App: React.FC = () => {
                 Publish Hackathon Event (Dates, Tracks, Prizes)
               </button>
             </form>
+
+            {/* ========================================================================= */}
+            {/* T2 FEATURE: ORGANIZER JUDGE INVITATIONS & PROJECT ASSIGNMENTS              */}
+            {/* ========================================================================= */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4">
+              {/* Card 1: Judge Invitations */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5 backdrop-blur-xl">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-purple-400" />
+                    <span>Invite Judges (Link or Email, Local Only)</span>
+                  </h3>
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">T2 Feature</span>
+                </div>
+
+                <form onSubmit={handleInviteJudge} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-slate-400 mb-1 font-medium">Judge Email (Optional for direct invite, leave empty for open link)</label>
+                    <input
+                      type="email"
+                      placeholder="e.g. dr_chen@university.local"
+                      value={inviteJudgeEmail}
+                      onChange={(e) => setInviteJudgeEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-600 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold transition flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Generate Judge Invitation Link</span>
+                  </button>
+                </form>
+
+                {lastGeneratedJudgeLink && (
+                  <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/40 space-y-2">
+                    <span className="text-[11px] font-semibold text-purple-300 block">Judge Invitation Link Ready:</span>
+                    <div className="flex items-center justify-between gap-2 bg-slate-950 p-2 rounded-lg font-mono text-[11px] text-purple-200 border border-purple-500/20">
+                      <span className="truncate">{lastGeneratedJudgeLink}</span>
+                      <button
+                        onClick={() => copyToClipboard(lastGeneratedJudgeLink, 'Judge Invite Link')}
+                        className="px-2 py-1 rounded bg-purple-600/30 hover:bg-purple-600 text-purple-200 text-[10px] font-semibold transition"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Judge Invites List */}
+                <div className="space-y-2 pt-2">
+                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Created Invites ({judgeInvites.length})</span>
+                  {judgeInvites.length === 0 ? (
+                    <p className="text-xs text-slate-500 italic">No judge invites generated yet.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {judgeInvites.map((inv) => (
+                        <div key={inv._id} className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between text-xs">
+                          <div>
+                            <span className="font-mono font-bold text-purple-300">{inv.invite_code}</span>
+                            <span className="text-slate-400 text-[11px] ml-2">{inv.email || 'Open Invite Link'}</span>
+                          </div>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            inv.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                          }`}>
+                            {inv.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Card 2: Project Assignment Modes */}
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5 backdrop-blur-xl">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Scale className="w-4 h-4 text-amber-400" />
+                    <span>Assign Projects to Judges</span>
+                  </h3>
+                  <div className="flex rounded-lg bg-slate-950 p-1 border border-slate-800 text-[11px] font-semibold">
+                    <button
+                      onClick={() => setAssignMode('auto')}
+                      className={`px-2.5 py-1 rounded-md transition ${assignMode === 'auto' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}
+                    >
+                      Automatic
+                    </button>
+                    <button
+                      onClick={() => setAssignMode('manual')}
+                      className={`px-2.5 py-1 rounded-md transition ${assignMode === 'manual' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}
+                    >
+                      Manual
+                    </button>
+                  </div>
+                </div>
+
+                {/* AUTOMATIC MODE */}
+                {assignMode === 'auto' && (
+                  <div className="space-y-4 text-xs">
+                    <p className="text-slate-400">
+                      Automatic mode assigns <strong className="text-white">N judges per project</strong>, spreads the workload evenly across all available evaluators, and <strong className="text-rose-400">strictly enforces zero conflict of interest</strong> (no judge gets a project from their own team).
+                    </p>
+
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-3">
+                      <div>
+                        <label className="block text-slate-400 mb-1 font-medium">Configurable N (Judges Per Project)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={10}
+                          value={autoNJudges}
+                          onChange={(e) => setAutoNJudges(parseInt(e.target.value, 10) || 1)}
+                          className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Total Projects to Evaluate: <strong className="text-emerald-400">{projects.length}</strong></span>
+                        <span>Available Judges: <strong className="text-purple-400">{allJudges.length}</strong></span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAutoAssign}
+                      disabled={loading || projects.length === 0 || allJudges.length === 0}
+                      className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+                    >
+                      <Shuffle className="w-4 h-4" />
+                      <span>Run Automatic Load-Balanced Distribution</span>
+                    </button>
+
+                    {autoAssignmentSummary && (
+                      <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-2 text-[11px]">
+                        <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" />
+                          {autoAssignmentSummary.message}
+                        </span>
+                        <div className="text-slate-300 grid grid-cols-2 gap-2 pt-1 border-t border-emerald-500/20">
+                          <div>New Assignments: <strong className="text-white">{autoAssignmentSummary.new_assignments_count}</strong></div>
+                          <div>Judges Per Project: <strong className="text-white">{autoAssignmentSummary.n_judges}</strong></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* MANUAL MODE */}
+                {assignMode === 'manual' && (
+                  <form onSubmit={handleManualAssign} className="space-y-4 text-xs">
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">Select Submitted Project *</label>
+                      <select
+                        value={manualSubId}
+                        onChange={(e) => setManualSubId(e.target.value)}
+                        required
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="">-- Choose Project --</option>
+                        {projects.map((p) => (
+                          <option key={p._id} value={p._id}>
+                            {p.title} ({p.team_id?.name || 'No Team'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 mb-1 font-medium">Select Judge *</label>
+                      <select
+                        value={manualJudgeId}
+                        onChange={(e) => setManualJudgeId(e.target.value)}
+                        required
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="">-- Choose Judge --</option>
+                        {allJudges.map((j) => (
+                          <option key={j._id} value={j._id}>
+                            {j.full_name} ({j.email})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading || !manualSubId || !manualJudgeId}
+                      className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Assign Judge to Project</span>
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+
+            {/* Active Assignments Table */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4 backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Gavel className="w-4 h-4 text-purple-400" />
+                  <span>Current Project Assignments ({allAssignments.length})</span>
+                </h3>
+                <span className="text-xs text-slate-400">Organizers view all evaluation assignments</span>
+              </div>
+
+              {allAssignments.length === 0 ? (
+                <p className="text-xs text-slate-500 italic py-4 text-center">No projects currently assigned to judges. Use the automatic or manual assignment tool above.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 font-semibold">
+                      <tr>
+                        <th className="p-3">Project Title</th>
+                        <th className="p-3">Team</th>
+                        <th className="p-3">Assigned Judge</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {allAssignments.map((a: any) => (
+                        <tr key={a._id} className="hover:bg-slate-950/40 transition">
+                          <td className="p-3 font-semibold text-white">{a.submission_id?.title || 'Unknown Project'}</td>
+                          <td className="p-3 text-slate-400">{a.submission_id?.team_id?.name || '—'}</td>
+                          <td className="p-3 text-purple-300 font-medium">{a.judge_id?.full_name || a.judge_id?.username || 'Judge'}</td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] text-slate-300 font-mono">
+                              {a.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => handleUnassign(a._id)}
+                              className="text-rose-400 hover:text-rose-300 text-[11px] font-semibold transition"
+                            >
+                              Unassign
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 4.5: JUDGE PORTAL (ISOLATION & STRICT 403 ENFORCEMENT)                */}
+        {/* ========================================================================= */}
+        {activeTab === 'judging' && (
+          <div className="space-y-8">
+            <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                  <Gavel className="w-6 h-6 text-purple-400" />
+                  Judge Evaluation Portal
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Judges see <strong>ONLY</strong> the projects explicitly assigned to them by organizers. Direct access to any other project returns <strong>403 Forbidden</strong>.
+                </p>
+              </div>
+
+              {authUser?.role !== 'JUDGE' && authUser?.role !== 'ADMIN' && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleQuickLogin('judge1@dogfood.local', 'JudgeOnePassword123!')}
+                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-lg shadow-purple-600/20"
+                  >
+                    Switch to Judge (Dr. Sarah Chen)
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Accept Judge Invitation Card (For participants or visitors) */}
+            <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl text-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="font-bold text-white flex items-center gap-1.5">
+                  <Mail className="w-4 h-4 text-purple-400" />
+                  Have a Judge Invitation Code?
+                </span>
+                <span className="text-slate-400 text-[11px] block">
+                  Paste the 8-character code sent by an organizer to verify and elevate your role to JUDGE.
+                </span>
+              </div>
+              <form onSubmit={handleAcceptJudgeInvite} className="flex items-center gap-2 w-full md:w-auto">
+                <input
+                  type="text"
+                  placeholder="Invite Code (e.g. 6A3376F5)"
+                  value={judgeJoinCode}
+                  onChange={(e) => setJudgeJoinCode(e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-purple-500"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !judgeJoinCode.trim()}
+                  className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold transition"
+                >
+                  Accept
+                </button>
+              </form>
+            </div>
+
+            {/* Interactive 403 Security Verification Card */}
+            <div className="bg-slate-900/60 border border-purple-500/30 rounded-2xl p-6 space-y-4 backdrop-blur-xl">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-white flex items-center gap-2 text-sm">
+                    <Lock className="w-4 h-4 text-rose-400" />
+                    Interactive Security Verification: Judge Isolation (Rule 16)
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Verify that the backend rejects access to unassigned projects with <strong>HTTP 403 Forbidden</strong>.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleTestJudgeIsolation}
+                  disabled={loading}
+                  className="px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-2 transition"
+                >
+                  <AlertTriangle className="w-4 h-4 text-rose-400" />
+                  <span>Attempt 403 Request (Unassigned Project)</span>
+                </button>
+              </div>
+
+              {judgeIsolationTestResult && (
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs font-mono">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Target Project: <strong className="text-white">{judgeIsolationTestResult.targetTitle}</strong></span>
+                    <span className={`px-2.5 py-0.5 rounded font-bold ${
+                      judgeIsolationTestResult.status === 403 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-amber-500/20 text-amber-300'
+                    }`}>
+                      {judgeIsolationTestResult.statusText}
+                    </span>
+                  </div>
+                  <pre className="text-slate-300 text-[11px] overflow-x-auto bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                    {JSON.stringify(judgeIsolationTestResult.body, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            {/* List of Assigned Projects */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-white">Your Assigned Submissions ({myAssignedProjects.length})</h3>
+                <span className="text-xs text-purple-300 font-mono">Rule 16: Isolated Evaluator Queue</span>
+              </div>
+
+              {myAssignedProjects.length === 0 ? (
+                <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-8 text-center text-slate-400 space-y-2">
+                  <Gavel className="w-8 h-8 mx-auto text-slate-600" />
+                  <p className="font-semibold text-white">No Projects Currently Assigned to You</p>
+                  <p className="text-xs">Once an event organizer assigns projects via Manual or Automatic mode, they will appear here for scoring.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {myAssignedProjects.map((p) => (
+                    <div key={p._id} className="bg-slate-900/60 border border-slate-800 hover:border-purple-500/50 transition rounded-2xl p-5 space-y-4 flex flex-col justify-between backdrop-blur-xl">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 font-semibold border border-purple-500/20">
+                            {p.track_id?.name || 'General Track'}
+                          </span>
+                          <span className="text-slate-500 font-mono">{p.team_id?.name || 'Team'}</span>
+                        </div>
+                        <h4 className="text-base font-bold text-white hover:text-purple-300 transition">{p.title}</h4>
+                        <p className="text-xs text-slate-400 line-clamp-3">{p.description}</p>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                        {p.repo_url && (
+                          <a
+                            href={p.repo_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition"
+                          >
+                            <Github className="w-3.5 h-3.5" />
+                            <span>Code</span>
+                          </a>
+                        )}
+                        <button
+                          onClick={() => setScoringProject(p)}
+                          className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition ml-auto"
+                        >
+                          Evaluate & Score
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Score Evaluation Modal */}
+            {scoringProject && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                <div className="bg-slate-900 border border-purple-500/40 rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 className="font-bold text-white text-base">Evaluate: {scoringProject.title}</h3>
+                    <button onClick={() => setScoringProject(null)} className="text-slate-400 hover:text-white">✕</button>
+                  </div>
+
+                  <form onSubmit={handleScoreProject} className="space-y-4 text-xs">
+                    <div>
+                      <div className="flex justify-between text-slate-300 mb-1">
+                        <span>Technical Execution (Max 30)</span>
+                        <strong className="text-purple-300">{scoreExecution} pts</strong>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={30}
+                        value={scoreExecution}
+                        onChange={(e) => setScoreExecution(parseInt(e.target.value, 10))}
+                        className="w-full accent-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-slate-300 mb-1">
+                        <span>Novelty & Innovation (Max 30)</span>
+                        <strong className="text-purple-300">{scoreInnovation} pts</strong>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={30}
+                        value={scoreInnovation}
+                        onChange={(e) => setScoreInnovation(parseInt(e.target.value, 10))}
+                        className="w-full accent-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-400 mb-1">Judge Feedback & Notes</label>
+                      <textarea
+                        rows={3}
+                        value={scoreFeedback}
+                        onChange={(e) => setScoreFeedback(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setScoringProject(null)}
+                        className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition"
+                      >
+                        Submit Official Score
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

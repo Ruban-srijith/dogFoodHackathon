@@ -77,12 +77,43 @@ const submissionSchema = new mongoose.Schema({
   updated_at: { type: Date, default: Date.now }
 });
 
+const judgeInviteSchema = new mongoose.Schema({
+  event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event' },
+  email: { type: String },
+  invite_code: { type: String, required: true, unique: true },
+  invited_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: { 
+    type: String, 
+    enum: ['pending', 'accepted', 'expired'], 
+    default: 'pending' 
+  },
+  accepted_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  created_at: { type: Date, default: Date.now }
+});
+
+const judgeAssignmentSchema = new mongoose.Schema({
+  event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
+  submission_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Submission', required: true },
+  judge_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  assigned_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  status: { 
+    type: String, 
+    enum: ['assigned', 'in_progress', 'completed'], 
+    default: 'assigned' 
+  },
+  created_at: { type: Date, default: Date.now }
+});
+
+judgeAssignmentSchema.index({ submission_id: 1, judge_id: 1 }, { unique: true });
+
 const User = mongoose.model('User', userSchema);
 const Event = mongoose.model('Event', eventSchema);
 const Track = mongoose.model('Track', trackSchema);
 const Prize = mongoose.model('Prize', prizeSchema);
 const Team = mongoose.model('Team', teamSchema);
 const Submission = mongoose.model('Submission', submissionSchema);
+const JudgeInvite = mongoose.model('JudgeInvite', judgeInviteSchema);
+const JudgeAssignment = mongoose.model('JudgeAssignment', judgeAssignmentSchema);
 
 module.exports = {
   User,
@@ -90,5 +121,7 @@ module.exports = {
   Track,
   Prize,
   Team,
-  Submission
+  Submission,
+  JudgeInvite,
+  JudgeAssignment
 };
