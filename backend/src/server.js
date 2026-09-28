@@ -336,6 +336,16 @@ app.post('/api/teams', authenticate, requireRole('participant', 'admin'), async 
       if (defaultEvent) targetEventId = defaultEvent._id;
     }
 
+    if (targetEventId) {
+      const event = await Event.findById(targetEventId);
+      if (event && event.submission_deadline && new Date() > new Date(event.submission_deadline) && req.user.role !== 'ADMIN') {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Submission deadline has passed. New team registration is closed.'
+        });
+      }
+    }
+
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     const invite_code = crypto.randomBytes(4).toString('hex').toUpperCase();
 
@@ -373,6 +383,17 @@ app.post('/api/teams/join', authenticate, requireRole('participant', 'admin'), a
     const team = await Team.findOne({ invite_code: invite_code.toUpperCase().trim() });
     if (!team) {
       return res.status(404).json({ error: 'Not Found', message: 'Team with this invite code not found.' });
+    }
+
+    // Check event deadline
+    if (team.event_id) {
+      const event = await Event.findById(team.event_id);
+      if (event && event.submission_deadline && new Date() > new Date(event.submission_deadline) && req.user.role !== 'ADMIN') {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Submission deadline has passed. Team membership is locked.'
+        });
+      }
     }
 
     const userIdStr = String(req.user.id);
@@ -584,6 +605,26 @@ app.get('/api/submissions/:id', optionalAuth, async (req, res) => {
       }
     }
 
+    // DRAFT PRIVACY CHECK: Draft projects are strictly private to the owning team, organizers, and admins
+    if (submission.status === 'draft') {
+      const isOrganizerOrAdmin = req.user && (req.user.role === 'ORGANIZER' || req.user.role === 'ADMIN');
+      if (!isOrganizerOrAdmin) {
+        const userIdStr = req.user ? String(req.user.id) : null;
+        const team = submission.team_id;
+        const isMember = userIdStr && team && (
+          String(team.leader_id?._id || team.leader_id) === userIdStr ||
+          (team.members && team.members.some(m => String(m._id || m) === userIdStr))
+        );
+        if (!isMember) {
+          return res.status(403).json({
+            success: false,
+            error: 'Forbidden',
+            message: 'Access Denied: Draft projects are private to the team that created them.'
+          });
+        }
+      }
+    }
+
     return res.status(200).json(submission);
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
@@ -760,6 +801,16 @@ const handleJudgeJoin = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
+    }
+
+    // STRICT CHECK: If invitation was sent to a specific email, verify current user matches that email
+    if (invite.email && user.email) {
+      if (invite.email.toLowerCase().trim() !== user.email.toLowerCase().trim()) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Access Denied: This judge invitation was issued specifically to a different email address.'
+        });
+      }
     }
 
     if (user.role !== 'ADMIN') {
@@ -1591,8 +1642,20 @@ const handleGetSubmissionScores = async (req, res) => {
   try {
     const { submissionId } = req.params;
 
-    // STRICT ISOLATION: Judge A receives ONLY their own score
+    // STRICT ISOLATION: Judge A receives ONLY their own score, and must be assigned to the project
     if (req.user.role === 'JUDGE') {
+      const assignment = await JudgeAssignment.findOne({
+        submission_id: submissionId,
+        judge_id: req.user.id
+      });
+      if (!assignment) {
+        return res.status(403).json({
+          success: false,
+          error: 'Forbidden',
+          message: 'Access Denied: You are not assigned to evaluate this project.'
+        });
+      }
+
       const myScore = await EvaluationScore.findOne({
         submission_id: submissionId,
         judge_id: req.user.id
@@ -1715,6 +1778,17 @@ const handleGetLeaderboard = async (req, res) => {
           normalized_score: e.normalized_score
         }))
       }));
+
+      // STRICT JUDGE DATA ISOLATION: Mask judge identities in judge_stats for non-organizers
+      if (result.judge_stats) {
+        result.judge_stats = result.judge_stats.map((s, idx) => ({
+          judge_alias: `Judge ${idx + 1}`,
+          evaluations_count: s.evaluations_count,
+          mean: s.mean,
+          std_dev: s.std_dev,
+          scoring_style: s.scoring_style
+        }));
+      }
     }
 
     return res.status(200).json(result);
@@ -1909,7 +1983,6 @@ app.get('/api/overview', async (req, res) => {
       testCredentials: testCredentials.map(tc => ({
         role: tc.role,
         email: tc.email,
-        password: tc.password,
         name: tc.full_name
       }))
     });
