@@ -238,11 +238,18 @@ export const HomePage: React.FC = () => {
 
                 <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono">
                   <span className="text-slate-400">Starts {formatDate(evt.start_date)}</span>
-                  <Link to={`/events/${evt.slug || evt.id}`}>
-                    <Button size="sm" variant="outline" className="font-mono text-xs">
-                      SPEC DETAILS →
-                    </Button>
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link to={`/events/${evt.slug || evt.id}`}>
+                      <Button size="sm" variant="outline" className="font-mono text-xs">
+                        DETAILS
+                      </Button>
+                    </Link>
+                    <Link to={`/events/${evt.slug || evt.id}?register=true`}>
+                      <Button size="sm" variant="primary" className="font-mono text-xs font-bold">
+                        REGISTER 🚀
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </Card>
             ))}

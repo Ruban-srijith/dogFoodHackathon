@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { eventService } from '../services/eventService';
 import { teamService } from '../services/teamService';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,7 @@ import { Card } from '../components/Card';
 import { StatusBadge } from '../components/Badge';
 import { Loading } from '../components/Loading';
 import { ErrorState } from '../components/ErrorState';
+import { RegistrationModal } from '../components/RegistrationModal';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import {
   Calendar,
@@ -20,10 +21,12 @@ import {
   PlusCircle,
   LogIn,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 
 export const EventDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
   const [event, setEvent] = useState<Event | null>(null);
@@ -31,6 +34,8 @@ export const EventDetailPage: React.FC = () => {
   const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   const fetchDetails = async () => {
     if (!id) return;
@@ -57,6 +62,12 @@ export const EventDetailPage: React.FC = () => {
   useEffect(() => {
     fetchDetails();
   }, [id, user]);
+
+  useEffect(() => {
+    if (searchParams.get('register') === 'true') {
+      setIsRegisterModalOpen(true);
+    }
+  }, [searchParams]);
 
   if (loading) return <Loading message="Loading event details..." fullScreen />;
   if (error || !event) return <ErrorState message={error || 'Event not found'} onRetry={fetchDetails} fullScreen />;
@@ -96,61 +107,86 @@ export const EventDetailPage: React.FC = () => {
           </div>
 
           {/* Action Callout Card */}
-          <div className="shrink-0 w-full md:w-72 p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Participation
+          <div className="shrink-0 w-full md:w-80 p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">
+                Participation Status
+              </span>
+              {userTeam && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  REGISTERED
+                </span>
+              )}
             </div>
 
             {user ? (
               userTeam ? (
                 <div className="space-y-3">
                   <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs">
-                    <span className="text-emerald-400 font-semibold block flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4" /> You&apos;re in {userTeam.name}
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4" /> You&apos;re enrolled in {userTeam.name}
                     </span>
                     <span className="text-slate-400 font-mono text-[11px] block mt-1">
-                      Invite Code: <strong className="text-white">{userTeam.invite_code}</strong>
+                      Invite Code: <strong className="text-white font-bold">{userTeam.invite_code}</strong>
                     </span>
                   </div>
                   <Link to={`/teams/${userTeam.id}`} className="block">
-                    <Button variant="secondary" size="sm" className="w-full">
+                    <Button variant="secondary" size="sm" className="w-full justify-center">
                       View My Team
                     </Button>
                   </Link>
                   <Link to={`/submissions/new?event_id=${event.id}&team_id=${userTeam.id}`} className="block">
-                    <Button variant="primary" size="sm" className="w-full">
-                      Submit Project
+                    <Button variant="primary" size="sm" className="w-full justify-center font-extrabold">
+                      Submit Project 🚀
                     </Button>
                   </Link>
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  <Link to={`/teams/new?event_id=${event.id}`} className="block">
-                    <Button variant="primary" size="sm" className="w-full" leftIcon={<PlusCircle className="w-4 h-4" />}>
-                      Create Team
-                    </Button>
-                  </Link>
-                  <Link to={`/teams/join`} className="block">
-                    <Button variant="outline" size="sm" className="w-full" leftIcon={<LogIn className="w-4 h-4" />}>
-                      Join Team with Code
-                    </Button>
-                  </Link>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full justify-center font-extrabold py-2.5 text-xs tracking-wide"
+                    leftIcon={<Sparkles className="w-4 h-4 text-emerald-300" />}
+                    onClick={() => setIsRegisterModalOpen(true)}
+                  >
+                    Register For Hackathon 🚀
+                  </Button>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Link to={`/teams/new?event_id=${event.id}`} className="block">
+                      <Button variant="outline" size="sm" className="w-full justify-center text-[11px]" leftIcon={<PlusCircle className="w-3.5 h-3.5" />}>
+                        Create Team
+                      </Button>
+                    </Link>
+                    <Link to={`/teams/join`} className="block">
+                      <Button variant="outline" size="sm" className="w-full justify-center text-[11px]" leftIcon={<LogIn className="w-3.5 h-3.5" />}>
+                        Join Code
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               )
             ) : (
               <div className="space-y-3">
-                <p className="text-xs text-slate-400">Sign in to create or join a team for this hackathon.</p>
-                <Link to="/login" className="block">
-                  <Button variant="primary" size="sm" className="w-full">
-                    Sign In to Join
-                  </Button>
-                </Link>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full justify-center font-extrabold py-2.5"
+                  leftIcon={<Sparkles className="w-4 h-4 text-emerald-300" />}
+                  onClick={() => setIsRegisterModalOpen(true)}
+                >
+                  Register For Hackathon 🚀
+                </Button>
+                <p className="text-[11px] text-slate-400 text-center">
+                  Sign in or register an account to join team or submit code.
+                </p>
               </div>
             )}
 
-            <div className="pt-2 border-t border-slate-800 flex justify-between text-xs">
+            <div className="pt-2 border-t border-slate-800 flex justify-between text-xs font-mono">
               <Link to={`/gallery?event_id=${event.id}`} className="text-sky-400 hover:underline">
-                View Project Gallery
+                Gallery
               </Link>
               <Link to={`/leaderboard?event_id=${event.id}`} className="text-amber-400 hover:underline">
                 Rankings
@@ -241,6 +277,14 @@ export const EventDetailPage: React.FC = () => {
           </div>
         )}
       </section>
+
+      {/* Interactive Registration Modal */}
+      <RegistrationModal
+        event={event}
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        onSuccess={fetchDetails}
+      />
     </div>
   );
 };

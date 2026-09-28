@@ -8,8 +8,10 @@ import { Input } from '../components/Input';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
+import { Button } from '../components/Button';
+import { RegistrationModal } from '../components/RegistrationModal';
 import { formatDate, formatDaysRemaining } from '../utils/formatters';
-import { Search, Calendar, MapPin, ArrowRight, Compass } from 'lucide-react';
+import { Search, Calendar, MapPin, ArrowRight, Compass, Sparkles } from 'lucide-react';
 
 export const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -17,6 +19,10 @@ export const EventsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Registration modal state
+  const [selectedEventForModal, setSelectedEventForModal] = useState<Event | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -35,8 +41,16 @@ export const EventsPage: React.FC = () => {
     fetchEvents();
   }, []);
 
+  const handleOpenRegisterModal = (evt: Event, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setSelectedEventForModal(evt);
+    setIsModalOpen(true);
+  };
+
   const filteredEvents = events.filter((e) => {
-    const matchesSearch = e.title.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch =
+      e.title.toLowerCase().includes(search.toLowerCase()) ||
       e.description.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || e.status.toUpperCase() === statusFilter;
     return matchesSearch && matchesStatus;
@@ -52,7 +66,9 @@ export const EventsPage: React.FC = () => {
             <span>Hackathon Directory</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white">Explore Competitions</h1>
-          <p className="text-sm text-slate-400 mt-1">Participate in active hackathons or view archived results</p>
+          <p className="text-sm text-slate-400 mt-1">
+            Participate in active hackathons or view archived results
+          </p>
         </div>
 
         {/* Search & Filter Controls */}
@@ -63,7 +79,7 @@ export const EventsPage: React.FC = () => {
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition ${
+                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
                   statusFilter === st
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                     : 'text-slate-400 hover:text-slate-200'
@@ -92,12 +108,18 @@ export const EventsPage: React.FC = () => {
       ) : filteredEvents.length === 0 ? (
         <EmptyState
           title="No Competitions Found"
-          description={search ? `No competitions matching "${search}"` : 'No public hackathons currently available.'}
+          description={
+            search ? `No competitions matching "${search}"` : 'No public hackathons currently available.'
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredEvents.map((evt) => (
-            <Card key={evt.id} hover className="flex flex-col justify-between h-full group border-slate-800/90 hover:border-emerald-500/30">
+            <Card
+              key={evt.id}
+              hover
+              className="flex flex-col justify-between h-full group border-slate-800/90 hover:border-emerald-500/30"
+            >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <StatusBadge status={evt.status} />
@@ -118,7 +140,9 @@ export const EventsPage: React.FC = () => {
                 <div className="space-y-2 pt-2 text-xs text-slate-400">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                    <span>Timeline: {formatDate(evt.start_date)} – {formatDate(evt.end_date)}</span>
+                    <span>
+                      Timeline: {formatDate(evt.start_date)} – {formatDate(evt.end_date)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -127,21 +151,37 @@ export const EventsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between">
+              {/* Action Bar with clear View Details & Register buttons */}
+              <div className="mt-6 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                 <Link
                   to={`/events/${evt.slug || evt.id}`}
-                  className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition-colors"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200 hover:text-white hover:border-slate-700 transition cursor-pointer"
                 >
-                  View Details & Register <ArrowRight className="w-3.5 h-3.5" />
+                  View Details <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
                 </Link>
-                <Link to="/gallery">
-                  <span className="text-[11px] font-mono text-slate-500 hover:text-slate-300">Gallery →</span>
-                </Link>
+
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="text-xs font-extrabold justify-center"
+                  leftIcon={<Sparkles className="w-3.5 h-3.5 text-emerald-300" />}
+                  onClick={(e) => handleOpenRegisterModal(evt, e)}
+                >
+                  Register Now
+                </Button>
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Global Interactive Registration Modal */}
+      <RegistrationModal
+        event={selectedEventForModal}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchEvents}
+      />
     </div>
   );
 };
