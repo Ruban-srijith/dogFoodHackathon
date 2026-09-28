@@ -39,6 +39,8 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:-dogfood_session_secret_cookie_vault_key_2026}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@dogfood.local}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-DogfoodAdmin123!}
+    volumes:
+      - ./database:/database:ro
     depends_on:
       postgres:
         condition: service_healthy

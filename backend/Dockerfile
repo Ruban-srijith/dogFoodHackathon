@@ -9,7 +9,7 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 FROM base AS builder
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npm run build
 
@@ -17,7 +17,9 @@ FROM node:20-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
+COPY src ./src
 EXPOSE 3000
 CMD ["node", "dist/app/server.js"]
+

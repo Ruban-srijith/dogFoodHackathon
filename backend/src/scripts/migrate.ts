@@ -5,11 +5,22 @@ import { db, pool } from '../config/database';
 export const runMigrations = async () => {
   console.log('🔄 Starting database migrations...');
 
-  const migrationsDir = path.resolve(__dirname, '../../../database/migrations');
-  if (!fs.existsSync(migrationsDir)) {
-    console.error(`❌ Migrations directory not found at ${migrationsDir}`);
+  const candidates = [
+    process.env.MIGRATIONS_DIR,
+    path.resolve(__dirname, '../../../database/migrations'),
+    path.resolve(__dirname, '../../database/migrations'),
+    path.resolve(process.cwd(), 'database/migrations'),
+    path.resolve(process.cwd(), '../database/migrations'),
+    '/database/migrations',
+    '/app/database/migrations',
+  ].filter(Boolean) as string[];
+
+  let migrationsDir = candidates.find((dir) => fs.existsSync(dir));
+  if (!migrationsDir) {
+    console.error(`❌ Migrations directory not found in candidate paths: ${candidates.join(', ')}`);
     process.exit(1);
   }
+  console.log(`📂 Using migrations directory: ${migrationsDir}`);
 
   // Create migrations tracking table if not exists
   await db.query(`
