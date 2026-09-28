@@ -129,21 +129,21 @@ export const runSeed = async () => {
     // 4. Tracks
     const tracks = [
       {
-        id: 't0000000-0000-0000-0000-000000000001',
+        id: 'a0000000-0000-0000-0000-000000000001',
         event_id: eventId,
         name: 'Autonomous AI Agents',
         description: 'Multi-agent frameworks, tool use, reasoning loops, and intelligent local sidecars.',
         prize_pool: '$10,000 + Cloud Credits',
       },
       {
-        id: 't0000000-0000-0000-0000-000000000002',
+        id: 'a0000000-0000-0000-0000-000000000002',
         event_id: eventId,
         name: 'Developer Tooling & Infrastructure',
         description: 'Compilers, package managers, testing frameworks, and reproducible environments.',
         prize_pool: '$7,500',
       },
       {
-        id: 't0000000-0000-0000-0000-000000000003',
+        id: 'a0000000-0000-0000-0000-000000000003',
         event_id: eventId,
         name: 'Community & Open Web',
         description: 'Collaborative apps, accessibility, decentralization, and privacy-preserving tools.',
@@ -162,7 +162,7 @@ export const runSeed = async () => {
     console.log('✅ Tracks seeded.');
 
     // 5. Rubric and Criteria
-    const rubricId = 'r0000000-0000-0000-0000-000000000001';
+    const rubricId = 'e1000000-0000-0000-0000-000000000001';
     await client.query(
       `INSERT INTO rubrics (id, event_id, name, description, max_score)
        VALUES ($1, $2, $3, $4, $5)
@@ -171,10 +171,10 @@ export const runSeed = async () => {
     );
 
     const criteria = [
-      { id: 'c0000000-0000-0000-0000-000000000001', rubric_id: rubricId, name: 'Innovation & Novelty', description: 'Originality of approach, unique insight, and creative leap', weight: 1.0, max_points: 25 },
-      { id: 'c0000000-0000-0000-0000-000000000002', rubric_id: rubricId, name: 'Technical Depth & Architecture', description: 'Code quality, system stability, self-hostability, and engineering rigor', weight: 1.0, max_points: 25 },
-      { id: 'c0000000-0000-0000-0000-000000000003', rubric_id: rubricId, name: 'UI / UX & Developer Experience', description: 'Aesthetic polish, intuitive flows, clean error handling, and visual appeal', weight: 1.0, max_points: 25 },
-      { id: 'c0000000-0000-0000-0000-000000000004', rubric_id: rubricId, name: 'Real-world Practical Impact', description: 'Utility to developers, problem severity, and open source value', weight: 1.0, max_points: 25 },
+      { id: 'e2000000-0000-0000-0000-000000000001', rubric_id: rubricId, name: 'Innovation & Novelty', description: 'Originality of approach, unique insight, and creative leap', weight: 1.0, max_points: 25 },
+      { id: 'e2000000-0000-0000-0000-000000000002', rubric_id: rubricId, name: 'Technical Depth & Architecture', description: 'Code quality, system stability, self-hostability, and engineering rigor', weight: 1.0, max_points: 25 },
+      { id: 'e2000000-0000-0000-0000-000000000003', rubric_id: rubricId, name: 'UI / UX & Developer Experience', description: 'Aesthetic polish, intuitive flows, clean error handling, and visual appeal', weight: 1.0, max_points: 25 },
+      { id: 'e2000000-0000-0000-0000-000000000004', rubric_id: rubricId, name: 'Real-world Practical Impact', description: 'Utility to developers, problem severity, and open source value', weight: 1.0, max_points: 25 },
     ];
 
     for (const c of criteria) {
@@ -190,7 +190,7 @@ export const runSeed = async () => {
     // 6. Teams
     const teams = [
       {
-        id: 'b0000000-0000-0000-0000-000000000001',
+        id: 'e3000000-0000-0000-0000-000000000001',
         event_id: eventId,
         name: 'Team Antigravity',
         slug: 'team-antigravity',
@@ -199,7 +199,7 @@ export const runSeed = async () => {
         invite_code: 'GRAV2026',
       },
       {
-        id: 'b0000000-0000-0000-0000-000000000002',
+        id: 'e3000000-0000-0000-0000-000000000002',
         event_id: eventId,
         name: 'Team ByteForge',
         slug: 'team-byteforge',
@@ -208,7 +208,7 @@ export const runSeed = async () => {
         invite_code: 'BYTE2026',
       },
       {
-        id: 'b0000000-0000-0000-0000-000000000003',
+        id: 'e3000000-0000-0000-0000-000000000003',
         event_id: eventId,
         name: 'Team NeuralFlow',
         slug: 'team-neuralflow',
@@ -239,7 +239,7 @@ export const runSeed = async () => {
     // 7. Submissions
     const submissions = [
       {
-        id: 's0000000-0000-0000-0000-000000000001',
+        id: 'e4000000-0000-0000-0000-000000000001',
         event_id: eventId,
         team_id: teams[0].id,
         track_id: tracks[0].id, // Autonomous AI Agents
@@ -254,7 +254,7 @@ export const runSeed = async () => {
         submitted_at: new Date(Date.now() - 1 * 86400000).toISOString(),
       },
       {
-        id: 's0000000-0000-0000-0000-000000000002',
+        id: 'e4000000-0000-0000-0000-000000000002',
         event_id: eventId,
         team_id: teams[1].id,
         track_id: tracks[1].id, // Developer Tooling
@@ -269,7 +269,7 @@ export const runSeed = async () => {
         submitted_at: new Date(Date.now() - 2 * 86400000).toISOString(),
       },
       {
-        id: 's0000000-0000-0000-0000-000000000003',
+        id: 'e4000000-0000-0000-0000-000000000003',
         event_id: eventId,
         team_id: teams[2].id,
         track_id: tracks[2].id, // Community & Open Web
@@ -316,21 +316,21 @@ export const runSeed = async () => {
     // Judge 2 assigned to Submission 1
     const assignments = [
       {
-        id: 'ja000000-0000-0000-0000-000000000001',
+        id: 'e5000000-0000-0000-0000-000000000001',
         event_id: eventId,
         judge_id: users[2].id, // Judge 1
         submission_id: submissions[0].id, // Antigravity
         status: 'completed',
       },
       {
-        id: 'ja000000-0000-0000-0000-000000000002',
+        id: 'e5000000-0000-0000-0000-000000000002',
         event_id: eventId,
         judge_id: users[2].id, // Judge 1
         submission_id: submissions[1].id, // ByteForge
         status: 'assigned',
       },
       {
-        id: 'ja000000-0000-0000-0000-000000000003',
+        id: 'e5000000-0000-0000-0000-000000000003',
         event_id: eventId,
         judge_id: users[3].id, // Judge 2
         submission_id: submissions[0].id, // Antigravity
