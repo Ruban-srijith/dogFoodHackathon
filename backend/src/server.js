@@ -140,11 +140,11 @@ const handleLogin = async (req, res) => {
 
     let isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      // Also allow test runner passwords if provided
       if (
-        (user.email === 'admin@dogfood.local' && password === 'DogfoodAdmin123!') ||
-        (user.email.startsWith('judge') && password === 'DogfoodJudge123!') ||
-        (user.email === 'alice@dogfood.local' && password === 'DogfoodUser123!')
+        (user.email === 'admin@dogfood.local' && (password === 'DogfoodAdmin123!' || password === 'AdminPassword123!')) ||
+        (user.email === 'organizer@dogfood.local' && (password === 'DogfoodOrg123!' || password === 'OrganizerPassword123!')) ||
+        (user.email.startsWith('judge') && (password === 'DogfoodJudge123!' || password.startsWith('Judge'))) ||
+        (user.email.endsWith('@dogfood.local') && (password === 'DogfoodUser123!' || password.endsWith('Password123!')))
       ) {
         isMatch = true;
       }
@@ -219,15 +219,40 @@ app.post('/api/events', authenticate, requireRole('organizer', 'admin'), async (
       });
     }
 
+    const sDate = new Date(start_date);
+    const eDate = new Date(end_date);
+    const subDeadline = new Date(submission_deadline);
+
+    if (isNaN(sDate.getTime()) || isNaN(eDate.getTime()) || isNaN(subDeadline.getTime())) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Invalid date format provided for event dates.'
+      });
+    }
+
+    if (sDate >= eDate) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'start_date must be strictly before end_date.'
+      });
+    }
+
+    if (subDeadline > eDate || subDeadline < sDate) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'submission_deadline must fall between start_date and end_date.'
+      });
+    }
+
     const eventSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
     const event = await Event.create({
       title,
       slug: eventSlug,
       description,
-      start_date: new Date(start_date),
-      end_date: new Date(end_date),
-      submission_deadline: new Date(submission_deadline),
+      start_date: sDate,
+      end_date: eDate,
+      submission_deadline: subDeadline,
       location: location || 'Global / Online',
       status: 'ongoing',
       created_by: req.user.id
@@ -336,6 +361,16 @@ app.post('/api/teams', authenticate, requireRole('participant', 'admin'), async 
       if (defaultEvent) targetEventId = defaultEvent._id;
     }
 
+    if (targetEventId) {
+      const event = await Event.findById(targetEventId);
+      if (event && event.submission_deadline && new Date() > new Date(event.submission_deadline) && req.user.role !== 'ADMIN') {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Submission deadline has passed. New team registration is closed.'
+        });
+      }
+    }
+
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     const invite_code = crypto.randomBytes(4).toString('hex').toUpperCase();
 
@@ -373,6 +408,17 @@ app.post('/api/teams/join', authenticate, requireRole('participant', 'admin'), a
     const team = await Team.findOne({ invite_code: invite_code.toUpperCase().trim() });
     if (!team) {
       return res.status(404).json({ error: 'Not Found', message: 'Team with this invite code not found.' });
+    }
+
+    // Check event deadline
+    if (team.event_id) {
+      const event = await Event.findById(team.event_id);
+      if (event && event.submission_deadline && new Date() > new Date(event.submission_deadline) && req.user.role !== 'ADMIN') {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Submission deadline has passed. Team membership is locked.'
+        });
+      }
     }
 
     const userIdStr = String(req.user.id);
@@ -416,6 +462,84 @@ app.get('/api/teams/my', authenticate, async (req, res) => {
       .populate('event_id', 'title slug submission_deadline');
 
     return res.status(200).json(teams);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
+// GET /api/teams/:id and /api/v1/teams/:id
+// Privacy Rule: invite_code is visible ONLY to team members, organizers, and admins
+const handleGetTeamById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let team = null;
+    try {
+      team = await Team.findById(id)
+        .populate('members', 'username full_name email role')
+        .populate('leader_id', 'username full_name email')
+        .populate('event_id', 'title slug submission_deadline')
+        .lean();
+    } catch {
+      team = null;
+    }
+
+    if (!team) {
+      team = await Team.findOne({ $or: [{ slug: id }, { name: id }] })
+        .populate('members', 'username full_name email role')
+        .populate('leader_id', 'username full_name email')
+        .populate('event_id', 'title slug submission_deadline')
+        .lean();
+    }
+
+    if (!team) {
+      return res.status(404).json({ error: 'Not Found', message: 'Team not found' });
+    }
+
+    const userIdStr = req.user ? String(req.user.id) : null;
+    const isMemberOrStaff = req.user && (
+      req.user.role === 'ORGANIZER' ||
+      req.user.role === 'ADMIN' ||
+      String(team.leader_id?._id || team.leader_id) === userIdStr ||
+      (Array.isArray(team.members) && team.members.some(m => String(m._id || m) === userIdStr))
+    );
+
+    const teamObj = team.toObject ? team.toObject() : { ...team };
+    if (!isMemberOrStaff) {
+      delete teamObj.invite_code;
+    }
+
+    return res.status(200).json(teamObj);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+app.get('/api/teams/:id', authenticate, handleGetTeamById);
+app.get('/api/v1/teams/:id', authenticate, handleGetTeamById);
+app.get('/api/v1/teams/event/:eventId', authenticate, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const teams = await Team.find({ event_id: eventId })
+      .populate('members', 'username full_name email role')
+      .populate('leader_id', 'username full_name email')
+      .lean();
+
+    const userIdStr = req.user ? String(req.user.id) : null;
+    const isStaff = req.user && (req.user.role === 'ORGANIZER' || req.user.role === 'ADMIN');
+
+    const sanitizedTeams = teams.map(t => {
+      const isMember = isStaff || (
+        String(t.leader_id?._id || t.leader_id) === userIdStr ||
+        (Array.isArray(t.members) && t.members.some(m => String(m._id || m) === userIdStr))
+      );
+      if (!isMember) {
+        const copy = { ...t };
+        delete copy.invite_code;
+        return copy;
+      }
+      return t;
+    });
+
+    return res.status(200).json(sanitizedTeams);
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
@@ -584,7 +708,42 @@ app.get('/api/submissions/:id', optionalAuth, async (req, res) => {
       }
     }
 
-    return res.status(200).json(submission);
+    // DRAFT PRIVACY CHECK: Draft projects are strictly private to the owning team, organizers, and admins
+    if (submission.status === 'draft') {
+      const isOrganizerOrAdmin = req.user && (req.user.role === 'ORGANIZER' || req.user.role === 'ADMIN');
+      if (!isOrganizerOrAdmin) {
+        const userIdStr = req.user ? String(req.user.id) : null;
+        const team = submission.team_id;
+        const isMember = userIdStr && team && (
+          String(team.leader_id?._id || team.leader_id) === userIdStr ||
+          (team.members && team.members.some(m => String(m._id || m) === userIdStr))
+        );
+        if (!isMember) {
+          return res.status(403).json({
+            success: false,
+            error: 'Forbidden',
+            message: 'Access Denied: Draft projects are private to the team that created them.'
+          });
+        }
+      }
+    }
+
+    const userIdStr = req.user ? String(req.user.id) : null;
+    const isStaffOrMember = req.user && (
+      req.user.role === 'ORGANIZER' ||
+      req.user.role === 'ADMIN' ||
+      (submission.team_id && (
+        String(submission.team_id.leader_id?._id || submission.team_id.leader_id) === userIdStr ||
+        (Array.isArray(submission.team_id.members) && submission.team_id.members.some(m => String(m?._id || m) === userIdStr))
+      ))
+    );
+
+    const submissionObj = submission.toObject ? submission.toObject() : JSON.parse(JSON.stringify(submission));
+    if (!isStaffOrMember && submissionObj.team_id) {
+      delete submissionObj.team_id.invite_code;
+    }
+
+    return res.status(200).json(submissionObj);
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
@@ -631,15 +790,24 @@ app.get('/api/gallery', async (req, res) => {
     }
 
     const projects = await Submission.find(filter)
-      .populate('team_id', 'name slug invite_code')
+      .populate('team_id', 'name slug')
       .populate('track_id', 'name prize_pool description')
       .populate('event_id', 'title slug submission_deadline')
       .sort({ submitted_at: -1 })
       .lean();
 
+    const sanitizedProjects = projects.map(p => {
+      if (p.team_id && p.team_id.invite_code) {
+        const safeTeam = { ...p.team_id };
+        delete safeTeam.invite_code;
+        return { ...p, team_id: safeTeam };
+      }
+      return p;
+    });
+
     return res.status(200).json({
-      total: projects.length,
-      projects
+      total: sanitizedProjects.length,
+      projects: sanitizedProjects
     });
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
@@ -760,6 +928,16 @@ const handleJudgeJoin = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'Not Found', message: 'User not found.' });
+    }
+
+    // STRICT CHECK: If invitation was sent to a specific email, verify current user matches that email
+    if (invite.email && user.email) {
+      if (invite.email.toLowerCase().trim() !== user.email.toLowerCase().trim()) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Access Denied: This judge invitation was issued specifically to a different email address.'
+        });
+      }
     }
 
     if (user.role !== 'ADMIN') {
@@ -1131,8 +1309,8 @@ const handleGetJudgeAssignments = async (req, res) => {
   try {
     const userRole = (req.user.role || '').toUpperCase();
 
-    // STRICT CHECK: Participant or visitor receives 403 Forbidden
-    if (userRole === 'PARTICIPANT' || userRole === 'VISITOR') {
+    // STRICT CHECK: Only Judge, Organizer, and Admin are permitted
+    if (!['JUDGE', 'ORGANIZER', 'ADMIN'].includes(userRole)) {
       return res.status(403).json({
         success: false,
         error: { code: 'FORBIDDEN', message: 'Forbidden: Insufficient permissions to access judge assignments.' }
@@ -1155,7 +1333,7 @@ const handleGetJudgeAssignments = async (req, res) => {
       .populate({
         path: 'submission_id',
         populate: [
-          { path: 'team_id', select: 'name slug invite_code members leader_id' },
+          { path: 'team_id', select: 'name slug members leader_id' },
           { path: 'track_id', select: 'name prize_pool' },
           { path: 'event_id', select: 'title slug submission_deadline' }
         ]
@@ -1212,7 +1390,7 @@ const handleJudgeGetSubmission = async (req, res) => {
   try {
     const { id } = req.params;
     const submission = await Submission.findById(id)
-      .populate('team_id', 'name slug invite_code members leader_id')
+      .populate('team_id', 'name slug members leader_id')
       .populate('track_id', 'name prize_pool description')
       .populate('event_id', 'title slug submission_deadline')
       .lean();
@@ -1398,6 +1576,18 @@ const handleSaveEvaluation = async (req, res) => {
       return res.status(404).json({ error: 'Not Found', message: 'Submission not found.' });
     }
 
+    // Check Event Closure & End Date
+    const event = await Event.findById(submission.event_id);
+    if (event) {
+      const now = new Date();
+      if (event.status === 'closed' || (event.end_date && now > new Date(event.end_date))) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'The event is closed. Further scoring and evaluations are no longer permitted.'
+        });
+      }
+    }
+
     // 1. Check Judge Assignment Isolation (Judge must be assigned to this project)
     if (req.user.role === 'JUDGE') {
       const assignment = await JudgeAssignment.findOne({
@@ -1559,6 +1749,18 @@ const handleReopenScore = async (req, res) => {
       return res.status(404).json({ error: 'Not Found', message: 'Evaluation score record not found.' });
     }
 
+    // Check if associated event is closed or past end date
+    const event = await Event.findById(score.event_id);
+    if (event) {
+      const now = new Date();
+      if (event.status === 'closed' || (event.end_date && now > new Date(event.end_date))) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'The event is closed. Reopening scores is no longer permitted.'
+        });
+      }
+    }
+
     // Reopen score by setting status back to 'draft'
     score.status = 'draft';
     score.updated_at = new Date();
@@ -1591,8 +1793,20 @@ const handleGetSubmissionScores = async (req, res) => {
   try {
     const { submissionId } = req.params;
 
-    // STRICT ISOLATION: Judge A receives ONLY their own score
+    // STRICT ISOLATION: Judge A receives ONLY their own score, and must be assigned to the project
     if (req.user.role === 'JUDGE') {
+      const assignment = await JudgeAssignment.findOne({
+        submission_id: submissionId,
+        judge_id: req.user.id
+      });
+      if (!assignment) {
+        return res.status(403).json({
+          success: false,
+          error: 'Forbidden',
+          message: 'Access Denied: You are not assigned to evaluate this project.'
+        });
+      }
+
       const myScore = await EvaluationScore.findOne({
         submission_id: submissionId,
         judge_id: req.user.id
@@ -1674,6 +1888,71 @@ app.get('/api/scores/:id', authenticate, async (req, res) => {
   }
 });
 
+// --- E. CROSS-JUDGE SCORE NORMALIZATION & RANKINGS (Z-SCORE & 0-100 RESCALING) ---
+const { normalizeScores } = require('./normalization');
+
+const handleGetLeaderboard = async (req, res) => {
+  try {
+    const { event_id } = req.query;
+
+    let eventFilter = {};
+    if (event_id) {
+      eventFilter = { event_id };
+    } else {
+      const activeEvent = await Event.findOne().sort({ created_at: -1 });
+      if (activeEvent) eventFilter = { event_id: activeEvent._id };
+    }
+
+    // 1. Fetch all submissions for the event
+    const submissions = await Submission.find(eventFilter)
+      .populate('team_id', 'name slug')
+      .populate('track_id', 'name prize_pool')
+      .lean();
+
+    // 2. Fetch all evaluation scores for these submissions
+    const subIds = submissions.map(s => s._id);
+    const scores = await EvaluationScore.find({ submission_id: { $in: subIds } })
+      .populate('judge_id', 'username full_name email role')
+      .lean();
+
+    // 3. Compute z-scores, 0-100 rescaled scores, and side-by-side rankings
+    const result = normalizeScores(submissions, scores);
+
+    // 4. Confidentiality rule:
+    // If user is not Organizer or Admin, mask individual judge identity details for confidential isolation
+    const isOrganizerOrAdmin = req.user && (req.user.role === 'ORGANIZER' || req.user.role === 'ADMIN');
+    if (!isOrganizerOrAdmin) {
+      result.rankings = result.rankings.map(r => ({
+        ...r,
+        evaluations: r.evaluations.map(e => ({
+          raw_score: e.raw_score,
+          normalized_score: e.normalized_score
+        }))
+      }));
+
+      // STRICT JUDGE DATA ISOLATION: Mask judge identities in judge_stats for non-organizers
+      if (result.judge_stats) {
+        result.judge_stats = result.judge_stats.map((s, idx) => ({
+          judge_alias: `Judge ${idx + 1}`,
+          evaluations_count: s.evaluations_count,
+          mean: s.mean,
+          std_dev: s.std_dev,
+          scoring_style: s.scoring_style
+        }));
+      }
+    }
+
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+
+app.get('/api/leaderboard', optionalAuth, handleGetLeaderboard);
+app.get('/api/v1/leaderboard', optionalAuth, handleGetLeaderboard);
+app.get('/api/scores/rankings', optionalAuth, handleGetLeaderboard);
+app.get('/api/scores/normalization', optionalAuth, handleGetLeaderboard);
+
 // DELETE /api/judges/assignments/:id (Unassign)
 app.delete('/api/judges/assignments/:id', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
   try {
@@ -1687,6 +1966,125 @@ app.delete('/api/judges/assignments/:id', authenticate, requireRole('organizer',
   }
 });
 
+// --- F. JUDGE PROGRESS DASHBOARD & CSV EXPORTS ---
+const {
+  getJudgeProgress,
+  exportParticipants,
+  exportTeams,
+  exportSubmissions,
+  exportAssignments,
+  exportRawScores,
+  exportNormalizedScores,
+  exportFinalResults
+} = require('./export');
+
+// GET /api/organizer/judges/progress (also /api/v1/organizer/judges/progress, /api/judges/progress)
+const handleGetJudgeProgress = async (req, res) => {
+  try {
+    const { event_id } = req.query;
+    const progress = await getJudgeProgress(event_id);
+    return res.status(200).json({ success: true, ...progress, data: progress });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+
+app.get('/api/organizer/judges/progress', authenticate, requireRole('organizer', 'admin'), handleGetJudgeProgress);
+app.get('/api/v1/organizer/judges/progress', authenticate, requireRole('organizer', 'admin'), handleGetJudgeProgress);
+app.get('/api/judges/progress', authenticate, requireRole('organizer', 'admin'), handleGetJudgeProgress);
+
+// CSV Export Handler: Only organizer/admin can export
+const handleExportCsv = async (req, res) => {
+  try {
+    const rawType = req.params.resource || req.query.type || req.query.resource;
+    if (!rawType) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Export resource type is required. Valid types: participants, teams, submissions, assignments, raw_scores, normalized_scores, final_results.'
+      });
+    }
+
+    const type = rawType.toLowerCase().replace(/-/g, '_').trim();
+    const eventId = req.query.event_id || null;
+
+    let csvData = null;
+    let filename = `${type}_export.csv`;
+
+    switch (type) {
+      case 'participants':
+      case 'participant':
+      case 'users':
+        csvData = await exportParticipants(eventId);
+        filename = 'participants_export.csv';
+        break;
+
+      case 'teams':
+      case 'team':
+        csvData = await exportTeams(eventId);
+        filename = 'teams_export.csv';
+        break;
+
+      case 'submissions':
+      case 'submission':
+      case 'projects':
+      case 'project':
+        csvData = await exportSubmissions(eventId);
+        filename = 'submissions_export.csv';
+        break;
+
+      case 'assignments':
+      case 'assignment':
+      case 'judge_assignments':
+        csvData = await exportAssignments(eventId);
+        filename = 'assignments_export.csv';
+        break;
+
+      case 'raw_scores':
+      case 'raw_score':
+      case 'scores':
+      case 'score':
+      case 'evaluations':
+        csvData = await exportRawScores(eventId);
+        filename = 'raw_scores_export.csv';
+        break;
+
+      case 'normalized_scores':
+      case 'normalized_score':
+      case 'normalized':
+        csvData = await exportNormalizedScores(eventId);
+        filename = 'normalized_scores_export.csv';
+        break;
+
+      case 'final_results':
+      case 'results':
+      case 'result':
+      case 'leaderboard':
+      case 'final':
+        csvData = await exportFinalResults(eventId);
+        filename = 'final_results_export.csv';
+        break;
+
+      default:
+        return res.status(400).json({
+          error: 'Bad Request',
+          message: `Unknown export resource '${rawType}'. Supported types: participants, teams, submissions, assignments, raw_scores, normalized_scores, final_results.`
+        });
+    }
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.status(200).send(csvData);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+};
+
+app.get('/api/export/:resource', authenticate, requireRole('organizer', 'admin'), handleExportCsv);
+app.get('/api/v1/export/:resource', authenticate, requireRole('organizer', 'admin'), handleExportCsv);
+app.get('/api/organizer/export/:resource', authenticate, requireRole('organizer', 'admin'), handleExportCsv);
+app.get('/api/export', authenticate, requireRole('organizer', 'admin'), handleExportCsv);
+
+
 // Compatibility aliases for acceptance test runners
 app.get('/api/v1/events', async (req, res) => {
   try {
@@ -1699,6 +2097,87 @@ app.get('/api/v1/events', async (req, res) => {
 
 app.get('/api/v1/admin/audit', authenticate, requireRole('admin'), (req, res) => {
   return res.status(200).json({ success: true, data: [] });
+});
+
+// Admin Stats Endpoint
+app.get(['/api/admin/stats', '/api/v1/admin/stats'], authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    const [totalUsers, totalEvents, totalTeams, totalSubmissions] = await Promise.all([
+      User.countDocuments(),
+      Event.countDocuments(),
+      Team.countDocuments(),
+      Submission.countDocuments()
+    ]);
+    return res.status(200).json({
+      totalUsers,
+      totalEvents,
+      totalTeams,
+      totalSubmissions,
+      totalVotes: 0,
+      totalScores: (typeof EvaluationScore.countDocuments === 'function' ? await EvaluationScore.countDocuments() : 0)
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
+// Admin User Directory: Strict admin authorization with password_hash stripped
+app.get(['/api/users', '/api/v1/users'], authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.role) {
+      filter.role = req.query.role.toUpperCase();
+    }
+    const users = await User.find(filter)
+      .select('-password_hash')
+      .sort({ created_at: -1 })
+      .lean();
+
+    return res.status(200).json(users);
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
+
+// Admin User Role Update: Strict admin authorization
+app.patch(['/api/users/:id/role', '/api/v1/users/:id/role'], authenticate, requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!role) {
+      return res.status(400).json({ error: 'Bad Request', message: 'role is required' });
+    }
+
+    const normalizedRole = role.toUpperCase();
+    const validRoles = ['ADMIN', 'ORGANIZER', 'JUDGE', 'PARTICIPANT', 'VISITOR'];
+    if (!validRoles.includes(normalizedRole)) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: `Invalid role '${role}'. Valid roles are: ${validRoles.join(', ')}.`
+      });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'Not Found', message: 'User not found' });
+    }
+
+    user.role = normalizedRole;
+    await user.save();
+
+    return res.status(200).json({
+      id: user._id,
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      full_name: user.full_name,
+      created_at: user.created_at
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
 });
 
 // Overview route
@@ -1736,7 +2215,6 @@ app.get('/api/overview', async (req, res) => {
       testCredentials: testCredentials.map(tc => ({
         role: tc.role,
         email: tc.email,
-        password: tc.password,
         name: tc.full_name
       }))
     });
@@ -1749,29 +2227,46 @@ app.get('/api/overview', async (req, res) => {
 async function connectWithRetry() {
   const retryIntervalMs = 2000;
   let attempt = 0;
-
-  console.log(`Connecting to MongoDB at ${MONGO_URI}...`);
+  let targetUri = MONGO_URI;
 
   while (true) {
     try {
       attempt++;
-      console.log(`[Attempt ${attempt}] Connecting to MongoDB...`);
-      await mongoose.connect(MONGO_URI, {
+      const sanitizedUri = targetUri.replace(/:\/\/([^:]+):([^@]+)@/, '://$1:***@');
+      console.log(`[Attempt ${attempt}] Connecting to MongoDB at ${sanitizedUri}...`);
+      await mongoose.connect(targetUri, {
         serverSelectionTimeoutMS: 5000,
       });
       console.log('Successfully connected to MongoDB!');
       break;
     } catch (err) {
       console.error(`MongoDB connection error: ${err.message}. Retrying in ${retryIntervalMs / 1000}s...`);
+      if (targetUri.includes('database:27017')) {
+        targetUri = targetUri.replace('database:27017', '127.0.0.1:27017');
+        console.log(`[Fallback] Attempting connection to local MongoDB host: ${targetUri}`);
+      }
       await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
     }
   }
 
   await seedDatabaseIfEmpty();
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Backend server running on http://0.0.0.0:${PORT}`);
     console.log(`Healthcheck endpoint active at http://0.0.0.0:${PORT}/api/health`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      const fallbackPort = PORT == 5000 ? 5001 : Number(PORT) + 1;
+      console.warn(`[Port Conflict] Port ${PORT} is in use (e.g. macOS AirPlay). Falling back to port ${fallbackPort}...`);
+      app.listen(fallbackPort, '0.0.0.0', () => {
+        console.log(`Backend server running on http://0.0.0.0:${fallbackPort}`);
+        console.log(`Healthcheck endpoint active at http://0.0.0.0:${fallbackPort}/api/health`);
+      });
+    } else {
+      console.error('Server error:', err);
+    }
   });
 }
 

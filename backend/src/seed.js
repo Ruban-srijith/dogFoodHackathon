@@ -29,6 +29,9 @@ const testCredentials = [
 ];
 
 function printCredentials() {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
   console.log('\n' + '='.repeat(76));
   console.log('🔑  TEST LOGIN ACCOUNTS & CREDENTIALS');
   console.log('='.repeat(76));
