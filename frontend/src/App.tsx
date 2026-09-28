@@ -7,11 +7,14 @@ import {
   Database, 
   Layout, 
   Activity, 
-  ShieldCheck,
+  ShieldCheck, 
   Radio,
   Key,
   Trophy,
-  Calendar
+  Calendar,
+  Lock,
+  Unlock,
+  UserCheck
 } from 'lucide-react';
 
 interface HealthResponse {
@@ -41,6 +44,14 @@ interface OverviewData {
   }[];
 }
 
+interface AuthUser {
+  id: string;
+  email: string;
+  username: string;
+  role: string;
+  full_name: string;
+}
+
 export const App: React.FC = () => {
   const [data, setData] = useState<HealthResponse | null>(null);
   const [overview, setOverview] = useState<OverviewData | null>(null);
@@ -51,6 +62,24 @@ export const App: React.FC = () => {
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [activeUrl, setActiveUrl] = useState<string>('/api/health');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Authentication State
+  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('auth_token'));
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
+    const saved = localStorage.getItem('auth_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [rbacTestResult, setRbacTestResult] = useState<{
+    route: string;
+    status: number;
+    statusText: string;
+    payload: any;
+  } | null>(null);
+  const [testingRoute, setTestingRoute] = useState<boolean>(false);
+
+  const getBaseApiUrl = () => {
+    return import.meta.env.VITE_API_URL || '';
+  };
 
   const fetchHealth = useCallback(async () => {
     setLoading(true);
@@ -139,6 +168,104 @@ export const App: React.FC = () => {
     navigator.clipboard.writeText(text);
     setCopiedKey(id);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  // Quick Login Handler
+  const handleLogin = async (email: string, password: string) => {
+    setTestingRoute(true);
+    try {
+      const base = getBaseApiUrl();
+      const res = await fetch(`${base}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const resData = await res.json();
+      if (res.ok && resData.token) {
+        setAuthToken(resData.token);
+        setAuthUser(resData.user);
+        localStorage.setItem('auth_token', resData.token);
+        localStorage.setItem('auth_user', JSON.stringify(resData.user));
+        setRbacTestResult({
+          route: '/api/auth/login',
+          status: res.status,
+          statusText: '200 OK',
+          payload: resData
+        });
+      } else {
+        setRbacTestResult({
+          route: '/api/auth/login',
+          status: res.status,
+          statusText: `${res.status} ${res.statusText}`,
+          payload: resData
+        });
+      }
+    } catch (err: any) {
+      setRbacTestResult({
+        route: '/api/auth/login',
+        status: 500,
+        statusText: 'Network Error',
+        payload: { error: err.message }
+      });
+    } finally {
+      setTestingRoute(false);
+    }
+  };
+
+  // Logout Handler
+  const handleLogout = async () => {
+    try {
+      const base = getBaseApiUrl();
+      await fetch(`${base}/api/auth/logout`, { method: 'POST' });
+    } catch {
+      // ignore
+    }
+    setAuthToken(null);
+    setAuthUser(null);
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    setRbacTestResult({
+      route: '/api/auth/logout',
+      status: 200,
+      statusText: '200 OK',
+      payload: { message: 'Logged out successfully' }
+    });
+  };
+
+  // Test Role Route Handler (Verifies 200, 401, or 403)
+  const testRoleRoute = async (endpoint: string) => {
+    setTestingRoute(true);
+    try {
+      const base = getBaseApiUrl();
+      const headers: Record<string, string> = {
+        'Accept': 'application/json'
+      };
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
+      const res = await fetch(`${base}${endpoint}`, {
+        method: 'GET',
+        headers
+      });
+
+      const resData = await res.json().catch(() => ({}));
+      setRbacTestResult({
+        route: endpoint,
+        status: res.status,
+        statusText: `${res.status} ${res.statusText || (res.status === 200 ? 'OK' : res.status === 401 ? 'Unauthorized' : 'Forbidden')}`,
+        payload: resData
+      });
+    } catch (err: any) {
+      setRbacTestResult({
+        route: endpoint,
+        status: 500,
+        statusText: 'Fetch Error',
+        payload: { error: err.message }
+      });
+    } finally {
+      setTestingRoute(false);
+    }
   };
 
   const isHealthy = data?.status === 'ok';
@@ -303,6 +430,146 @@ export const App: React.FC = () => {
           </div>
         </div>
 
+        {/* ========================================================================= */}
+        {/* INTERACTIVE AUTH & ROLE-BASED ACCESS CONTROL (RBAC) TEST PANEL */}
+        {/* ========================================================================= */}
+        <div className="border border-slate-800 bg-slate-900/50 rounded-2xl p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Lock className="w-5 h-5 text-cyan-400" />
+                Backend Authentication & RBAC Middleware Tester
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Verify 401 Unauthorized (unauthenticated) and 403 Forbidden (wrong role) on backend routes.
+              </p>
+            </div>
+
+            {authUser ? (
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  {authUser.email} ({authUser.role})
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="px-3 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-semibold transition"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                <Unlock className="w-3.5 h-3.5 text-amber-400" />
+                Not Logged In (Unauthenticated)
+              </span>
+            )}
+          </div>
+
+          {/* Quick Login Bar */}
+          <div className="space-y-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+              Quick Login as Seeded Role:
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <button
+                onClick={() => handleLogin('admin@dogfood.local', 'AdminPassword123!')}
+                className="p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-left transition"
+              >
+                <div className="text-[11px] font-bold text-rose-300">ADMIN</div>
+                <div className="text-[10px] text-slate-400 truncate">admin@dogfood.local</div>
+              </button>
+
+              <button
+                onClick={() => handleLogin('organizer@dogfood.local', 'OrganizerPassword123!')}
+                className="p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-left transition"
+              >
+                <div className="text-[11px] font-bold text-amber-300">ORGANIZER</div>
+                <div className="text-[10px] text-slate-400 truncate">organizer@dogfood.local</div>
+              </button>
+
+              <button
+                onClick={() => handleLogin('judge1@dogfood.local', 'JudgeOnePassword123!')}
+                className="p-2.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-left transition"
+              >
+                <div className="text-[11px] font-bold text-purple-300">JUDGE</div>
+                <div className="text-[10px] text-slate-400 truncate">judge1@dogfood.local</div>
+              </button>
+
+              <button
+                onClick={() => handleLogin('alice@dogfood.local', 'AlicePassword123!')}
+                className="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-left transition"
+              >
+                <div className="text-[11px] font-bold text-emerald-300">PARTICIPANT</div>
+                <div className="text-[10px] text-slate-400 truncate">alice@dogfood.local</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Test Role-Protected Route Buttons */}
+          <div className="space-y-2 pt-2 border-t border-slate-800">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
+              Test Role Enforcement on Backend Endpoints:
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+              <button
+                onClick={() => testRoleRoute('/api/participant/dashboard')}
+                disabled={testingRoute}
+                className="p-3 rounded-xl border border-slate-800 bg-slate-950 hover:border-emerald-500/40 text-left transition group"
+              >
+                <div className="text-xs font-semibold text-slate-200 group-hover:text-emerald-400">/api/participant/dashboard</div>
+                <div className="text-[10px] text-slate-500 mt-1">Requires: PARTICIPANT or ADMIN</div>
+              </button>
+
+              <button
+                onClick={() => testRoleRoute('/api/judge/evaluations')}
+                disabled={testingRoute}
+                className="p-3 rounded-xl border border-slate-800 bg-slate-950 hover:border-purple-500/40 text-left transition group"
+              >
+                <div className="text-xs font-semibold text-slate-200 group-hover:text-purple-400">/api/judge/evaluations</div>
+                <div className="text-[10px] text-slate-500 mt-1">Requires: JUDGE or ADMIN</div>
+              </button>
+
+              <button
+                onClick={() => testRoleRoute('/api/organizer/events')}
+                disabled={testingRoute}
+                className="p-3 rounded-xl border border-slate-800 bg-slate-950 hover:border-amber-500/40 text-left transition group"
+              >
+                <div className="text-xs font-semibold text-slate-200 group-hover:text-amber-400">/api/organizer/events</div>
+                <div className="text-[10px] text-slate-500 mt-1">Requires: ORGANIZER or ADMIN</div>
+              </button>
+
+              <button
+                onClick={() => testRoleRoute('/api/admin/system')}
+                disabled={testingRoute}
+                className="p-3 rounded-xl border border-slate-800 bg-slate-950 hover:border-rose-500/40 text-left transition group"
+              >
+                <div className="text-xs font-semibold text-slate-200 group-hover:text-rose-400">/api/admin/system</div>
+                <div className="text-[10px] text-slate-500 mt-1">Requires: ADMIN exclusively</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Test Result Display */}
+          {rbacTestResult && (
+            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-2 text-xs font-mono">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-900">
+                <span className="text-slate-400">Tested Route: <strong className="text-white">{rbacTestResult.route}</strong></span>
+                <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
+                  rbacTestResult.status === 200 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                  rbacTestResult.status === 403 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                  'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                }`}>
+                  HTTP {rbacTestResult.statusText}
+                </span>
+              </div>
+              <pre className="text-slate-300 overflow-x-auto text-[11px] pt-1">
+                {JSON.stringify(rbacTestResult.payload, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+
         {/* 3 Services Grid */}
         <div className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -351,7 +618,7 @@ export const App: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-bold text-white text-sm">backend</h4>
-                <p className="text-slate-400 text-xs mt-0.5">Node + Express (API)</p>
+                <p className="text-slate-400 text-xs mt-0.5">Node + Express (API + RBAC)</p>
               </div>
               <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
                 <div className="flex justify-between">

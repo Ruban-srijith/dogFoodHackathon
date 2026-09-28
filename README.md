@@ -2,7 +2,7 @@
 
 A local-first, offline-ready microservices architecture composed of 3 isolated services orchestrated via Docker Compose:
 - **Frontend**: React + Vite (Served via Nginx)
-- **Backend**: Node.js + Express
+- **Backend**: Node.js + Express (JWT + Cookie Auth & Role-Based Access Control)
 - **Database**: MongoDB 6.0
 
 ---
@@ -17,8 +17,8 @@ docker compose up --build
 
 Everything starts automatically in dependency order:
 1. `database` (MongoDB) initializes and reports healthy via `mongosh ping`.
-2. `backend` waits for MongoDB connection, automatically runs the seed script (if database is empty), prints test credentials to the console, and exposes `GET /api/health`.
-3. `frontend` starts up and displays the live health response and seeded database overview on the web page.
+2. `backend` waits for MongoDB connection, automatically seeds the database (if empty), prints test credentials to the console, and exposes `GET /api/health` and the auth/RBAC endpoints.
+3. `frontend` starts up and displays the live health response, seeded database metrics, and an interactive RBAC middleware tester on the web page.
 
 To run in the background (detached mode):
 ```bash
@@ -37,15 +37,43 @@ docker compose down
 
 ---
 
-## Service Endpoints
+## Running Automated Tests
 
-| Service | Technology | Port / URL | Description |
+Run the complete backend test suite (testing register, login, logout, 401 unauthorized, and 403 forbidden for all roles):
+
+```bash
+npm test
+```
+
+---
+
+## Service Endpoints & Authentication API
+
+| Method | Endpoint | Access / Role | Description |
 | :--- | :--- | :--- | :--- |
-| **Frontend** | React + Vite | `http://localhost:5173` (also `http://localhost:3000`) | Web UI calling and rendering `/api/health` |
-| **Backend** | Node + Express | `http://localhost:5000` | REST API service |
-| **Healthcheck** | Express Endpoint | `http://localhost:5000/api/health` | Returns `{"status":"ok"}` |
-| **Overview API** | Express Endpoint | `http://localhost:5000/api/overview` | Returns seeded stats and test credentials |
-| **Database** | MongoDB 6.0 | `localhost:27017` | Persistent document database |
+| `GET` | `/api/health` | **Public** | Healthcheck returning `{"status":"ok"}` |
+| `POST` | `/api/auth/register` | **Public** | Register user (hashes password with bcrypt, sets session cookie) |
+| `POST` | `/api/auth/login` | **Public** | Login with email & password (returns JWT & session cookie) |
+| `POST` | `/api/auth/logout` | **Public** | Clears session cookie |
+| `GET` | `/api/auth/me` | **Authenticated** | Returns current user profile (401 if unauthenticated) |
+| `GET` | `/api/participant/dashboard` | **PARTICIPANT, ADMIN** | 401 if not logged in, 403 if wrong role |
+| `GET` | `/api/judge/evaluations` | **JUDGE, ADMIN** | 401 if not logged in, 403 if wrong role |
+| `GET` | `/api/organizer/events` | **ORGANIZER, ADMIN** | 401 if not logged in, 403 if wrong role |
+| `GET` | `/api/admin/system` | **ADMIN exclusively** | 401 if not logged in, 403 if wrong role |
+| `GET` | `/api/overview` | **Public** | Returns database counts and test credentials |
+
+---
+
+## Role-Based Access Control (RBAC) Middleware
+
+The backend enforces strict server-side authorization through two composable middlewares in [`backend/src/auth.js`](file:///Users/rubansrijith/IdeaProjects/projects/dogFoodHackathon/backend/src/auth.js):
+
+1. **`authenticate(req, res, next)`**:
+   - Inspects `Authorization: Bearer <token>` header or `req.cookies.token`.
+   - If token is missing, invalid, or expired: immediately aborts with **HTTP 401 Unauthorized**.
+2. **`requireRole(...roles)`**:
+   - Validates that `req.user.role` matches one of the allowed roles (case-insensitive).
+   - If the user's role does not match: aborts with **HTTP 403 Forbidden**.
 
 ---
 
