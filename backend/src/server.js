@@ -2215,30 +2215,46 @@ app.get('/api/overview', async (req, res) => {
 async function connectWithRetry() {
   const retryIntervalMs = 2000;
   let attempt = 0;
-
-  const sanitizedUri = MONGO_URI.replace(/:\/\/([^:]+):([^@]+)@/, '://$1:***@');
-  console.log(`Connecting to MongoDB at ${sanitizedUri}...`);
+  let targetUri = MONGO_URI;
 
   while (true) {
     try {
       attempt++;
-      console.log(`[Attempt ${attempt}] Connecting to MongoDB...`);
-      await mongoose.connect(MONGO_URI, {
+      const sanitizedUri = targetUri.replace(/:\/\/([^:]+):([^@]+)@/, '://$1:***@');
+      console.log(`[Attempt ${attempt}] Connecting to MongoDB at ${sanitizedUri}...`);
+      await mongoose.connect(targetUri, {
         serverSelectionTimeoutMS: 5000,
       });
       console.log('Successfully connected to MongoDB!');
       break;
     } catch (err) {
       console.error(`MongoDB connection error: ${err.message}. Retrying in ${retryIntervalMs / 1000}s...`);
+      if (targetUri.includes('database:27017')) {
+        targetUri = targetUri.replace('database:27017', '127.0.0.1:27017');
+        console.log(`[Fallback] Attempting connection to local MongoDB host: ${targetUri}`);
+      }
       await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));
     }
   }
 
   await seedDatabaseIfEmpty();
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Backend server running on http://0.0.0.0:${PORT}`);
     console.log(`Healthcheck endpoint active at http://0.0.0.0:${PORT}/api/health`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      const fallbackPort = PORT == 5000 ? 5001 : Number(PORT) + 1;
+      console.warn(`[Port Conflict] Port ${PORT} is in use (e.g. macOS AirPlay). Falling back to port ${fallbackPort}...`);
+      app.listen(fallbackPort, '0.0.0.0', () => {
+        console.log(`Backend server running on http://0.0.0.0:${fallbackPort}`);
+        console.log(`Healthcheck endpoint active at http://0.0.0.0:${fallbackPort}/api/health`);
+      });
+    } else {
+      console.error('Server error:', err);
+    }
   });
 }
 
