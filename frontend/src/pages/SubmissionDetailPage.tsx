@@ -175,17 +175,6 @@ export const SubmissionDetailPage: React.FC = () => {
               Live Demonstration
             </a>
           )}
-          {submission.video_url && (
-            <a
-              href={submission.video_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition"
-            >
-              <Video className="w-4 h-4 text-emerald-400" />
-              Walkthrough Video
-            </a>
-          )}
         </div>
 
         {/* Tech Stack */}

@@ -35,7 +35,6 @@ export const SubmissionCreatePage: React.FC = () => {
   const [trackId, setTrackId] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
   const [demoUrl, setDemoUrl] = useState('');
-  const [videoUrl, setVideoUrl] = useState('');
   const [techStackInput, setTechStackInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,7 +155,6 @@ export const SubmissionCreatePage: React.FC = () => {
         description: description.trim(),
         repo_url: repoUrl.trim(),
         demo_url: demoUrl.trim() || undefined,
-        video_url: videoUrl.trim() || undefined,
         tech_stack,
         status,
       });
@@ -320,13 +318,7 @@ export const SubmissionCreatePage: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Video Walkthrough URL (optional)"
-              placeholder="https://youtube.com/watch?v=..."
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-            />
+          <div className="grid grid-cols-1 gap-4">
             <Input
               label="Tech Stack (comma-separated)"
               placeholder="React, TypeScript, Docker, PostgreSQL"

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { teamService } from '../services/teamService';
 import { submissionService } from '../services/submissionService';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,16 +10,18 @@ import { Card } from '../components/Card';
 import { RoleBadge } from '../components/Badge';
 import { Loading } from '../components/Loading';
 import { ErrorState } from '../components/ErrorState';
-import { Users, Copy, Check, PlusCircle, FileText, ArrowRight } from 'lucide-react';
+import { Users, Copy, Check, PlusCircle, FileText, ArrowRight, Trash2 } from 'lucide-react';
 
 export const TeamPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { success } = useToast();
+  const { success, error: toastError } = useToast();
 
   const [team, setTeam] = useState<Team | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,14 +65,31 @@ export const TeamPage: React.FC = () => {
   if (error || !team) return <ErrorState message={error || 'Team not found'} onRetry={fetchTeam} fullScreen />;
 
   const userIdent = user?.id || (user as any)?._id;
-  const isMember = Boolean(
+  const isLeader = Boolean(
     userIdent && (
-      team.members?.some((m: any) => (m.id || m._id) === userIdent) ||
       (typeof team.leader_id === 'string'
         ? team.leader_id === userIdent
         : ((team.leader_id as any)?._id || (team.leader_id as any)?.id) === userIdent)
     )
   );
+  const isMember = Boolean(
+    userIdent && (
+      team.members?.some((m: any) => (m.id || m._id) === userIdent) || isLeader
+    )
+  );
+
+  const handleDeleteTeam = async () => {
+    if (!team || !window.confirm("Are you sure you want to delete this team? This action cannot be undone and will also delete any associated project submissions.")) return;
+    setDeleting(true);
+    try {
+      await teamService.deleteTeam(team.id || (team as any)._id);
+      success("Team deleted successfully.");
+      navigate('/dashboard');
+    } catch (err: any) {
+      toastError(err.message || 'Failed to delete team');
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -84,24 +103,41 @@ export const TeamPage: React.FC = () => {
             <h1 className="text-3xl font-extrabold text-white">{team.name}</h1>
           </div>
 
-          {/* Invite Code Box */}
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900 border border-slate-800 shrink-0">
-            <div>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-                Invite Code
-              </span>
-              <span className="font-mono text-base font-extrabold text-emerald-400 tracking-wider">
-                {team.invite_code}
-              </span>
+          {/* Invite Code Box & Delete */}
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900 border border-slate-800 shrink-0">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
+                  Invite Code
+                </span>
+                <span className="font-mono text-base font-extrabold text-emerald-400 tracking-wider">
+                  {team.invite_code || 'Hidden'}
+                </span>
+              </div>
+              {team.invite_code && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyCode}
+                  leftIcon={copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                >
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
+              )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyCode}
-              leftIcon={copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            >
-              {copied ? 'Copied' : 'Copy'}
-            </Button>
+
+            {isLeader && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/30"
+                onClick={handleDeleteTeam}
+                disabled={deleting}
+                leftIcon={<Trash2 className="w-4 h-4" />}
+              >
+                {deleting ? 'Deleting...' : 'Delete Team'}
+              </Button>
+            )}
           </div>
         </div>
 

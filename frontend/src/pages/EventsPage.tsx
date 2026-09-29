@@ -124,6 +124,11 @@ export const EventsPage: React.FC = () => {
                     <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                     <span>{evt.location || 'Online / Remote'}</span>
                   </div>
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-900 border border-slate-700 text-slate-300 capitalize">
+                      {evt.participation_type === 'both' || !evt.participation_type ? 'Individual + Team' : evt.participation_type}
+                    </span>
+                  </div>
                 </div>
               </div>
 

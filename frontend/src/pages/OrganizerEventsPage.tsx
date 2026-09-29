@@ -30,6 +30,10 @@ export const OrganizerEventsPage: React.FC = () => {
   const [deadline, setDeadline] = useState('');
   const [creating, setCreating] = useState(false);
 
+  const [participationType, setParticipationType] = useState<'individual' | 'team' | 'both'>('team');
+  const [minTeamSize, setMinTeamSize] = useState<number>(2);
+  const [maxTeamSize, setMaxTeamSize] = useState<number>(4);
+
   const fetchEvents = async () => {
     setLoading(true);
     setError(null);
@@ -70,6 +74,9 @@ export const OrganizerEventsPage: React.FC = () => {
         start_date: new Date(startDate).toISOString(),
         end_date: new Date(endDate).toISOString(),
         submission_deadline: new Date(deadline).toISOString(),
+        participation_type: participationType,
+        min_team_size: participationType !== 'individual' ? minTeamSize : undefined,
+        max_team_size: participationType !== 'individual' ? maxTeamSize : undefined,
         status: 'published',
       });
       success(`Event "${newEvt.title}" created with default rubric criteria!`);
@@ -227,6 +234,47 @@ export const OrganizerEventsPage: React.FC = () => {
             onChange={(e) => setDeadline(e.target.value)}
             required
           />
+
+          <div className="space-y-1.5 text-left pt-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+              Participation Type
+            </label>
+            <div className="flex gap-4 items-center">
+              <label className="flex items-center gap-1.5 text-sm text-slate-200 cursor-pointer">
+                <input type="radio" checked={participationType === 'individual'} onChange={() => setParticipationType('individual')} className="accent-emerald-500" />
+                Individual
+              </label>
+              <label className="flex items-center gap-1.5 text-sm text-slate-200 cursor-pointer">
+                <input type="radio" checked={participationType === 'team'} onChange={() => setParticipationType('team')} className="accent-emerald-500" />
+                Team
+              </label>
+              <label className="flex items-center gap-1.5 text-sm text-slate-200 cursor-pointer">
+                <input type="radio" checked={participationType === 'both'} onChange={() => setParticipationType('both')} className="accent-emerald-500" />
+                Individual & Team
+              </label>
+            </div>
+          </div>
+
+          {participationType !== 'individual' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
+              <Input
+                label="Minimum Team Size"
+                type="number"
+                min={1}
+                value={minTeamSize}
+                onChange={(e) => setMinTeamSize(parseInt(e.target.value) || 1)}
+                required={true}
+              />
+              <Input
+                label="Maximum Team Size"
+                type="number"
+                min={minTeamSize}
+                value={maxTeamSize}
+                onChange={(e) => setMaxTeamSize(parseInt(e.target.value) || 4)}
+                required={true}
+              />
+            </div>
+          )}
 
           <div className="pt-2 flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setIsModalOpen(false)}>

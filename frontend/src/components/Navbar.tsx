@@ -57,7 +57,9 @@ export const Navbar: React.FC = () => {
                 <a href="/#about" className="hover:text-[var(--accent-red)] transition">ABOUT</a>
                 <Link to="/events" className="hover:text-[var(--accent-red)] transition">HACKATHONS</Link>
                 <Link to="/gallery" className="hover:text-[var(--accent-red)] transition">GALLERY</Link>
-                <Link to="/teams/join" className="hover:text-[var(--accent-red)] transition">JOIN TEAM</Link>
+                {user?.role === 'PARTICIPANT' && (
+                  <Link to="/teams/join" className="hover:text-[var(--accent-red)] transition">JOIN TEAM</Link>
+                )}
                 <a href="https://github.com/Ruban-srijith/dogFoodHackathon" target="_blank" rel="noopener noreferrer" className="px-2 py-0.5 rounded bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] border border-[var(--accent-cyan)]/30 hover:bg-[var(--accent-cyan)]/20 transition">SPEC</a>
               </div>
             </div>

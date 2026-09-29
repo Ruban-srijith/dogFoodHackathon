@@ -99,6 +99,19 @@ export const EventDetailPage: React.FC = () => {
           <div className="shrink-0 w-full md:w-72 p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4">
             <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
               Participation
+              {event.participation_type === 'individual' && <div className="mt-1 text-sm font-bold text-white capitalize">Individual</div>}
+              {event.participation_type === 'team' && (
+                <div className="mt-1">
+                  <div className="text-sm font-bold text-white capitalize">Team</div>
+                  <div className="text-xs text-slate-400 normal-case">Team Size: {event.min_team_size || 1} - {event.max_team_size || 4} members</div>
+                </div>
+              )}
+              {(!event.participation_type || event.participation_type === 'both') && (
+                <div className="mt-1">
+                  <div className="text-sm font-bold text-white capitalize">Individual & Team</div>
+                  <div className="text-xs text-slate-400 normal-case">Team Size: {event.min_team_size || 1} - {event.max_team_size || 4} members</div>
+                </div>
+              )}
             </div>
 
             {user ? (
@@ -125,16 +138,27 @@ export const EventDetailPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  <Link to={`/teams/new?event_id=${event.id}`} className="block">
-                    <Button variant="primary" size="sm" className="w-full" leftIcon={<PlusCircle className="w-4 h-4" />}>
-                      Create Team
-                    </Button>
-                  </Link>
-                  <Link to={`/teams/join`} className="block">
-                    <Button variant="outline" size="sm" className="w-full" leftIcon={<LogIn className="w-4 h-4" />}>
-                      Join Team with Code
-                    </Button>
-                  </Link>
+                  {(!event.participation_type || event.participation_type === 'both' || event.participation_type === 'individual') && (
+                    <Link to={`/teams/new?event_id=${event.id}&individual=true`} className="block">
+                      <Button variant="primary" size="sm" className="w-full" leftIcon={<PlusCircle className="w-4 h-4" />}>
+                        Register Individually
+                      </Button>
+                    </Link>
+                  )}
+                  {(!event.participation_type || event.participation_type === 'both' || event.participation_type === 'team') && (
+                    <>
+                      <Link to={`/teams/new?event_id=${event.id}`} className="block">
+                        <Button variant={event.participation_type === 'team' ? 'primary' : 'outline'} size="sm" className="w-full" leftIcon={<PlusCircle className="w-4 h-4" />}>
+                          Create Team
+                        </Button>
+                      </Link>
+                      <Link to={`/teams/join`} className="block">
+                        <Button variant="outline" size="sm" className="w-full" leftIcon={<LogIn className="w-4 h-4" />}>
+                          Join Team with Code
+                        </Button>
+                      </Link>
+                    </>
+                  )}
                 </div>
               )
             ) : (

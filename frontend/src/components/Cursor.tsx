@@ -78,11 +78,11 @@ export const Cursor: React.FC = () => {
     window.addEventListener('mousedown', onMouseDown, { passive: true });
     window.addEventListener('mouseup', onMouseUp, { passive: true });
 
-    // 90fps+ Hardware accelerated lerp loop with direct GPU transform
+    // 90fps+ Hardware accelerated loop with direct GPU transform
     const render = () => {
-      // Smooth lerp factor (0.2 for snappy 90-120fps response)
-      currentX += (targetX - currentX) * 0.22;
-      currentY += (targetY - currentY) * 0.22;
+      // Instantly track the cursor without trailing delay
+      currentX = targetX;
+      currentY = targetY;
 
       if (ringRef.current) {
         ringRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) translate(-50%, -50%) scale(${

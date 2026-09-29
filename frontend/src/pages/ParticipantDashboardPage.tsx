@@ -386,9 +386,14 @@ export const ParticipantDashboardPage: React.FC = () => {
                   <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider">
                     {evt.status || 'Active'}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-400">
-                    {evt.tracks?.length || 1} Tracks
-                  </span>
+                  <div className="flex gap-2">
+                    <span className="text-[10px] font-mono text-slate-400 border border-slate-700 px-1.5 rounded capitalize">
+                      {evt.participation_type === 'both' || !evt.participation_type ? 'Individual + Team' : evt.participation_type}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {evt.tracks?.length || 1} Tracks
+                    </span>
+                  </div>
                 </div>
                 <h3 className="text-sm font-bold text-white font-mono leading-snug">{evt.title}</h3>
                 <p className="text-xs text-slate-300 font-sans line-clamp-2">{evt.description}</p>

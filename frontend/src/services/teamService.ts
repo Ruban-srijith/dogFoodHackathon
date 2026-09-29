@@ -24,7 +24,7 @@ export const teamService = {
     return await apiClient.get<Team>(ENDPOINTS.TEAM_BY_ID(id));
   },
 
-  createTeam: async (data: { event_id: string; name: string; description?: string }): Promise<Team> => {
+  createTeam: async (data: { event_id: string; name: string; description?: string; is_individual?: boolean }): Promise<Team> => {
     return await apiClient.post<Team>(ENDPOINTS.CREATE_TEAM, data);
   },
 
@@ -39,5 +39,9 @@ export const teamService = {
     } catch {
       return [];
     }
+  },
+
+  deleteTeam: async (id: string): Promise<{ success: boolean; message: string }> => {
+    return await apiClient.delete<{ success: boolean; message: string }>(`/api/v1/teams/${id}`);
   },
 };

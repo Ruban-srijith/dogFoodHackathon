@@ -100,7 +100,49 @@ async function seedDatabaseIfEmpty() {
       location: 'Global / Decentralized (Air-Gapped & Offline Ready)',
       created_by: organizer._id
     });
-    console.log(`[Seed] ✅ Seeded 1 Event with dates: "${event.title}" [${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}].`);
+
+    const additionalEvents = [];
+    const topics = ['Web3', 'ClimateTech', 'EdTech', 'HealthTech', 'FinTech', 'Space', 'Robotics', 'Quantum', 'AR/VR', 'Cybersecurity', 'IoT', 'Gaming', 'Open Source', 'Data Science', 'Blockchain', 'DevOps', 'Mobile', 'Cloud', 'Design'];
+    const types = ['Buildathon', 'Jam', 'Sprint', 'Challenge', 'Datathon', 'Makeathon', 'Hackathon'];
+    const locations = ['Virtual', 'San Francisco, CA', 'New York, NY', 'London, UK', 'Berlin, Germany', 'Tokyo, Japan', 'Singapore', 'Austin, TX', 'Toronto, Canada', 'Dubai, UAE'];
+    
+    for (let i = 0; i < 80; i++) {
+      const topic = topics[i % topics.length];
+      const type = types[i % types.length];
+      const loc = locations[i % locations.length];
+      
+      let sDate, eDate;
+      if (i < 35) {
+        // Force the first 35 to be 'ongoing'
+        sDate = new Date(now.getTime() - (Math.random() * 5) * 24 * 60 * 60 * 1000); // 0 to 5 days ago
+        eDate = new Date(now.getTime() + (Math.random() * 10 + 2) * 24 * 60 * 60 * 1000); // 2 to 12 days in future
+      } else {
+        // Spread the rest into the past and future
+        sDate = new Date(now.getTime() + (i * 3 - 150) * 24 * 60 * 60 * 1000); 
+        eDate = new Date(sDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+      }
+      
+      const subDeadline = new Date(eDate.getTime() - 1 * 24 * 60 * 60 * 1000);
+      
+      let status = 'published';
+      if (now > eDate) status = 'closed';
+      else if (now >= sDate && now <= eDate) status = 'ongoing';
+      
+      additionalEvents.push({
+        title: `${topic} & Innovation ${type} 2026 - Vol ${i+1}`,
+        slug: `${topic.toLowerCase().replace(/[^a-z0-9]/g, '')}-${type.toLowerCase()}-2026-${i+1}`,
+        description: `Join us for the ultimate ${topic} ${type} to build innovative solutions and push the boundaries of technology.`,
+        start_date: sDate,
+        end_date: eDate,
+        submission_deadline: subDeadline,
+        status: status,
+        location: loc,
+        created_by: organizer._id
+      });
+    }
+    await Event.create(additionalEvents);
+
+    console.log(`[Seed] ✅ Seeded ${additionalEvents.length + 1} Events Total.`);
 
     // 3. Seed 2 Tracks
     const track1 = await Track.create({
