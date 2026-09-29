@@ -41,7 +41,11 @@
     border-color: var(--border);
   }
 
-  html,
+  html {
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     background-color: #0F172A;
     background-image: 
@@ -57,6 +61,8 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -74,7 +80,7 @@
     color: var(--text-primary);
     border: 1px solid var(--border);
     border-radius: 8px;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
   }
 
   input:focus,
@@ -111,6 +117,16 @@
   }
 }
 
+/* 90fps GPU Layer Promotion */
+.theme-card,
+.card-base,
+table,
+aside,
+nav {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
 /* Card primitives */
 .theme-card,
 .card-base {
@@ -126,7 +142,7 @@
   color: #0F172A;
   font-weight: 600;
   border-radius: 8px;
-  transition: all 0.15s ease;
+  transition: filter 0.12s ease;
 }
 
 .btn-primary:hover {

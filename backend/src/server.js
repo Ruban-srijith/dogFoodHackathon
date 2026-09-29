@@ -2285,8 +2285,8 @@ app.get('/api/v1/admin/audit', authenticate, requireRole('admin'), (req, res) =>
   return res.status(200).json({ success: true, data: [] });
 });
 
-// Admin Stats Endpoint
-app.get(['/api/admin/stats', '/api/v1/admin/stats'], authenticate, requireRole('admin'), async (req, res) => {
+// Admin & Organizer Stats Endpoint
+app.get(['/api/admin/stats', '/api/v1/admin/stats'], authenticate, requireRole('admin', 'organizer'), async (req, res) => {
   try {
     const [totalUsers, totalEvents, totalTeams, totalSubmissions] = await Promise.all([
       User.countDocuments(),
@@ -2307,8 +2307,8 @@ app.get(['/api/admin/stats', '/api/v1/admin/stats'], authenticate, requireRole('
   }
 });
 
-// Admin User Directory: Strict admin authorization with password_hash stripped
-app.get(['/api/users', '/api/v1/users'], authenticate, requireRole('admin'), async (req, res) => {
+// User Directory: Admin & Organizer authorization with password_hash stripped
+app.get(['/api/users', '/api/v1/users'], authenticate, requireRole('admin', 'organizer'), async (req, res) => {
   try {
     const filter = {};
     if (req.query.role) {
