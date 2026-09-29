@@ -1,4 +1,16 @@
-const BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+const getBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined') {
+    const isRemote = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    // If accessing from another computer/device over LAN, ignore any hardcoded localhost URL
+    if (isRemote && envUrl && envUrl.includes('localhost')) {
+      return '/api/v1';
+    }
+  }
+  return envUrl || '/api/v1';
+};
+
+export const BASE_URL = getBaseUrl();
 
 export const ENDPOINTS = {
   // Auth
