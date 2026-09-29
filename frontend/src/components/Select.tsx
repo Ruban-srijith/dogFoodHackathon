@@ -24,25 +24,25 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
   return (
     <div className="w-full space-y-1.5 text-left">
       {label && (
-        <label htmlFor={selectId} className="block text-xs font-mono font-bold uppercase tracking-wider text-[var(--accent-cyan)]">
+        <label htmlFor={selectId} className="block text-xs font-mono font-bold uppercase tracking-wider text-[#A78BFA]">
           {label}
         </label>
       )}
       <select
         ref={ref}
         id={selectId}
-        className={`w-full rounded-xl bg-[var(--bg-card)] border text-[var(--text-main)] text-sm px-4 py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--accent-cyan)] focus:border-[var(--accent-cyan)] cursor-pointer ${
-          error ? 'border-[var(--accent-red)]' : 'border-[var(--border-color)] hover:border-[var(--border-hover)]'
+        className={`w-full rounded-[4px] bg-[#0F172A] border text-[#E2E8F0] text-sm px-3.5 py-2 transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-[#A78BFA] focus:border-[#A78BFA] cursor-pointer ${
+          error ? 'border-[#F87171]' : 'border-[#334155] hover:border-[#475569]'
         } ${className}`}
         {...props}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-[var(--bg-surface)] text-[var(--text-main)] py-1">
+          <option key={opt.value} value={opt.value} className="bg-[#1E293B] text-[#E2E8F0] py-1">
             {opt.label}
           </option>
         ))}
       </select>
-      {error && <p className="text-xs text-[var(--accent-red)] font-mono font-medium">{error}</p>}
+      {error && <p className="text-xs text-[#F87171] font-mono font-medium">{error}</p>}
     </div>
   );
 });

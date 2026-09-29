@@ -46,10 +46,10 @@ export function Table<T>({
 }: TableProps<T>) {
   if (isLoading) {
     return (
-      <div className="w-full py-16 flex flex-col justify-center items-center gap-3 text-[var(--text-muted)] text-sm font-mono">
+      <div className="w-full py-16 flex flex-col justify-center items-center gap-3 text-[#94A3B8] text-sm font-mono">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent-cyan)] animate-ping" />
-          <span className="w-2 h-2 rounded-full bg-[var(--accent-cyan)] animate-pulse" />
+          <span className="w-2 h-2 rounded-[2px] bg-[#A78BFA] animate-ping" />
+          <span className="w-2 h-2 rounded-[2px] bg-[#A78BFA]" />
         </div>
         <span>Loading table records...</span>
       </div>
@@ -58,8 +58,8 @@ export function Table<T>({
 
   if (data.length === 0) {
     return (
-      <div className="w-full py-16 text-center text-[var(--text-muted)] text-sm font-mono flex flex-col items-center justify-center gap-2">
-        <div className="w-10 h-10 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] mb-1">
+      <div className="w-full py-16 text-center text-[#94A3B8] text-sm font-mono flex flex-col items-center justify-center gap-2">
+        <div className="w-10 h-10 rounded-[4px] bg-[#0F172A] border border-[#334155] flex items-center justify-center text-[#94A3B8] mb-1">
           ∅
         </div>
         <p>{emptyMessage}</p>
@@ -69,12 +69,12 @@ export function Table<T>({
 
   const containerClasses = borderless
     ? `w-full overflow-x-auto ${className}`
-    : `w-full overflow-x-auto rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] backdrop-blur-xl shadow-xl ${className}`;
+    : `w-full overflow-x-auto rounded-[16px] border border-[#334155] bg-[#1E293B] ${className}`;
 
   return (
     <div className={containerClasses}>
-      <table className="w-full text-sm text-[var(--text-main)] border-collapse">
-        <thead className="bg-[var(--bg-surface)] text-[11px] uppercase font-mono font-bold text-[var(--accent-cyan)] tracking-wider border-b border-[var(--border-color)] select-none">
+      <table className="w-full text-sm text-[#E2E8F0] border-collapse font-sans">
+        <thead className="bg-[#0F172A] text-[11px] uppercase font-mono font-bold text-[#A78BFA] tracking-wider border-b border-[#334155] select-none">
           <tr>
             {columns.map((col, idx) => {
               const { textAlign, justify } = resolveAlignment(col);
@@ -82,7 +82,7 @@ export function Table<T>({
                 <th
                   key={idx}
                   scope="col"
-                  className={`px-5 py-3.5 font-mono align-middle ${textAlign} ${col.headerClassName || ''} ${col.className || ''}`}
+                  className={`px-5 py-3 font-mono align-middle ${textAlign} ${col.headerClassName || ''} ${col.className || ''}`}
                 >
                   <div className={`inline-flex items-center ${justify} gap-1.5`}>
                     {col.header}
@@ -92,14 +92,14 @@ export function Table<T>({
             })}
           </tr>
         </thead>
-        <tbody className="divide-y divide-[var(--border-color)]/60 font-normal">
+        <tbody className="divide-y divide-[#334155]/60 font-normal">
           {data.map((row, rIdx) => {
             const computedKey = keyExtractor ? keyExtractor(row) : null;
             const validKey = computedKey || (row as any)?.id || (row as any)?._id || `table-row-${rIdx}`;
             return (
               <tr
                 key={validKey}
-                className="odd:bg-transparent even:bg-[var(--bg-surface)]/25 hover:bg-[var(--bg-surface)]/75 transition-colors duration-150"
+                className="bg-[#1E293B] hover:bg-[#0F172A]/70 transition-colors duration-150"
               >
                 {columns.map((col, cIdx) => {
                   const { textAlign, justify } = resolveAlignment(col);

@@ -21,7 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#A78BFA] focus:ring-offset-2 focus:ring-offset-[#0F172A] disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98] cursor-pointer';
+    'inline-flex items-center justify-center font-semibold rounded-[4px] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#A78BFA] focus:ring-offset-2 focus:ring-offset-[#0F172A] disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98] cursor-pointer';
 
   const sizeClasses = {
     sm: 'text-xs px-3 py-1.5 gap-1.5',
@@ -31,17 +31,17 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantClasses = {
     primary:
-      'bg-[#A78BFA] text-[#0F172A] font-semibold hover:brightness-110 active:brightness-95 shadow-sm border-0',
+      'bg-[#A78BFA] text-[#0F172A] hover:bg-[#b8a0fb] active:bg-[#9774f7] border-0',
     secondary:
-      'bg-[#1E293B] text-[#E2E8F0] border border-[#334155] hover:border-[#475569] hover:bg-[#334155]/40 shadow-sm',
+      'bg-[#1E293B] text-[#E2E8F0] border border-[#334155] hover:border-[#A78BFA] hover:text-[#A78BFA]',
     outline:
       'border border-[#334155] hover:border-[#A78BFA] bg-transparent text-[#E2E8F0] hover:text-[#A78BFA]',
     danger:
-      'bg-[#F87171] text-[#0F172A] font-semibold hover:brightness-110 shadow-sm border-0',
+      'bg-[#F87171] text-[#0F172A] hover:bg-[#fca5a5] border-0',
     ghost:
-      'bg-transparent hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#E2E8F0]',
+      'bg-transparent hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#E2E8F0] border border-transparent',
     glow:
-      'bg-[#A78BFA] text-[#0F172A] font-semibold hover:brightness-110 shadow-sm border-0',
+      'bg-[#A78BFA] text-[#0F172A] hover:bg-[#b8a0fb] border-0',
   }[variant];
 
   return (

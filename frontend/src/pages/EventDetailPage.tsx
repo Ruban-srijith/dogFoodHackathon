@@ -64,7 +64,7 @@ export const EventDetailPage: React.FC = () => {
   return (
     <div className="space-y-12">
       {/* Event Header Banner */}
-      <div className="rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/90 to-slate-950 p-8 sm:p-10 relative overflow-hidden">
+      <div className="rounded-[16px] border border-[#334155] bg-[#1E293B] p-8 sm:p-10 relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-4 max-w-2xl">
             <div className="flex items-center gap-3">
