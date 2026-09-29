@@ -5,7 +5,6 @@ import { Navbar } from '../components/Navbar';
 import { Sidebar } from '../components/Sidebar';
 import { Relief } from '../components/Relief';
 import { Cursor } from '../components/Cursor';
-import { FixedUI } from '../components/FixedUI';
 import { Footer } from '../components/Footer';
 
 export interface DashboardLayoutProps {
@@ -53,9 +52,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ portal }) => {
 
       {/* WebGL 3D Interactive Relief Shader Background */}
       <Relief />
-
-      {/* Persistent Fixed UI Overlay (Theme Selector, Menu Overlay, Progress Ring) */}
-      <FixedUI />
 
       {/* Blueprint Grid Ambient Pattern */}
       <div className="absolute inset-0 blueprint-grid-overlay pointer-events-none opacity-30 z-0" />

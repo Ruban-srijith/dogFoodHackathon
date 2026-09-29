@@ -84,7 +84,7 @@ export function Table<T>({
                   scope="col"
                   className={`px-5 py-3.5 font-mono align-middle ${textAlign} ${col.headerClassName || ''} ${col.className || ''}`}
                 >
-                  <div className={`flex items-center ${justify} gap-1.5 w-full`}>
+                  <div className={`inline-flex items-center ${justify} gap-1.5`}>
                     {col.header}
                   </div>
                 </th>
@@ -108,7 +108,7 @@ export function Table<T>({
                       key={cIdx}
                       className={`px-5 py-3.5 whitespace-nowrap align-middle ${textAlign} ${col.cellClassName || ''} ${col.className || ''}`}
                     >
-                      <div className={`flex items-center ${justify} w-full`}>
+                      <div className={`inline-flex items-center ${justify}`}>
                         {col.render ? col.render(row) : col.accessor ? String(row[col.accessor]) : null}
                       </div>
                     </td>

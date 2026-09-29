@@ -135,17 +135,20 @@ export const AdminUsersPage: React.FC = () => {
       header: 'Email Address',
       accessor: 'email',
       align: 'left',
-      render: (row) => <span className="font-mono text-xs text-[var(--text-muted)]">{row.email}</span>,
+      className: 'w-64 max-w-[280px]',
+      render: (row) => <span className="font-mono text-xs text-[var(--text-muted)] truncate block">{row.email}</span>,
     },
     {
       header: 'Current Role',
       accessor: 'role',
       align: 'center',
+      className: 'w-40',
       render: (row) => <RoleBadge role={row.role} />,
     },
     {
       header: 'Created At',
       align: 'center',
+      className: 'w-36',
       render: (row) => <span className="text-xs text-[var(--text-muted)] font-mono">{formatDate(row.created_at)}</span>,
     },
     {

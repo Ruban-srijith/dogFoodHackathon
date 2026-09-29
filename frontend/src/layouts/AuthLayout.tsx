@@ -2,7 +2,6 @@ import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { Relief } from '../components/Relief';
 import { Cursor } from '../components/Cursor';
-import { FixedUI } from '../components/FixedUI';
 
 export const AuthLayout: React.FC = () => {
   return (
@@ -12,9 +11,6 @@ export const AuthLayout: React.FC = () => {
 
       {/* WebGL 3D Interactive Relief Shader Background */}
       <Relief />
-
-      {/* Persistent Fixed UI (Theme Selector, Menu, Progress Ring) */}
-      <FixedUI />
 
       {/* Ambient theme grid overlay */}
       <div className="absolute inset-0 blueprint-grid-overlay pointer-events-none opacity-40 z-0" />
