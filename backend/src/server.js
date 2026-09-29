@@ -2541,17 +2541,28 @@ app.get(['/api/users', '/api/v1/users'], authenticate, requireRole('admin', 'org
 // Admin User Creation: Strict admin authorization to provision new platform users
 app.post(['/api/users', '/api/v1/users'], authenticate, requireRole('admin'), async (req, res) => {
   try {
-    const { email, username, password, full_name, role } = req.body;
+    const { email, username, password, full_name, role } = req.body || {};
 
-    if (!email || !username || !password) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanUsername = (username || '').trim().toLowerCase();
+    const cleanFullName = (full_name || '').trim() || cleanUsername;
+
+    if (!cleanEmail || !cleanUsername || !password) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'email, username, and password are required'
+        message: 'Email, username, and password are required.'
+      });
+    }
+
+    if (typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Password must be at least 6 characters long.'
       });
     }
 
     const existingUser = await User.findOne({
-      $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }]
+      $or: [{ email: cleanEmail }, { username: cleanUsername }]
     });
 
     if (existingUser) {
@@ -2572,16 +2583,16 @@ app.post(['/api/users', '/api/v1/users'], authenticate, requireRole('admin'), as
 
     const password_hash = await bcrypt.hash(password, 10);
     const user = await User.create({
-      email: email.toLowerCase(),
-      username: username.toLowerCase(),
+      email: cleanEmail,
+      username: cleanUsername,
       password_hash,
       role: assignedRole,
-      full_name: full_name || username
+      full_name: cleanFullName
     });
 
     const userData = {
-      id: user._id,
-      _id: user._id,
+      id: user._id.toString(),
+      _id: user._id.toString(),
       email: user.email,
       username: user.username,
       role: user.role,
@@ -2597,6 +2608,12 @@ app.post(['/api/users', '/api/v1/users'], authenticate, requireRole('admin'), as
       ...userData
     });
   } catch (err) {
+    if (err && (err.code === 11000 || err.code === '11000')) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'A user with this email or username already exists.'
+      });
+    }
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
 });

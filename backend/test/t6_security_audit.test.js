@@ -172,9 +172,19 @@ test('T6 Security & Authorization Audit Suite', async (t) => {
     };
   };
 
+  User.create = async (doc) => ({
+    _id: 'new_user_mock_id',
+    id: 'new_user_mock_id',
+    created_at: new Date(),
+    ...doc
+  });
+
   User.findOne = async (query) => {
-    if (query.email) {
-      const all = [participantA, participantB, judge1, judge2, organizerUser, adminUser];
+    const all = [participantA, participantB, judge1, judge2, organizerUser, adminUser];
+    if (query && query.$or) {
+      return all.find(u => query.$or.some(c => (c.email && u.email === c.email) || (c.username && u.username === c.username))) || null;
+    }
+    if (query && query.email) {
       return all.find(u => u.email === query.email) || null;
     }
     return null;
@@ -623,6 +633,54 @@ test('T6 Security & Authorization Audit Suite', async (t) => {
     assert.equal(resAdminPatch.status, 200);
     assert.equal(resAdminPatch.body.role, 'JUDGE');
     assert.equal(resAdminPatch.body.password_hash, undefined);
+
+    // Participant blocked from POST /api/users (Add User)
+    const resPartCreate = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${partAToken}`)
+      .send({
+        email: 'attacker@evil.local',
+        username: 'attacker',
+        password: 'Password123!',
+        role: 'ADMIN'
+      });
+    assert.equal(resPartCreate.status, 403, 'Participant must get 403 trying to create users');
+
+    // Admin user creation validation checks
+    const resAdminCreateMissing = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: 'newuser@dogfood.local' });
+    assert.equal(resAdminCreateMissing.status, 400, 'Missing username/password must return 400');
+
+    const resAdminCreateShortPass = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: 'shortpass@dogfood.local', username: 'shortpass', password: '123' });
+    assert.equal(resAdminCreateShortPass.status, 400, 'Short password must return 400');
+
+    const resAdminCreateDup = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ email: participantA.email, username: 'uniqueuser123', password: 'ValidPassword123!' });
+    assert.equal(resAdminCreateDup.status, 400, 'Duplicate email must return 400');
+
+    // Admin successfully creates user
+    const resAdminCreate = await request(app)
+      .post('/api/v1/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        email: 'newjudge@dogfood.local',
+        username: 'newjudge',
+        password: 'JudgePassword123!',
+        full_name: 'Dr. Provisioned Judge',
+        role: 'JUDGE'
+      });
+    assert.equal(resAdminCreate.status, 201, 'Admin must get 201 Created on valid user creation');
+    assert.equal(resAdminCreate.body.success, true);
+    assert.equal(resAdminCreate.body.user.role, 'JUDGE');
+    assert.equal(resAdminCreate.body.user.username, 'newjudge');
+    assert.equal(resAdminCreate.body.user.password_hash, undefined, 'Password hash must never be returned');
 
     // Admin stats endpoint check
     const resStatsAdmin = await request(app)
