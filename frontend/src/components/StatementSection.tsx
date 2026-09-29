@@ -45,7 +45,7 @@ export const StatementSection: React.FC<StatementSectionProps> = ({
   const words = text.split(' ');
 
   return (
-    <section ref={containerRef} className="py-24 px-4 sm:px-8 border-b border-cyan-500/20">
+    <section ref={containerRef} className="py-10 sm:py-12 px-4 sm:px-8 border-b border-cyan-500/20">
       <div className="max-w-5xl">
         <div className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400 mb-6">
           [ STATEMENT / MISSION ]

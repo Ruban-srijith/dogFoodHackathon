@@ -43,7 +43,7 @@ export const ScrubTextSection: React.FC<ScrubTextSectionProps> = ({ label, state
   const words = statement.split(' ');
 
   return (
-    <section ref={containerRef} className="py-24 px-4 text-center border-b border-cyan-500/20">
+    <section ref={containerRef} className="py-10 sm:py-12 px-4 text-center border-b border-cyan-500/20">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-xs font-mono font-bold uppercase tracking-widest text-rose-500">
           [ {label} ]

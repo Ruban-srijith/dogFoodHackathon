@@ -19,15 +19,15 @@ export const SmoothScroll: React.FC<{ children: React.ReactNode }> = ({ children
     document.documentElement.style.scrollBehavior = 'auto';
     document.documentElement.style.setProperty('scroll-behavior', 'auto', 'important');
 
-    // Initialize Lenis Smooth Scroll Engine calibrated for ultra-smooth 90Hz / 120Hz
+    // Initialize Lenis with minimized mouse scroll sensitivity and compact duration
     const lenis = new Lenis({
-      duration: 1.0,
-      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      duration: 0.5,
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -12 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
       smoothWheel: true,
-      wheelMultiplier: 1.0,
-      touchMultiplier: 1.2,
+      wheelMultiplier: 0.45, // Minimized wheel multiplier for precise, controlled mouse scrolling
+      touchMultiplier: 0.8,  // Minimized touch/trackpad throw
     });
     lenisRef.current = lenis;
 

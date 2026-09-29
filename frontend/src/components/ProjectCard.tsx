@@ -77,7 +77,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   return (
     <div
       ref={cardRef}
-      className={`flex flex-col gap-8 py-16 border-b border-cyan-500/20 ${positionClasses}`}
+      className={`flex flex-col gap-6 py-8 border-b border-cyan-500/20 ${positionClasses}`}
     >
       {/* Media Card (16:10 aspect ratio) */}
       <div
