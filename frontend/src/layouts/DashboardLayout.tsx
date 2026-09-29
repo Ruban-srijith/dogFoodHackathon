@@ -61,7 +61,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ portal }) => {
 
       <div className="flex-1 flex max-w-7xl w-full mx-auto relative z-10">
         <Sidebar portal={portal} />
-        <main className="flex-1 p-6 md:p-8 overflow-x-hidden relative z-10">
+        <main className="flex-1 p-6 md:p-8 overflow-x-hidden relative z-10 animate-in fade-in duration-300">
           <Outlet />
         </main>
       </div>
