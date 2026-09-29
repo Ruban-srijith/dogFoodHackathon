@@ -13,10 +13,13 @@ import {
   FileCheck2,
   LayoutGrid,
   Compass,
+  Sparkles,
+  FilePlus2,
+  UserPlus,
 } from 'lucide-react';
 
 export interface SidebarProps {
-  portal: 'judge' | 'organizer' | 'admin';
+  portal: 'judge' | 'organizer' | 'admin' | 'participant';
 }
 
 interface NavGroup {
@@ -34,11 +37,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ portal: _portal }) => {
   const isAdmin = role === 'ADMIN';
   const isOrganizer = role === 'ORGANIZER' || isAdmin;
   const isJudge = role === 'JUDGE' || isOrganizer || isAdmin;
+  const isParticipant = role === 'PARTICIPANT' || (!isAdmin && !isOrganizer && !isJudge);
 
   // Build categorized groups based on role permissions
   const groups: NavGroup[] = [];
 
-  // 1. Admin Control Section
+  // 1. Participant Workspace Section (Accessible to all participants, and admins)
+  if (isParticipant || isAdmin) {
+    groups.push({
+      title: 'Participant Workspace',
+      items: [
+        { to: '/participant/dashboard', label: 'Participant Hub', icon: Sparkles },
+        { to: '/submissions/new', label: 'Submit Project', icon: FilePlus2 },
+        { to: '/teams/new', label: 'Create Team', icon: Users },
+        { to: '/teams/join', label: 'Join Team', icon: UserPlus },
+      ],
+    });
+  }
+
+  // 2. Admin Control Section
   if (isAdmin) {
     groups.push({
       title: 'Administration',
@@ -49,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ portal: _portal }) => {
     });
   }
 
-  // 2. Organizer & Competition Orchestration Section
+  // 3. Organizer & Competition Orchestration Section
   if (isOrganizer) {
     groups.push({
       title: 'Event Management',
@@ -62,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ portal: _portal }) => {
     });
   }
 
-  // 3. Jury & Evaluation Section (Accessible to Judges, Organizers, and Admins)
+  // 4. Jury & Evaluation Section (Accessible to Judges, Organizers, and Admins)
   if (isJudge) {
     groups.push({
       title: 'Jury & Evaluation',
@@ -73,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ portal: _portal }) => {
     });
   }
 
-  // 4. Public & Platform Exploration Section
+  // 5. Public & Platform Exploration Section
   groups.push({
     title: 'Platform Navigation',
     items: [
@@ -86,7 +103,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ portal: _portal }) => {
     ? 'System Master Admin'
     : isOrganizer
     ? 'Organizer Console'
-    : 'Jury Evaluation Portal';
+    : role === 'JUDGE'
+    ? 'Jury Evaluation Portal'
+    : 'Participant Hub';
 
   return (
     <aside

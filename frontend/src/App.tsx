@@ -24,6 +24,7 @@ const TeamCreatePage = lazy(() => import('./pages/TeamCreatePage').then((m) => (
 const TeamJoinPage = lazy(() => import('./pages/TeamJoinPage').then((m) => ({ default: m.TeamJoinPage })));
 const SubmissionCreatePage = lazy(() => import('./pages/SubmissionCreatePage').then((m) => ({ default: m.SubmissionCreatePage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const ParticipantDashboardPage = lazy(() => import('./pages/ParticipantDashboardPage').then((m) => ({ default: m.ParticipantDashboardPage })));
 
 // Delay-Loaded Judge Portal Pages
 const JudgeDashboardPage = lazy(() => import('./pages/JudgeDashboardPage').then((m) => ({ default: m.JudgeDashboardPage })));
@@ -67,6 +68,12 @@ export const App: React.FC = () => {
                     <Route element={<AuthLayout />}>
                       <Route path="/login" element={<LoginPage />} />
                       <Route path="/register" element={<RegisterPage />} />
+                    </Route>
+
+                    {/* Participant Portal – accessible to all authenticated participants and admins */}
+                    <Route path="/participant" element={<ProtectedRoute allowedRoles={['PARTICIPANT', 'ADMIN']}><DashboardLayout portal="participant" /></ProtectedRoute>}>
+                      <Route index element={<Navigate to="/participant/dashboard" replace />} />
+                      <Route path="dashboard" element={<ParticipantDashboardPage />} />
                     </Route>
 
                     {/* Judge Portal – requires JUDGE, ORGANIZER, or ADMIN */}

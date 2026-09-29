@@ -66,11 +66,23 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center gap-3">
               {user ? (
                 <div className="flex items-center gap-2.5">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1E293B] border border-[#334155] text-xs font-mono">
+                  <Link
+                    to={
+                      user.role === 'ADMIN'
+                        ? '/admin/audit'
+                        : user.role === 'ORGANIZER'
+                        ? '/organizer/dashboard'
+                        : user.role === 'JUDGE'
+                        ? '/judge/dashboard'
+                        : '/participant/dashboard'
+                    }
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1E293B] border border-[#334155] hover:border-[#A78BFA] transition text-xs font-mono"
+                    title="Open Dashboard"
+                  >
                     <UserIcon className="w-3.5 h-3.5 text-[#A78BFA]" />
                     <span className="font-semibold text-[#E2E8F0] hidden sm:inline">{user.full_name}</span>
                     <RoleBadge role={user.role} />
-                  </div>
+                  </Link>
 
                   <Button
                     variant="ghost"

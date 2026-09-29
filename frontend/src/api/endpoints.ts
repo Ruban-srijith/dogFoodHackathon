@@ -39,6 +39,7 @@ export const ENDPOINTS = {
   // Teams
   TEAMS_BY_EVENT: (eventId: string) => `${BASE_URL}/teams/event/${eventId}`,
   MY_TEAM_IN_EVENT: (eventId: string) => `${BASE_URL}/teams/event/${eventId}/me`,
+  MY_TEAMS: `${BASE_URL}/teams/my`,
   TEAM_BY_ID: (id: string) => `${BASE_URL}/teams/${id}`,
   CREATE_TEAM: `${BASE_URL}/teams`,
   JOIN_TEAM: `${BASE_URL}/teams/join`,
@@ -46,6 +47,7 @@ export const ENDPOINTS = {
   // Submissions
   GALLERY: (eventId: string) => `${BASE_URL}/submissions/gallery/${eventId}`,
   SUBMISSIONS_BY_EVENT: (eventId: string) => `${BASE_URL}/submissions/event/${eventId}`,
+  MY_SUBMISSIONS: `${BASE_URL}/submissions/my`,
   SUBMISSION_BY_ID: (id: string) => `${BASE_URL}/submissions/${id}`,
   CREATE_SUBMISSION: `${BASE_URL}/submissions`,
   UPDATE_SUBMISSION: (id: string) => `${BASE_URL}/submissions/${id}`,

@@ -61,6 +61,15 @@ export const submissionService = {
     }
   },
 
+  getMySubmissions: async (): Promise<Submission[]> => {
+    try {
+      const data = await apiClient.get<Submission[]>(ENDPOINTS.MY_SUBMISSIONS);
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  },
+
   getSubmissionById: async (id: string): Promise<Submission> => {
     try {
       return await apiClient.get<Submission>(ENDPOINTS.SUBMISSION_BY_ID(id));

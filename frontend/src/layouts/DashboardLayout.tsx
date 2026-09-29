@@ -8,7 +8,7 @@ import { Cursor } from '../components/Cursor';
 import { Footer } from '../components/Footer';
 
 export interface DashboardLayoutProps {
-  portal: 'judge' | 'organizer' | 'admin';
+  portal: 'judge' | 'organizer' | 'admin' | 'participant';
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ portal }) => {
@@ -40,6 +40,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ portal }) => {
       ? role === 'ORGANIZER' || role === 'ADMIN'
       : portal === 'judge'
       ? role === 'JUDGE' || role === 'ORGANIZER' || role === 'ADMIN'
+      : portal === 'participant'
+      ? Boolean(user)
       : false;
 
   if (!isAuthorized) {

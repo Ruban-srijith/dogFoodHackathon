@@ -550,6 +550,39 @@ app.get(['/api/teams/my', '/api/v1/teams/my'], authenticate, async (req, res) =>
   }
 });
 
+// GET /api/submissions/my & /api/v1/submissions/my (Get submissions for current user/teams)
+app.get(['/api/submissions/my', '/api/v1/submissions/my'], authenticate, async (req, res) => {
+  try {
+    const userTeams = await Team.find({
+      $or: [{ members: req.user.id }, { leader_id: req.user.id }]
+    }).select('_id');
+    const teamIds = userTeams.map(t => t._id);
+
+    const submissions = await Submission.find({
+      $or: [
+        { team_id: { $in: teamIds } },
+        { created_by: req.user.id }
+      ]
+    })
+      .populate('team_id', 'name slug invite_code members leader_id')
+      .populate('track_id', 'name prize_pool')
+      .populate('event_id', 'title slug submission_deadline')
+      .sort({ updated_at: -1 })
+      .lean();
+
+    const formatted = submissions.map(s => ({
+      ...s,
+      id: s._id.toString(),
+      team_name: s.team_id?.name || 'My Team',
+      track_name: s.track_id?.name || 'General'
+    }));
+
+    return res.status(200).json({ success: true, data: formatted });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: 'Server Error', message: err.message });
+  }
+});
+
 // GET /api/teams/:id and /api/v1/teams/:id
 // Privacy Rule: invite_code is visible ONLY to team members, organizers, and admins
 const handleGetTeamById = async (req, res) => {

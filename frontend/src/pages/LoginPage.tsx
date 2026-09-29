@@ -33,12 +33,15 @@ export const LoginPage: React.FC = () => {
       success(`Welcome back, ${loggedUser.full_name}!`);
       
       // Smart redirect based on role
-      if (['ADMIN'].includes(loggedUser.role) && from === '/') {
+      const userRole = (loggedUser.role || '').toUpperCase();
+      if (['ADMIN'].includes(userRole) && from === '/') {
         navigate('/admin/audit');
-      } else if (['ORGANIZER'].includes(loggedUser.role) && from === '/') {
+      } else if (['ORGANIZER'].includes(userRole) && from === '/') {
         navigate('/organizer/dashboard');
-      } else if (['JUDGE'].includes(loggedUser.role) && from === '/') {
+      } else if (['JUDGE'].includes(userRole) && from === '/') {
         navigate('/judge/dashboard');
+      } else if (['PARTICIPANT'].includes(userRole) && from === '/') {
+        navigate('/participant/dashboard');
       } else {
         navigate(from);
       }
