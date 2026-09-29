@@ -83,50 +83,60 @@ export const JudgeDashboardPage: React.FC = () => {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {assignments.map((assignment) => (
-            <div
-              key={assignment.id}
-              className="rounded-[16px] flex flex-col justify-between p-6 space-y-4 bg-[#1E293B] border border-[#334155] hover:border-[#A78BFA]/50 transition-colors shadow-sm"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <StatusBadge status={assignment.status} />
-                  <span className="text-xs text-[#94A3B8] font-mono">
-                    {assignment.scored_criteria_count ?? 0} criteria scored
-                  </span>
-                </div>
+          {assignments.map((assignment) => {
+            const subId = typeof assignment.submission_id === 'object' && assignment.submission_id !== null
+              ? (assignment.submission_id as any)._id || (assignment.submission_id as any).id
+              : assignment.submission_id;
+            const subTitle = assignment.submission_title || (typeof assignment.submission_id === 'object' ? (assignment.submission_id as any).title : 'Untitled Project');
+            const teamName = assignment.team_name || (typeof assignment.submission_id === 'object' && (assignment.submission_id as any).team_id?.name ? (assignment.submission_id as any).team_id.name : 'Independent Team');
+            const tagline = assignment.submission_tagline || (typeof assignment.submission_id === 'object' ? (assignment.submission_id as any).tagline : '');
+            const asgnId = assignment.id || (assignment as any)._id || subId;
 
-                <div>
-                  <h3 className="text-xl font-heading font-bold text-[#E2E8F0] hover:text-[#A78BFA] transition-colors">
-                    <Link to={`/judge/submissions/${assignment.submission_id}`}>
-                      {assignment.submission_title}
-                    </Link>
-                  </h3>
-                  <p className="text-xs text-[#94A3B8] mt-1 font-body">by <span className="text-[#E2E8F0] font-semibold">{assignment.team_name}</span></p>
-                  <p className="text-xs text-[#94A3B8] mt-2 line-clamp-2 leading-relaxed font-body">
-                    {assignment.submission_tagline}
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-[#334155] flex items-center justify-between">
-                <div className="text-xs text-[#94A3B8] font-mono">
-                  {assignment.status === 'completed' ? (
-                    <span className="flex items-center gap-1.5 text-[#4ADE80] font-semibold">
-                      <CheckCircle className="w-3.5 h-3.5" /> Scored & Submitted
+            return (
+              <div
+                key={asgnId}
+                className="rounded-[16px] flex flex-col justify-between p-6 space-y-4 bg-[#1E293B] border border-[#334155] hover:border-[#A78BFA]/50 transition-colors shadow-sm"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <StatusBadge status={assignment.status} />
+                    <span className="text-xs text-[#94A3B8] font-mono">
+                      {assignment.scored_criteria_count ?? 0} criteria scored
                     </span>
-                  ) : (
-                    <span>Ready for evaluation</span>
-                  )}
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-heading font-bold text-[#E2E8F0] hover:text-[#A78BFA] transition-colors">
+                      <Link to={`/judge/submissions/${subId}`}>
+                        {subTitle}
+                      </Link>
+                    </h3>
+                    <p className="text-xs text-[#94A3B8] mt-1 font-body">by <span className="text-[#E2E8F0] font-semibold">{teamName}</span></p>
+                    <p className="text-xs text-[#94A3B8] mt-2 line-clamp-2 leading-relaxed font-body">
+                      {tagline}
+                    </p>
+                  </div>
                 </div>
-                <Link to={`/judge/submissions/${assignment.submission_id}`}>
-                  <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
-                    {assignment.status === 'completed' ? 'Edit Scores' : 'Evaluate Project'}
-                  </Button>
-                </Link>
+
+                <div className="pt-4 border-t border-[#334155] flex items-center justify-between">
+                  <div className="text-xs text-[#94A3B8] font-mono">
+                    {assignment.status === 'completed' ? (
+                      <span className="flex items-center gap-1.5 text-[#4ADE80] font-semibold">
+                        <CheckCircle className="w-3.5 h-3.5" /> Scored & Submitted
+                      </span>
+                    ) : (
+                      <span>Ready for evaluation</span>
+                    )}
+                  </div>
+                  <Link to={`/judge/submissions/${subId}`}>
+                    <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
+                      {assignment.status === 'completed' ? 'Edit Scores' : 'Evaluate Project'}
+                    </Button>
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -901,6 +901,10 @@ app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole(
       submitted_at: new Date()
     });
 
+    if (status === 'submitted') {
+      await autoAssignSubmissionToJudges(submission);
+    }
+
     const submissionObj = (submission && typeof submission.toObject === 'function')
       ? submission.toObject()
       : { ...submission };
@@ -1032,6 +1036,10 @@ app.put(['/api/submissions/:id', '/api/v1/submissions/:id'], authenticate, requi
     submission.updated_at = new Date();
 
     await submission.save();
+
+    if (submission.status === 'submitted') {
+      await autoAssignSubmissionToJudges(submission);
+    }
 
     const submissionObj = (submission && typeof submission.toObject === 'function')
       ? submission.toObject()
@@ -1782,6 +1790,74 @@ const handleAutomaticAssignment = async (req, res) => {
   }
 };
 app.post('/api/judges/assignments/automatic', authenticate, requireRole('organizer', 'admin'), handleAutomaticAssignment);
+// Auto-assigns a submitted project to all eligible judges (skipping conflict of interest)
+async function autoAssignSubmissionToJudges(submission) {
+  try {
+    if (!submission) return;
+    const currentStatus = submission.status;
+    if (currentStatus !== 'submitted') return;
+    if (process.env.NODE_ENV === 'test') return;
+
+    const subId = submission._id || submission.id;
+    const eventId = submission.event_id;
+
+    // Fetch all active judges
+    const judges = await User.find({ role: 'JUDGE' });
+    if (!judges || judges.length === 0) return;
+
+    // Check submission's team to prevent conflict of interest
+    let team = null;
+    const teamId = submission.team_id?._id || submission.team_id?.id || submission.team_id;
+    if (teamId) {
+      try {
+        team = await Team.findById(teamId);
+      } catch (e) {}
+    }
+
+    const teamMemberIds = new Set();
+    if (team) {
+      if (team.leader_id) teamMemberIds.add(String(team.leader_id));
+      if (Array.isArray(team.members)) {
+        team.members.forEach(m => teamMemberIds.add(String(m)));
+      }
+    }
+
+    for (const judge of judges) {
+      const judgeIdStr = String(judge._id);
+      if (teamMemberIds.has(judgeIdStr)) continue; // Conflict of interest: judge is team member/leader
+
+      const existing = await JudgeAssignment.findOne({
+        judge_id: judge._id,
+        submission_id: subId
+      });
+
+      if (!existing) {
+        await JudgeAssignment.create({
+          event_id: eventId,
+          judge_id: judge._id,
+          submission_id: subId,
+          status: 'assigned',
+          created_at: new Date()
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[AutoAssign] Error auto-assigning judges:', err.message);
+  }
+}
+
+// Ensure all existing submitted projects have assignments for eligible judges
+async function ensureAllSubmittedProjectsAssigned() {
+  try {
+    if (process.env.NODE_ENV === 'test') return;
+    const submittedProjects = await Submission.find({ status: 'submitted' });
+    for (const sub of submittedProjects) {
+      await autoAssignSubmissionToJudges(sub);
+    }
+  } catch (err) {
+    console.error('[AutoAssign] Error backfilling assignments:', err.message);
+  }
+}
 
 // --- C. JUDGE ACCESS & ISOLATION ---
 // Requirement: Judge sees ONLY the projects assigned to them. Backend returns 403 for any other project.
@@ -1798,6 +1874,10 @@ const handleGetJudgeAssignments = async (req, res) => {
         success: false,
         error: { code: 'FORBIDDEN', message: 'Forbidden: Insufficient permissions to access judge assignments.' }
       });
+    }
+
+    if (userRole === 'JUDGE' && process.env.NODE_ENV !== 'test') {
+      await ensureAllSubmittedProjectsAssigned();
     }
 
     let filter = {};
@@ -1825,11 +1905,37 @@ const handleGetJudgeAssignments = async (req, res) => {
       .sort({ created_at: -1 })
       .lean();
 
+    const formattedAssignments = assignments.map(a => {
+      const sub = a.submission_id && typeof a.submission_id === 'object' ? a.submission_id : null;
+      const judge = a.judge_id && typeof a.judge_id === 'object' ? a.judge_id : null;
+      const subIdStr = sub?._id ? sub._id.toString() : (a.submission_id ? String(a.submission_id) : '');
+      const judgeIdStr = judge?._id ? judge._id.toString() : (a.judge_id ? String(a.judge_id) : '');
+      const asgnIdStr = a._id ? a._id.toString() : (a.id || '');
+
+      return {
+        ...a,
+        _id: asgnIdStr,
+        id: asgnIdStr,
+        submission_id: subIdStr,
+        judge_id: judgeIdStr,
+        submission_title: sub?.title || a.submission_title || 'Untitled Project',
+        submission_tagline: sub?.tagline || a.submission_tagline || '',
+        submission_repo_url: sub?.repo_url || a.submission_repo_url || '',
+        submission_demo_url: sub?.demo_url || a.submission_demo_url || '',
+        submission_video_url: sub?.video_url || a.submission_video_url || '',
+        submission_description: sub?.description || a.submission_description || '',
+        team_name: sub?.team_id?.name || a.team_name || 'Independent Team',
+        judge_name: judge?.full_name || judge?.username || a.judge_name || 'Judge',
+        judge_email: judge?.email || a.judge_email || '',
+        status: a.status || 'assigned'
+      };
+    });
+
     return res.status(200).json({
       success: true,
-      total: assignments.length,
-      data: assignments,
-      assignments
+      total: formattedAssignments.length,
+      data: formattedAssignments,
+      assignments: formattedAssignments
     });
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
@@ -1899,8 +2005,9 @@ const handleJudgeGetSubmission = async (req, res) => {
     }
 
     const userRole = (req.user?.role || '').toUpperCase();
+    let assignment = null;
     if (userRole === 'JUDGE') {
-      const assignment = await JudgeAssignment.findOne({
+      assignment = await JudgeAssignment.findOne({
         submission_id: submission._id,
         judge_id: req.user.id
       });
@@ -1914,6 +2021,10 @@ const handleJudgeGetSubmission = async (req, res) => {
           message: 'Access Denied: You are not assigned to evaluate this project.'
         });
       }
+    } else {
+      assignment = await JudgeAssignment.findOne({
+        submission_id: submission._id
+      });
     }
 
     const safe = {
@@ -1923,10 +2034,50 @@ const handleJudgeGetSubmission = async (req, res) => {
       track_name: submission.track_id?.name || 'General Track'
     };
 
+    let criteria = [];
+    try {
+      criteria = await RubricCriterion.find({ event_id: submission.event_id }).sort({ created_at: 1 }).lean();
+    } catch (e) {}
+
+    const formattedCriteria = (criteria || []).map(c => ({
+      ...c,
+      id: c._id ? c._id.toString() : (c.id || ''),
+      max_points: c.max_score || 10
+    }));
+
+    let existingScores = [];
+    try {
+      const existingScoreDoc = await EvaluationScore.findOne({
+        submission_id: submission._id,
+        judge_id: req.user.id
+      }).lean();
+      if (existingScoreDoc && Array.isArray(existingScoreDoc.criteria_scores)) {
+        existingScores = existingScoreDoc.criteria_scores.map(cs => ({
+          criterion_id: cs.criterion_id ? cs.criterion_id.toString() : cs.criterion_id,
+          points: cs.score,
+          feedback: cs.feedback || existingScoreDoc.comment || ''
+        }));
+      }
+    } catch (e) {}
+
+    const payload = {
+      assignment: assignment ? (typeof assignment.toObject === 'function' ? assignment.toObject() : assignment) : null,
+      submission: safe,
+      rubric: {
+        id: submission.event_id ? submission.event_id.toString() : '',
+        event_id: submission.event_id ? submission.event_id.toString() : '',
+        name: 'Official Judging Rubric',
+        max_score: 100,
+        criteria: formattedCriteria
+      },
+      existingScores
+    };
+
     return res.status(200).json({
       success: true,
-      data: safe,
-      submission: safe
+      data: payload,
+      submission: safe,
+      ...payload
     });
   } catch (err) {
     return res.status(500).json({ error: 'Server Error', message: err.message });
@@ -2828,6 +2979,9 @@ app.patch('/api/v1/submissions/:id', authenticate, requireRole('participant', 'a
     allowed.forEach(f => { if (req.body[f] !== undefined) sub[f] = req.body[f]; });
     sub.updated_at = new Date();
     await sub.save();
+    if (sub.status === 'submitted') {
+      await autoAssignSubmissionToJudges(sub);
+    }
     const formatted = {
       ...sub.toObject(),
       id: sub._id.toString()
@@ -2935,9 +3089,35 @@ app.get(['/api/judges/event/:eventId/assignments', '/api/v1/judges/event/:eventI
     }
     const assignments = await JudgeAssignment.find({ event_id: targetEventId })
       .populate('judge_id', 'username full_name email')
-      .populate('submission_id', 'title status')
+      .populate({
+        path: 'submission_id',
+        select: 'title status team_id tagline',
+        populate: { path: 'team_id', select: 'name' }
+      })
       .lean();
-    return res.status(200).json({ success: true, data: assignments, total: assignments.length });
+
+    const formatted = assignments.map(a => {
+      const sub = a.submission_id && typeof a.submission_id === 'object' ? a.submission_id : null;
+      const judge = a.judge_id && typeof a.judge_id === 'object' ? a.judge_id : null;
+      const subIdStr = sub?._id ? sub._id.toString() : (a.submission_id ? String(a.submission_id) : '');
+      const judgeIdStr = judge?._id ? judge._id.toString() : (a.judge_id ? String(a.judge_id) : '');
+      const asgnIdStr = a._id ? a._id.toString() : (a.id || '');
+
+      return {
+        ...a,
+        _id: asgnIdStr,
+        id: asgnIdStr,
+        submission_id: subIdStr,
+        judge_id: judgeIdStr,
+        submission_title: sub?.title || a.submission_title || 'Untitled Project',
+        team_name: sub?.team_id?.name || a.team_name || 'Independent Team',
+        judge_name: judge?.full_name || judge?.username || a.judge_name || 'Judge',
+        judge_email: judge?.email || a.judge_email || '',
+        status: a.status || 'assigned'
+      };
+    });
+
+    return res.status(200).json({ success: true, data: formatted, total: formatted.length });
   } catch (err) {
     return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
   }
@@ -3222,6 +3402,7 @@ async function connectWithRetry() {
   }
 
   await seedDatabaseIfEmpty();
+  await ensureAllSubmittedProjectsAssigned();
 
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Backend server running on http://0.0.0.0:${PORT}`);

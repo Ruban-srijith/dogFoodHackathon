@@ -14,11 +14,11 @@ import { formatDate } from '../utils/formatters';
 import {
   Github,
   ExternalLink,
+  Video,
   Heart,
   MessageSquare,
   Lock,
   Send,
-  Gavel,
 } from 'lucide-react';
 
 export const SubmissionDetailPage: React.FC = () => {
@@ -137,14 +137,6 @@ export const SubmissionDetailPage: React.FC = () => {
             >
               {voted ? 'Voted' : 'Vote'} ({submission.vote_count ?? 0})
             </Button>
-
-            {isJudgeOrOrganizer && (
-              <Link to={`/judge/submissions/${submission.id}`}>
-                <Button variant="outline" size="md" leftIcon={<Gavel className="w-4 h-4 text-[#A78BFA]" />}>
-                  Score Project
-                </Button>
-              </Link>
-            )}
           </div>
         </div>
 

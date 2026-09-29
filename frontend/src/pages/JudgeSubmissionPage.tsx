@@ -98,7 +98,12 @@ export const JudgeSubmissionPage: React.FC = () => {
   if (loading) return <Loading message="Verifying judge assignment & loading rubric..." fullScreen />;
   if (error || !detail) return <ErrorState message={error || 'Evaluation not available'} onRetry={fetchDetail} fullScreen />;
 
-  const { submission, rubric } = detail;
+  const submission = (detail as any).submission || ((detail as any).title ? (detail as any) : null);
+  const rubric = detail.rubric;
+
+  if (!submission) {
+    return <ErrorState message="Submission details could not be found." onRetry={fetchDetail} fullScreen />;
+  }
 
   // Calculate total points awarded
   const totalAwarded = Object.values(scores).reduce((acc, s) => acc + (Number(s.points) || 0), 0);

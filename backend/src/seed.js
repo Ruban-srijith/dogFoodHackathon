@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { User, Event, Track, Prize, Team, Submission, RubricCriterion } = require('./models');
+const { User, Event, Track, Prize, Team, Submission, RubricCriterion, JudgeAssignment } = require('./models');
 
 // Test accounts to seed
 const testCredentials = [
@@ -361,8 +361,28 @@ async function seedDatabaseIfEmpty() {
       }
     ];
 
-    await Submission.create(projects);
+    const createdProjects = await Submission.create(projects);
     console.log(`[Seed] ✅ Seeded 8 Submitted Projects across all 4 teams.`);
+
+    // 7. Seed Judge Assignments for Demo Judges
+    const judgeUsers = [usersMap['judge1'], usersMap['judge2'], usersMap['judge3']].filter(Boolean);
+    const assignmentsToSeed = [];
+    for (const proj of createdProjects) {
+      for (const judge of judgeUsers) {
+        assignmentsToSeed.push({
+          event_id: event._id,
+          judge_id: judge._id,
+          submission_id: proj._id,
+          assigned_by: organizer._id,
+          status: 'assigned',
+          created_at: new Date()
+        });
+      }
+    }
+    if (assignmentsToSeed.length > 0) {
+      await JudgeAssignment.create(assignmentsToSeed);
+      console.log(`[Seed] ✅ Seeded ${assignmentsToSeed.length} Judge Assignments across demo judges.`);
+    }
 
     console.log('\n[Seed] 🎉 Automatic database seeding completed successfully!');
     printCredentials();
