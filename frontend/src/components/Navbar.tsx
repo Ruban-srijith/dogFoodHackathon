@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { RoleBadge } from './Badge';
 import { Button } from './Button';
-import { LogOut, Trophy, Shield, User as UserIcon, Menu, X } from 'lucide-react';
+import { LogOut, User as UserIcon, Menu, X } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -53,29 +53,9 @@ export const Navbar: React.FC = () => {
             {/* Quick Action Button */}
             {user ? (
               <div className="hidden md:flex items-center gap-2.5">
-                {['JUDGE', 'ORGANIZER', 'ADMIN'].includes(user.role) && (
-                  <Link
-                    to="/judge/dashboard"
-                    className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 transition"
-                  >
-                    <Trophy className="w-3.5 h-3.5" />
-                    Judge Portal
-                  </Link>
-                )}
-
-                {['ORGANIZER', 'ADMIN'].includes(user.role) && (
-                  <Link
-                    to="/organizer/dashboard"
-                    className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 rounded-xl bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 hover:bg-indigo-500/20 transition"
-                  >
-                    <Shield className="w-3.5 h-3.5" />
-                    Organizer
-                  </Link>
-                )}
-
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-xs font-mono">
-                  <UserIcon className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
-                  <span className="font-semibold text-[var(--text-main)]">{user.full_name}</span>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1E293B] border border-[#334155] text-xs font-mono">
+                  <UserIcon className="w-3.5 h-3.5 text-[#A78BFA]" />
+                  <span className="font-semibold text-[#E2E8F0]">{user.full_name}</span>
                   <RoleBadge role={user.role} />
                 </div>
 
