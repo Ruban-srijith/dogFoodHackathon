@@ -32,8 +32,8 @@
 
   /* Typography */
   --font-heading: 'Fraunces', serif;
-  --font-body: 'Playfair Display', serif;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Manrope', sans-serif;
+  --font-sans: 'Manrope', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -67,7 +67,8 @@
     background-color: #0F172A;
     color: var(--text-primary);
     font-family: var(--font-body);
-    font-size: 15px;
+    font-size: 14px;
+    font-weight: 400;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -78,18 +79,8 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     color: var(--text-primary);
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     font-weight: 700;
-  }
-
-  /* Dense data tables, forms, and code fallback to Inter / Mono for readability */
-  table,
-  input,
-  textarea,
-  select,
-  .font-sans,
-  .dense-text {
-    font-family: var(--font-sans);
   }
 
   /* Form Controls - sharp 4px corners */
@@ -100,7 +91,7 @@
     color: var(--text-primary);
     border: 1px solid var(--border);
     border-radius: 4px;
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     transition: border-color 0.12s ease, box-shadow 0.12s ease;
   }
 

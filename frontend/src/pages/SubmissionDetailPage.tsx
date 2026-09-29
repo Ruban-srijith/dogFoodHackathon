@@ -7,7 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Submission, Comment } from '../types';
 import { Button } from '../components/Button';
-import { Card } from '../components/Card';
 import { StatusBadge, RoleBadge } from '../components/Badge';
 import { Loading } from '../components/Loading';
 import { ErrorState } from '../components/ErrorState';
@@ -106,24 +105,27 @@ export const SubmissionDetailPage: React.FC = () => {
   const isJudgeOrOrganizer = user && ['JUDGE', 'ORGANIZER', 'ADMIN'].includes(user.role);
 
   return (
-    <div className="space-y-10">
-      {/* Header */}
-      <div className="rounded-[16px] border border-[#334155] bg-[#1E293B] p-8 sm:p-10 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-10 font-body">
+      {/* Header Container with Asymmetric Border & Rotated Stamp */}
+      <div className="rounded-[16px] border border-[#334155] border-l-4 border-l-[#A78BFA] bg-[#1E293B] p-8 sm:p-10 space-y-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
+              <div className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#A78BFA] uppercase tracking-wider px-2 py-0.5 rounded-[4px] bg-[#0F172A] border border-[#334155] -rotate-1">
+                <span>PROJECT // ARCHIVE</span>
+              </div>
               <StatusBadge status={submission.status} />
               {submission.track_name && (
-                <span className="text-xs font-mono font-semibold text-[#4ADE80] bg-[#4ADE80]/10 px-2.5 py-0.5 rounded-[4px] border border-[#4ADE80]/30">
+                <span className="text-xs font-mono font-semibold text-[#A78BFA] bg-[#0F172A] px-2.5 py-0.5 rounded-[4px] border border-[#334155]">
                   {submission.track_name}
                 </span>
               )}
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-heading font-bold text-[#E2E8F0] tracking-tight">
               {submission.title}
             </h1>
-            <p className="text-sm font-medium text-slate-400">
-              Submitted by <span className="text-slate-200">{submission.team_name}</span>
+            <p className="text-sm font-medium text-[#94A3B8] font-body">
+              Submitted by <span className="text-[#E2E8F0] font-semibold">{submission.team_name}</span>
             </p>
           </div>
 
@@ -132,14 +134,14 @@ export const SubmissionDetailPage: React.FC = () => {
               variant={voted ? 'secondary' : 'primary'}
               size="md"
               onClick={handleVote}
-              leftIcon={<Heart className={`w-4 h-4 ${voted ? 'fill-rose-400 text-rose-400' : ''}`} />}
+              leftIcon={<Heart className={`w-4 h-4 ${voted ? 'fill-[#F87171] text-[#F87171]' : ''}`} />}
             >
               {voted ? 'Voted' : 'Vote'} ({submission.vote_count ?? 0})
             </Button>
 
             {isJudgeOrOrganizer && (
               <Link to={`/judge/submissions/${submission.id}`}>
-                <Button variant="outline" size="md" leftIcon={<Gavel className="w-4 h-4 text-amber-400" />}>
+                <Button variant="outline" size="md" leftIcon={<Gavel className="w-4 h-4 text-[#A78BFA]" />}>
                   Score Project
                 </Button>
               </Link>
@@ -147,20 +149,20 @@ export const SubmissionDetailPage: React.FC = () => {
           </div>
         </div>
 
-        <p className="text-base text-slate-300 max-w-3xl leading-relaxed">
+        <p className="text-base text-[#E2E8F0] max-w-3xl leading-relaxed font-body">
           {submission.tagline}
         </p>
 
-        {/* Links row */}
-        <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-slate-800 text-xs">
+        {/* Links row (sharp 4px controls) */}
+        <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-[#334155] text-xs font-mono">
           {submission.repo_url && (
             <a
               href={submission.repo_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-[#0F172A] text-[#E2E8F0] border border-[#334155] hover:border-[#A78BFA] transition"
             >
-              <Github className="w-4 h-4 text-slate-400" />
+              <Github className="w-4 h-4 text-[#94A3B8]" />
               Source Code
             </a>
           )}
@@ -169,9 +171,9 @@ export const SubmissionDetailPage: React.FC = () => {
               href={submission.demo_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-[#0F172A] text-[#4ADE80] border border-[#334155] hover:border-[#4ADE80] transition"
             >
-              <ExternalLink className="w-4 h-4 text-sky-400" />
+              <ExternalLink className="w-4 h-4 text-[#4ADE80]" />
               Live Demonstration
             </a>
           )}
@@ -180,20 +182,20 @@ export const SubmissionDetailPage: React.FC = () => {
               href={submission.video_url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[4px] bg-[#0F172A] text-[#A78BFA] border border-[#334155] hover:border-[#A78BFA] transition"
             >
-              <Video className="w-4 h-4 text-emerald-400" />
+              <Video className="w-4 h-4 text-[#A78BFA]" />
               Walkthrough Video
             </a>
           )}
         </div>
 
-        {/* Tech Stack */}
+        {/* Tech Stack Chips (sharp 4px) */}
         {submission.tech_stack && submission.tech_stack.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 pt-2">
-            <span className="text-xs text-slate-400 font-semibold mr-1">Technologies:</span>
+            <span className="text-xs text-[#94A3B8] font-mono mr-1">Stack:</span>
             {submission.tech_stack.map((t) => (
-              <span key={t} className="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+              <span key={t} className="text-xs font-mono px-2.5 py-1 rounded-[4px] bg-[#0F172A] border border-[#334155] text-[#E2E8F0]">
                 {t}
               </span>
             ))}
@@ -202,43 +204,43 @@ export const SubmissionDetailPage: React.FC = () => {
       </div>
 
       {/* Description Content */}
-      <Card className="p-8 space-y-4">
-        <h2 className="text-xl font-bold text-white">Project Description & Architecture</h2>
-        <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
+      <div className="rounded-[16px] p-8 space-y-4 bg-[#1E293B] border border-[#334155] shadow-sm">
+        <h2 className="text-2xl font-heading font-bold text-[#E2E8F0]">Project Description & Architecture</h2>
+        <div className="text-sm text-[#E2E8F0] leading-relaxed whitespace-pre-wrap font-body">
           {submission.description}
         </div>
-      </Card>
+      </div>
 
       {/* Comments & Discussion */}
       <section className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-emerald-400" />
+          <h2 className="text-2xl font-heading font-bold text-[#E2E8F0] flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-[#A78BFA]" />
             Comments & Feedback ({comments.length})
           </h2>
         </div>
 
         {/* Add Comment Form */}
         {user ? (
-          <form onSubmit={handleAddComment} className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+          <form onSubmit={handleAddComment} className="p-5 rounded-[16px] bg-[#1E293B] border border-[#334155] space-y-3 shadow-sm">
             <textarea
               rows={3}
               placeholder="Leave thoughtful feedback or ask questions about the project..."
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              className="w-full rounded-xl bg-slate-950/80 border border-slate-800 p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="w-full rounded-[4px] bg-[#0F172A] border border-[#334155] p-3 text-sm text-[#E2E8F0] placeholder-[#94A3B8] focus:outline-none focus:border-[#A78BFA] font-body"
               required
             />
             <div className="flex items-center justify-between">
               {isJudgeOrOrganizer ? (
-                <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                <label className="flex items-center gap-2 text-xs text-[#94A3B8] cursor-pointer font-body">
                   <input
                     type="checkbox"
                     checked={isInternalComment}
                     onChange={(e) => setIsInternalComment(e.target.checked)}
-                    className="rounded bg-slate-950 border-slate-800 text-emerald-500 focus:ring-emerald-400"
+                    className="rounded-[4px] bg-[#0F172A] border-[#334155] text-[#A78BFA] focus:ring-[#A78BFA]"
                   />
-                  <span className="flex items-center gap-1 text-amber-400 font-semibold">
+                  <span className="flex items-center gap-1 text-[#A78BFA] font-mono font-semibold">
                     <Lock className="w-3.5 h-3.5" /> Internal Judge Note (Visible only to Judges/Organizers)
                   </span>
                 </label>
@@ -250,12 +252,12 @@ export const SubmissionDetailPage: React.FC = () => {
             </div>
           </form>
         ) : (
-          <Card className="text-center py-6 text-xs text-slate-400">
-            <Link to="/login" className="text-emerald-400 font-semibold hover:underline">
+          <div className="rounded-[16px] p-6 text-center text-xs text-[#94A3B8] bg-[#1E293B] border border-[#334155]">
+            <Link to="/login" className="text-[#A78BFA] font-semibold hover:underline">
               Sign in
             </Link>{' '}
             to join the discussion and post feedback.
-          </Card>
+          </div>
         )}
 
         {/* Comments List */}
@@ -263,25 +265,25 @@ export const SubmissionDetailPage: React.FC = () => {
           {comments.map((c) => (
             <div
               key={c.id}
-              className={`p-4 rounded-xl border text-sm transition ${
+              className={`p-4 rounded-[16px] border text-sm transition ${
                 c.is_internal
-                  ? 'bg-amber-950/20 border-amber-500/30 text-amber-200'
-                  : 'bg-slate-900/60 border-slate-800 text-slate-300'
+                  ? 'bg-[#1E293B] border-[#A78BFA] text-[#E2E8F0]'
+                  : 'bg-[#1E293B] border-[#334155] text-[#E2E8F0]'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-200">{c.author_name}</span>
+                  <span className="font-semibold text-[#E2E8F0]">{c.author_name}</span>
                   <RoleBadge role={c.author_role} />
                   {c.is_internal && (
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-amber-400 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                    <span className="text-[10px] uppercase font-mono font-bold text-[#A78BFA] px-2 py-0.5 rounded-[4px] bg-[#0F172A] border border-[#A78BFA]">
                       Internal Evaluation Note
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-slate-500">{formatDate(c.created_at)}</span>
+                <span className="text-xs text-[#94A3B8] font-mono">{formatDate(c.created_at)}</span>
               </div>
-              <p className="text-xs leading-relaxed">{c.content}</p>
+              <p className="text-xs leading-relaxed font-body text-[#94A3B8]">{c.content}</p>
             </div>
           ))}
         </div>

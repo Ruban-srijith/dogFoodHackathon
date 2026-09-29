@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { adminService, PlatformStats } from '../services/adminService';
 import { eventService } from '../services/eventService';
 import { Event } from '../types';
-import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import { ErrorState } from '../components/ErrorState';
@@ -50,15 +49,21 @@ export const OrganizerDashboardPage: React.FC = () => {
   if (error || !stats) return <ErrorState message={error || 'Failed to load metrics'} onRetry={fetchDashboardData} fullScreen />;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8 font-body">
+      {/* Header with Rotated Stamp & Diagonal Accent */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155] pb-6">
         <div>
-          <div className="inline-flex items-center gap-2 text-xs font-mono font-bold text-[var(--accent-cyan)] uppercase tracking-wider">
-            <BarChart3 className="w-3.5 h-3.5 text-[var(--accent-cyan)]" /> Operations Console
+          <div className="flex items-center gap-3 mb-2">
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#A78BFA] uppercase tracking-wider px-2 py-0.5 rounded-[4px] bg-[#0F172A] border border-[#334155] -rotate-1">
+              <BarChart3 className="w-3.5 h-3.5 text-[#A78BFA]" />
+              <span>ORGANIZER // OPERATIONS CONSOLE</span>
+            </div>
+            <div className="h-3 w-12 diagonal-accent-line opacity-60 hidden sm:block" />
           </div>
-          <h1 className="text-3xl font-black text-[var(--text-main)] font-mono mt-1">Organizer Dashboard</h1>
-          <p className="text-xs text-[var(--text-muted)] font-sans">
+          <h1 className="text-3xl sm:text-4xl font-heading font-bold text-[#E2E8F0] tracking-tight">
+            Organizer Dashboard
+          </h1>
+          <p className="text-xs text-[#94A3B8] font-body mt-1">
             Real-time telemetry across participants, project submissions, and judge assignments
           </p>
         </div>
@@ -70,98 +75,98 @@ export const OrganizerDashboardPage: React.FC = () => {
         </Link>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - Asymmetric First Card */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-5 space-y-2 theme-card">
-          <div className="flex items-center justify-between text-xs text-[var(--text-muted)] font-bold uppercase font-mono">
+        <div className="rounded-[16px] p-5 space-y-2 bg-[#1E293B] border border-[#334155] border-l-4 border-l-[#A78BFA] shadow-sm">
+          <div className="flex items-center justify-between text-xs text-[#94A3B8] font-bold uppercase font-mono">
             <span>Participants</span>
-            <Users className="w-4 h-4 text-[var(--accent-cyan)]" />
+            <Users className="w-4 h-4 text-[#A78BFA]" />
           </div>
-          <p className="text-3xl font-black font-mono text-[var(--text-main)]">{stats.totalUsers}</p>
-        </Card>
+          <p className="text-3xl font-heading font-bold text-[#E2E8F0]">{stats.totalUsers}</p>
+        </div>
 
-        <Card className="p-5 space-y-2 theme-card">
-          <div className="flex items-center justify-between text-xs text-[var(--text-muted)] font-bold uppercase font-mono">
+        <div className="rounded-[16px] p-5 space-y-2 bg-[#1E293B] border border-[#334155] shadow-sm">
+          <div className="flex items-center justify-between text-xs text-[#94A3B8] font-bold uppercase font-mono">
             <span>Teams</span>
-            <Trophy className="w-4 h-4 text-[var(--accent-cyan)]" />
+            <Trophy className="w-4 h-4 text-[#A78BFA]" />
           </div>
-          <p className="text-3xl font-black font-mono text-[var(--text-main)]">{stats.totalTeams}</p>
-        </Card>
+          <p className="text-3xl font-heading font-bold text-[#E2E8F0]">{stats.totalTeams}</p>
+        </div>
 
-        <Card className="p-5 space-y-2 theme-card">
-          <div className="flex items-center justify-between text-xs text-[var(--text-muted)] font-bold uppercase font-mono">
+        <div className="rounded-[16px] p-5 space-y-2 bg-[#1E293B] border border-[#334155] shadow-sm">
+          <div className="flex items-center justify-between text-xs text-[#94A3B8] font-bold uppercase font-mono">
             <span>Submissions</span>
-            <Award className="w-4 h-4 text-[var(--accent-green)]" />
+            <Award className="w-4 h-4 text-[#4ADE80]" />
           </div>
-          <p className="text-3xl font-black font-mono text-[var(--text-main)]">{stats.totalSubmissions}</p>
-        </Card>
+          <p className="text-3xl font-heading font-bold text-[#E2E8F0]">{stats.totalSubmissions}</p>
+        </div>
 
-        <Card className="p-5 space-y-2 theme-card">
-          <div className="flex items-center justify-between text-xs text-[var(--text-muted)] font-bold uppercase font-mono">
+        <div className="rounded-[16px] p-5 space-y-2 bg-[#1E293B] border border-[#334155] shadow-sm">
+          <div className="flex items-center justify-between text-xs text-[#94A3B8] font-bold uppercase font-mono">
             <span>Scores Cast</span>
-            <Gavel className="w-4 h-4 text-[var(--accent-red)]" />
+            <Gavel className="w-4 h-4 text-[#A78BFA]" />
           </div>
-          <p className="text-3xl font-black font-mono text-[var(--text-main)]">{stats.totalScores}</p>
-        </Card>
+          <p className="text-3xl font-heading font-bold text-[#E2E8F0]">{stats.totalScores}</p>
+        </div>
       </div>
 
       {/* Quick Access Tiles */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Link to="/organizer/events" className="group">
-          <Card hover className="p-6 space-y-3 h-full theme-card border-[var(--border-color)] group-hover:border-[var(--border-hover)]">
-            <div className="w-10 h-10 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--accent-cyan)] flex items-center justify-center">
+          <div className="rounded-[16px] p-6 space-y-3 h-full bg-[#1E293B] border border-[#334155] group-hover:border-[#A78BFA]/50 transition-colors shadow-sm">
+            <div className="w-10 h-10 rounded-[4px] bg-[#0F172A] border border-[#334155] text-[#A78BFA] flex items-center justify-center">
               <Calendar className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-[var(--text-main)] font-mono group-hover:text-[var(--accent-cyan)] transition">
+            <h3 className="font-heading font-bold text-lg text-[#E2E8F0] group-hover:text-[#A78BFA] transition">
               Hackathon Lifecycle
             </h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed font-sans">
+            <p className="text-xs text-[#94A3B8] leading-relaxed font-body">
               Configure event dates, deadlines, rubric criteria, and transition statuses from draft to closed.
             </p>
-          </Card>
+          </div>
         </Link>
 
         <Link to="/organizer/judges" className="group">
-          <Card hover className="p-6 space-y-3 h-full theme-card border-[var(--border-color)] group-hover:border-[var(--border-hover)]">
-            <div className="w-10 h-10 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--accent-green)] flex items-center justify-center">
+          <div className="rounded-[16px] p-6 space-y-3 h-full bg-[#1E293B] border border-[#334155] group-hover:border-[#A78BFA]/50 transition-colors shadow-sm">
+            <div className="w-10 h-10 rounded-[4px] bg-[#0F172A] border border-[#334155] text-[#4ADE80] flex items-center justify-center">
               <Gavel className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-[var(--text-main)] font-mono group-hover:text-[var(--accent-green)] transition">
+            <h3 className="font-heading font-bold text-lg text-[#E2E8F0] group-hover:text-[#4ADE80] transition">
               Judge Assignments
             </h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed font-sans">
+            <p className="text-xs text-[#94A3B8] leading-relaxed font-body">
               Distribute submitted projects to qualified judges and maintain isolated evaluation tracks.
             </p>
-          </Card>
+          </div>
         </Link>
 
         <Link to="/organizer/results" className="group">
-          <Card hover className="p-6 space-y-3 h-full theme-card border-[var(--border-color)] group-hover:border-[var(--border-hover)]">
-            <div className="w-10 h-10 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--accent-red)] flex items-center justify-center">
+          <div className="rounded-[16px] p-6 space-y-3 h-full bg-[#1E293B] border border-[#334155] group-hover:border-[#A78BFA]/50 transition-colors shadow-sm">
+            <div className="w-10 h-10 rounded-[4px] bg-[#0F172A] border border-[#334155] text-[#A78BFA] flex items-center justify-center">
               <Award className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-[var(--text-main)] font-mono group-hover:text-[var(--accent-red)] transition">
+            <h3 className="font-heading font-bold text-lg text-[#E2E8F0] group-hover:text-[#A78BFA] transition">
               Scoring & Results
             </h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed font-sans">
+            <p className="text-xs text-[#94A3B8] leading-relaxed font-body">
               View weighted aggregate scores, judge consensus, and finalize official leaderboard rankings.
             </p>
-          </Card>
+          </div>
         </Link>
       </div>
 
       {/* Active Events Overview */}
       <section className="space-y-4">
-        <h2 className="text-xl font-black text-[var(--text-main)] font-mono">Active & Draft Hackathons</h2>
+        <h2 className="text-2xl font-heading font-bold text-[#E2E8F0]">Active & Draft Hackathons</h2>
         <div className="space-y-3">
           {events.map((evt) => (
-            <Card key={evt.id} className="p-5 flex items-center justify-between gap-4 theme-card">
+            <div key={evt.id} className="rounded-[16px] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#1E293B] border border-[#334155] shadow-sm">
               <div>
                 <div className="flex items-center gap-3">
-                  <h3 className="font-bold text-[var(--text-main)] font-mono">{evt.title}</h3>
+                  <h3 className="font-heading font-bold text-lg text-[#E2E8F0]">{evt.title}</h3>
                   <StatusBadge status={evt.status} />
                 </div>
-                <p className="text-xs text-[var(--text-muted)] mt-1 font-sans">{evt.description}</p>
+                <p className="text-xs text-[#94A3B8] mt-1 font-body">{evt.description}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Link to={`/organizer/results?event_id=${evt.id}`}>
@@ -175,7 +180,7 @@ export const OrganizerDashboardPage: React.FC = () => {
                   </Button>
                 </Link>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       </section>

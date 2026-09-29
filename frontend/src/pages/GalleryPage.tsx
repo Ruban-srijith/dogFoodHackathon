@@ -6,7 +6,6 @@ import { voteService } from '../services/voteService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Submission, Event } from '../types';
-import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Loading } from '../components/Loading';
 import { EmptyState } from '../components/EmptyState';
@@ -141,39 +140,47 @@ export const GalleryPage: React.FC = () => {
   }, [submissions, searchQuery]);
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-800/80 pb-6">
+    <div className="space-y-8 font-body">
+      {/* Distinct Detail: Rotated Stamp & Header with Diagonal Accent */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-[#334155] pb-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-sky-400 uppercase tracking-wider mb-1">
-            <Layers className="w-3.5 h-3.5" />
-            <span>Public Showcase</span>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#A78BFA] uppercase tracking-wider px-2 py-0.5 rounded-[4px] bg-[#0F172A] border border-[#334155] -rotate-1">
+              <Layers className="w-3.5 h-3.5 text-[#A78BFA]" />
+              <span>SHOWCASE // VERIFIED ENTRIES</span>
+            </div>
+            <div className="h-3 w-12 diagonal-accent-line opacity-60 hidden sm:block" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white">Project Gallery</h1>
-          <p className="text-sm text-slate-400 mt-1">Explore, test, and vote for submitted hackathon innovations</p>
+
+          <h1 className="text-3xl sm:text-4xl font-heading font-bold text-[#E2E8F0] tracking-tight">
+            Project Gallery
+          </h1>
+          <p className="text-sm text-[#94A3B8] font-body mt-1">
+            Explore, review, and cast peer votes for submitted hackathon innovations.
+          </p>
         </div>
 
-        {/* Hackathon Selection & Keyword Search */}
+        {/* Hackathon Selection & Keyword Search (Sharp 4px controls) */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-[#94A3B8] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Search projects, stack, team..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400/30 w-56 sm:w-64"
+              className="pl-9 pr-4 py-2 rounded-[4px] bg-[#0F172A] border border-[#334155] text-xs text-[#E2E8F0] placeholder-[#94A3B8] focus:outline-none focus:border-[#A78BFA] w-56 sm:w-64 font-body"
             />
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider font-mono hidden sm:inline">
-              Hackathon:
+            <span className="text-xs text-[#94A3B8] font-semibold uppercase tracking-wider font-mono hidden sm:inline">
+              Event:
             </span>
             <select
               value={selectedEventId}
               onChange={(e) => handleEventChange(e.target.value)}
-              className="rounded-xl bg-slate-900 border border-slate-800 text-xs px-3.5 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400/30 font-medium cursor-pointer"
+              className="rounded-[4px] bg-[#0F172A] border border-[#334155] text-xs px-3.5 py-2 text-[#E2E8F0] focus:outline-none focus:border-[#A78BFA] font-body cursor-pointer"
             >
               <option value="all">All Hackathons ({submissions.length})</option>
               {events.map((e) => {
@@ -195,7 +202,7 @@ export const GalleryPage: React.FC = () => {
         <ErrorState message={error} onRetry={() => setSelectedEventId(selectedEventId)} fullScreen />
       ) : filteredSubmissions.length === 0 ? (
         <EmptyState
-          icon={<Trophy className="w-8 h-8 text-amber-400" />}
+          icon={<Trophy className="w-8 h-8 text-[#A78BFA]" />}
           title={searchQuery ? 'No Matching Projects Found' : 'No Projects Submitted Yet for this Hackathon'}
           description={
             searchQuery
@@ -204,8 +211,9 @@ export const GalleryPage: React.FC = () => {
           }
         />
       ) : (
+        /* Asymmetric grid: First card is wider on md screens */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSubmissions.map((sub) => {
+          {filteredSubmissions.map((sub, index) => {
             const subId = sub.id || (sub as any)._id;
             const hasVoted = votedSubmissions[subId];
             const teamName = sub.team_name || (typeof sub.team_id === 'object' ? sub.team_id?.name : 'Independent Team');
@@ -217,19 +225,26 @@ export const GalleryPage: React.FC = () => {
               safeDemoUrl = safeDemoUrl.replace('unstop.org', 'unstop.com');
             }
 
+            const isLeadCard = index === 0;
+
             return (
-              <Card key={subId} hover className="flex flex-col justify-between h-full p-6 space-y-4 group border-[#334155] hover:border-[#A78BFA]/50 bg-[#1E293B] shadow-sm">
+              <div
+                key={subId}
+                className={`rounded-[16px] flex flex-col justify-between h-full p-6 space-y-4 group border border-[#334155] hover:border-[#A78BFA]/50 bg-[#1E293B] shadow-sm transition-colors ${
+                  isLeadCard ? 'md:col-span-2 border-l-4 border-l-[#A78BFA]' : ''
+                }`}
+              >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-[#A78BFA] font-semibold px-2 py-0.5 rounded bg-[#A78BFA]/10 border border-[#A78BFA]/25">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#A78BFA] font-semibold px-2 py-0.5 rounded-[4px] bg-[#0F172A] border border-[#334155]">
                       {trackName}
                     </span>
                     <button
                       onClick={() => handleVote(subId, sub.event_id)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition active:scale-95 cursor-pointer ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] text-xs font-mono font-semibold transition active:scale-95 cursor-pointer ${
                         hasVoted
-                          ? 'bg-[#F87171]/20 text-[#F87171] border border-[#F87171]/30'
-                          : 'bg-[#334155]/60 text-[#94A3B8] hover:text-[#F87171] hover:bg-[#334155] border border-[#334155]'
+                          ? 'bg-[#0F172A] text-[#F87171] border border-[#F87171]'
+                          : 'bg-[#0F172A] text-[#94A3B8] hover:text-[#F87171] hover:border-[#F87171] border border-[#334155]'
                       }`}
                       title={hasVoted ? 'You voted for this project' : 'Vote for this project'}
                     >
@@ -239,11 +254,13 @@ export const GalleryPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-bold text-[#E2E8F0] group-hover:text-[#A78BFA] transition-colors font-heading">
+                    <h3 className="text-xl font-heading font-bold text-[#E2E8F0] group-hover:text-[#A78BFA] transition-colors">
                       <Link to={`/submissions/${subId}`}>{sub.title}</Link>
                     </h3>
-                    <p className="text-xs text-emerald-400 font-semibold mt-1">by {teamName}</p>
-                    <p className="text-xs text-slate-300 mt-2.5 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-[#94A3B8] font-body mt-1">
+                      by <span className="text-[#E2E8F0] font-semibold">{teamName}</span>
+                    </p>
+                    <p className="text-xs text-[#94A3B8] font-body mt-2.5 line-clamp-2 leading-relaxed">
                       {sub.tagline || sub.description}
                     </p>
                   </div>
@@ -253,7 +270,7 @@ export const GalleryPage: React.FC = () => {
                       {sub.tech_stack.slice(0, 4).map((tech) => (
                         <span
                           key={tech}
-                          className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-900/90 text-slate-400 border border-slate-800"
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-[4px] bg-[#0F172A] text-[#E2E8F0] border border-[#334155]"
                         >
                           {tech}
                         </span>
@@ -262,14 +279,14 @@ export const GalleryPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                <div className="pt-4 border-t border-[#334155] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-3">
                     {sub.repo_url && (
                       <a
                         href={sub.repo_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-slate-400 hover:text-white transition p-1"
+                        className="text-[#94A3B8] hover:text-[#E2E8F0] transition p-1"
                         title="Source Code Repository"
                       >
                         <Github className="w-4 h-4" />
@@ -277,11 +294,11 @@ export const GalleryPage: React.FC = () => {
                     )}
                     <button
                       onClick={() => handleShare(subId, sub.title)}
-                      className="text-slate-400 hover:text-emerald-400 transition p-1 cursor-pointer"
+                      className="text-[#94A3B8] hover:text-[#4ADE80] transition p-1 cursor-pointer"
                       title="Share Project Link"
                     >
                       {copiedId === subId ? (
-                        <Check className="w-4 h-4 text-emerald-400" />
+                        <Check className="w-4 h-4 text-[#4ADE80]" />
                       ) : (
                         <Share2 className="w-4 h-4" />
                       )}
@@ -291,7 +308,7 @@ export const GalleryPage: React.FC = () => {
                         href={safeDemoUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-slate-400 hover:text-cyan-400 transition p-1"
+                        className="text-[#94A3B8] hover:text-[#4ADE80] transition p-1"
                         title="Live Demo"
                       >
                         <ExternalLink className="w-4 h-4" />
@@ -304,7 +321,7 @@ export const GalleryPage: React.FC = () => {
                     </Button>
                   </Link>
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>

@@ -6,7 +6,6 @@ import { teamService } from '../services/teamService';
 import { submissionService } from '../services/submissionService';
 import { eventService } from '../services/eventService';
 import { Team, Submission, Event } from '../types';
-import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/Badge';
 import { Loading } from '../components/Loading';
@@ -24,7 +23,6 @@ import {
   Check,
   Calendar,
   Layers,
-  Sparkles,
   ArrowRight
 } from 'lucide-react';
 
@@ -84,24 +82,42 @@ export const ParticipantDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8 animate-in fade-in duration-300 font-body">
       {/* 1. Header & Welcome Area */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--border-color)] pb-6">
-        <div>
-          <div className="inline-flex items-center gap-2 text-xs font-mono font-semibold text-[#A78BFA] uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 text-[#A78BFA]" />
-            Participant Engineering Hub
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-[#334155] pb-6">
+        <div className="space-y-2 max-w-xl">
+          <div className="flex items-center gap-3">
+            {/* Custom Technical SVG Shape */}
+            <div className="w-5 h-5 rounded-[4px] bg-[#1E293B] border border-[#334155] flex items-center justify-center text-[#A78BFA]">
+              <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none">
+                <path d="M1 5V1H5M11 1H15V5M15 11V15H11M5 15H1V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square" />
+              </svg>
+            </div>
+
+            {/* Rotated Tag/Badge */}
+            <div className="transform -rotate-1 select-none">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[4px] bg-[#A78BFA] text-[#0F172A] font-mono text-[10px] font-bold uppercase tracking-wider">
+                ENGINEERING WORKSPACE // ACTIVE
+              </span>
+            </div>
+
+            {/* Thin Diagonal Line Accent */}
+            <div className="hidden sm:flex items-center gap-1 opacity-60">
+              <span className="w-1 h-3 bg-[#334155] skew-x-[-25deg]" />
+              <span className="w-1 h-3 bg-[#A78BFA] skew-x-[-25deg]" />
+            </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-main)] font-mono mt-1">
+
+          <h1 className="text-3xl sm:text-4xl font-heading font-bold text-[#E2E8F0] tracking-tight">
             Welcome, {user?.full_name || user?.username}!
           </h1>
-          <p className="text-xs text-[var(--text-muted)] font-sans mt-0.5">
+          <p className="text-xs text-[#94A3B8]">
             Manage your hackathon teams, build project submissions, and track judging status.
           </p>
         </div>
 
-        {/* Primary Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Primary Action Buttons with Sharp 4px Corners */}
+        <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
           <Link to="/submissions/new">
             <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
               Submit Project
@@ -113,63 +129,63 @@ export const ParticipantDashboardPage: React.FC = () => {
             </Button>
           </Link>
           <Link to="/teams/join">
-            <Button variant="ghost" size="sm" leftIcon={<UserPlus className="w-4 h-4" />}>
+            <Button variant="outline" size="sm" leftIcon={<UserPlus className="w-4 h-4" />}>
               Join Team
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* 2. Telemetry Overview Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 theme-card bg-[var(--bg-card)] border border-[var(--border-color)]">
+      {/* 2. Telemetry Overview Stats - Asymmetric First Card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-[16px] p-5 bg-[#1E293B] border border-[#334155] border-l-4 border-l-[#A78BFA] shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider">My Teams</span>
+            <span className="text-[11px] font-mono text-[#94A3B8] uppercase tracking-wider">My Teams</span>
             <Users className="w-4 h-4 text-[#A78BFA]" />
           </div>
-          <div className="text-2xl font-black text-white font-mono mt-2">{teams.length}</div>
-          <span className="text-[10px] text-slate-400 font-sans block mt-1">Active squads enrolled</span>
-        </Card>
+          <div className="text-3xl font-bold font-heading text-[#E2E8F0] mt-2">{teams.length}</div>
+          <span className="text-[11px] text-[#94A3B8] font-body block mt-1">Active squads enrolled</span>
+        </div>
 
-        <Card className="p-4 theme-card bg-[var(--bg-card)] border border-[var(--border-color)]">
+        <div className="rounded-[16px] p-5 bg-[#1E293B] border border-[#334155] shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Submissions</span>
-            <FileCode2 className="w-4 h-4 text-emerald-400" />
+            <span className="text-[11px] font-mono text-[#94A3B8] uppercase tracking-wider">Submissions</span>
+            <FileCode2 className="w-4 h-4 text-[#4ADE80]" />
           </div>
-          <div className="text-2xl font-black text-white font-mono mt-2">{submissions.length}</div>
-          <span className="text-[10px] text-slate-400 font-sans block mt-1">Projects submitted</span>
-        </Card>
+          <div className="text-3xl font-bold font-heading text-[#E2E8F0] mt-2">{submissions.length}</div>
+          <span className="text-[11px] text-[#94A3B8] font-body block mt-1">Projects submitted</span>
+        </div>
 
-        <Card className="p-4 theme-card bg-[var(--bg-card)] border border-[var(--border-color)]">
+        <div className="rounded-[16px] p-5 bg-[#1E293B] border border-[#334155] shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Open Hackathons</span>
-            <Trophy className="w-4 h-4 text-amber-400" />
+            <span className="text-[11px] font-mono text-[#94A3B8] uppercase tracking-wider">Open Hackathons</span>
+            <Trophy className="w-4 h-4 text-[#A78BFA]" />
           </div>
-          <div className="text-2xl font-black text-white font-mono mt-2">{events.length}</div>
-          <span className="text-[10px] text-slate-400 font-sans block mt-1">Available competitions</span>
-        </Card>
+          <div className="text-3xl font-bold font-heading text-[#E2E8F0] mt-2">{events.length}</div>
+          <span className="text-[11px] text-[#94A3B8] font-body block mt-1">Available competitions</span>
+        </div>
 
-        <Card className="p-4 theme-card bg-[var(--bg-card)] border border-[var(--border-color)]">
+        <div className="rounded-[16px] p-5 bg-[#1E293B] border border-[#334155] shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider">Role Status</span>
-            <Layers className="w-4 h-4 text-cyan-400" />
+            <span className="text-[11px] font-mono text-[#94A3B8] uppercase tracking-wider">Role Status</span>
+            <Layers className="w-4 h-4 text-[#A78BFA]" />
           </div>
-          <div className="text-lg font-bold text-white font-mono mt-2.5">
-            <span className="text-[#A78BFA] uppercase tracking-wider text-sm">{user?.role || 'PARTICIPANT'}</span>
+          <div className="mt-2.5">
+            <span className="font-heading font-bold text-xl text-[#A78BFA] uppercase tracking-wider">{user?.role || 'PARTICIPANT'}</span>
           </div>
-          <span className="text-[10px] text-emerald-400 font-sans block mt-1 font-mono">● Active Session</span>
-        </Card>
+          <span className="text-[11px] text-[#4ADE80] font-mono block mt-1">● Active Session</span>
+        </div>
       </div>
 
       {/* 3. My Teams Section */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-[var(--text-main)] font-mono flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#A78BFA]" />
+            <h2 className="text-xl font-heading font-bold text-[#E2E8F0] flex items-center gap-2">
+              <Users className="w-5 h-5 text-[#A78BFA]" />
               My Enrolled Teams
             </h2>
-            <p className="text-xs text-[var(--text-muted)] font-sans">
+            <p className="text-xs text-[#94A3B8] font-body mt-0.5">
               Teams you lead or collaborate in. Share your invite code with friends to build together.
             </p>
           </div>
@@ -191,49 +207,49 @@ export const ParticipantDashboardPage: React.FC = () => {
             {teams.map((team) => {
               const leader = isLeaderOf(team);
               return (
-                <Card
+                <div
                   key={team.id}
-                  className="p-5 theme-card bg-[var(--bg-card)] border border-[var(--border-color)] flex flex-col justify-between space-y-4 hover:border-[#A78BFA]/50 transition-colors"
+                  className="rounded-[16px] p-5 bg-[#1E293B] border border-[#334155] flex flex-col justify-between space-y-4 hover:border-[#A78BFA]/50 transition-colors shadow-sm"
                 >
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h3 className="text-base font-bold text-white font-mono leading-tight">{team.name}</h3>
-                        <span className="text-[11px] text-slate-400 font-sans block mt-0.5">
+                        <h3 className="text-lg font-heading font-bold text-[#E2E8F0] leading-tight">{team.name}</h3>
+                        <span className="text-xs text-[#94A3B8] font-body block mt-0.5">
                           {(team as any).event_id?.title || 'Hackathon Event'}
                         </span>
                       </div>
                       {leader && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#A78BFA]/20 text-[#A78BFA] border border-[#A78BFA]/40 font-semibold shrink-0">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-[4px] bg-[#0F172A] text-[#A78BFA] border border-[#A78BFA]/40 font-semibold shrink-0">
                           Team Lead
                         </span>
                       )}
                     </div>
 
                     {team.description && (
-                      <p className="text-xs text-slate-300 font-sans line-clamp-2">{team.description}</p>
+                      <p className="text-xs text-[#94A3B8] font-body line-clamp-2">{team.description}</p>
                     )}
 
                     {/* Member Count Badge */}
-                    <div className="flex items-center gap-2 pt-1 text-xs text-slate-400 font-mono">
+                    <div className="flex items-center gap-2 pt-1 text-xs text-[#94A3B8] font-mono">
                       <span>Members:</span>
-                      <span className="text-emerald-400 font-bold">{team.members?.length || 1} / 4</span>
+                      <span className="text-[#4ADE80] font-bold">{team.members?.length || 1} / 4</span>
                     </div>
 
                     {/* Invite Code Quick Copy */}
                     {team.invite_code && (
-                      <div className="p-2.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border-color)] flex items-center justify-between gap-2 text-xs">
+                      <div className="p-2.5 rounded-[4px] bg-[#0F172A] border border-[#334155] flex items-center justify-between gap-2 text-xs">
                         <div className="truncate">
-                          <span className="text-[10px] font-mono text-[var(--text-muted)] block uppercase">Invite Code</span>
-                          <span className="font-mono text-white tracking-widest font-bold">{team.invite_code}</span>
+                          <span className="text-[10px] font-mono text-[#94A3B8] block uppercase">Invite Code</span>
+                          <span className="font-mono text-[#E2E8F0] tracking-widest font-bold">{team.invite_code}</span>
                         </div>
                         <button
                           onClick={() => handleCopyInviteCode(team.invite_code)}
-                          className="p-1.5 rounded-md hover:bg-[var(--bg-card)] text-slate-400 hover:text-white transition"
+                          className="p-1.5 rounded-[4px] hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#E2E8F0] transition"
                           title="Copy Code"
                         >
                           {copiedCode === team.invite_code ? (
-                            <Check className="w-4 h-4 text-emerald-400" />
+                            <Check className="w-4 h-4 text-[#4ADE80]" />
                           ) : (
                             <Copy className="w-4 h-4" />
                           )}
@@ -242,7 +258,7 @@ export const ParticipantDashboardPage: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-[var(--border-color)]/60 flex items-center justify-between">
+                  <div className="pt-2 border-t border-[#334155] flex items-center justify-between">
                     <Link
                       to={`/teams/${team.id}`}
                       className="text-xs font-mono text-[#A78BFA] hover:text-[#C4B5FD] flex items-center gap-1 font-semibold"
@@ -250,7 +266,7 @@ export const ParticipantDashboardPage: React.FC = () => {
                       Team Details <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
-                </Card>
+                </div>
               );
             })}
           </div>
@@ -261,22 +277,22 @@ export const ParticipantDashboardPage: React.FC = () => {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-[var(--text-main)] font-mono flex items-center gap-2">
-              <FileCode2 className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-xl font-heading font-bold text-[#E2E8F0] flex items-center gap-2">
+              <FileCode2 className="w-5 h-5 text-[#4ADE80]" />
               My Project Submissions
             </h2>
-            <p className="text-xs text-[var(--text-muted)] font-sans">
+            <p className="text-xs text-[#94A3B8] font-body mt-0.5">
               Projects submitted by your team for evaluation and peer voting.
             </p>
           </div>
-          <Link to="/submissions/new" className="text-xs font-mono text-emerald-400 hover:underline flex items-center gap-1">
+          <Link to="/submissions/new" className="text-xs font-mono text-[#4ADE80] hover:underline flex items-center gap-1">
             + Submit Project
           </Link>
         </div>
 
         {submissions.length === 0 ? (
           <EmptyState
-            icon={<FileCode2 className="w-8 h-8 text-emerald-400" />}
+            icon={<FileCode2 className="w-8 h-8 text-[#4ADE80]" />}
             title="No Submissions Yet"
             description="You haven't submitted any projects. Finish building your hackathon solution and submit it before the deadline!"
             actionText="Submit Project"
@@ -285,22 +301,22 @@ export const ParticipantDashboardPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {submissions.map((sub) => (
-              <Card
+              <div
                 key={sub.id}
-                className="p-5 theme-card bg-[var(--bg-card)] border border-[var(--border-color)] flex flex-col justify-between space-y-4 hover:border-emerald-500/40 transition-colors"
+                className="rounded-[16px] p-5 bg-[#1E293B] border border-[#334155] flex flex-col justify-between space-y-4 hover:border-[#4ADE80]/40 transition-colors shadow-sm"
               >
                 <div className="space-y-2.5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-base font-bold text-white font-mono">{sub.title}</h3>
-                      <span className="text-xs text-slate-400 block mt-0.5">
+                      <h3 className="text-lg font-heading font-bold text-[#E2E8F0]">{sub.title}</h3>
+                      <span className="text-xs text-[#94A3B8] font-body block mt-0.5">
                         Team: {sub.team_name || 'Independent'} • Track: {sub.track_name || 'General'}
                       </span>
                     </div>
                     <StatusBadge status={sub.status} />
                   </div>
 
-                  <p className="text-xs text-slate-300 font-sans line-clamp-2">{sub.tagline || sub.description}</p>
+                  <p className="text-xs text-[#94A3B8] font-body line-clamp-2">{sub.tagline || sub.description}</p>
 
                   {/* Tech Stack Chips */}
                   {sub.tech_stack && sub.tech_stack.length > 0 && (
@@ -308,7 +324,7 @@ export const ParticipantDashboardPage: React.FC = () => {
                       {sub.tech_stack.map((t) => (
                         <span
                           key={t}
-                          className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-900 border border-slate-800 text-slate-300"
+                          className="px-2 py-0.5 rounded-[4px] text-[10px] font-mono bg-[#0F172A] border border-[#334155] text-[#E2E8F0]"
                         >
                           {t}
                         </span>
@@ -323,7 +339,7 @@ export const ParticipantDashboardPage: React.FC = () => {
                         href={sub.repo_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-slate-300 hover:text-white"
+                        className="inline-flex items-center gap-1.5 text-[#94A3B8] hover:text-[#E2E8F0]"
                       >
                         <Github className="w-3.5 h-3.5" /> Repository
                       </a>
@@ -333,7 +349,7 @@ export const ParticipantDashboardPage: React.FC = () => {
                         href={sub.demo_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300"
+                        className="inline-flex items-center gap-1.5 text-[#4ADE80] hover:underline"
                       >
                         <ExternalLink className="w-3.5 h-3.5" /> Live Demo
                       </a>
@@ -341,18 +357,18 @@ export const ParticipantDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-[var(--border-color)]/60 flex items-center justify-between">
-                  <span className="text-[11px] font-mono text-slate-400">
-                    Votes Received: <strong className="text-white">{sub.vote_count || 0}</strong>
+                <div className="pt-3 border-t border-[#334155] flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-[#94A3B8]">
+                    Votes Received: <strong className="text-[#E2E8F0]">{sub.vote_count || 0}</strong>
                   </span>
                   <Link
                     to={`/submissions/${sub.id}`}
-                    className="text-xs font-mono text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-semibold"
+                    className="text-xs font-mono text-[#4ADE80] hover:underline flex items-center gap-1 font-semibold"
                   >
                     View Project <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
@@ -362,42 +378,42 @@ export const ParticipantDashboardPage: React.FC = () => {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-[var(--text-main)] font-mono flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-xl font-heading font-bold text-[#E2E8F0] flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#A78BFA]" />
               Active Hackathons
             </h2>
-            <p className="text-xs text-[var(--text-muted)] font-sans">
+            <p className="text-xs text-[#94A3B8] font-body mt-0.5">
               Enter exciting hackathons, create teams, and win prizes.
             </p>
           </div>
-          <Link to="/events" className="text-xs font-mono text-cyan-400 hover:underline flex items-center gap-1">
+          <Link to="/events" className="text-xs font-mono text-[#A78BFA] hover:underline flex items-center gap-1">
             Browse All →
           </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {events.slice(0, 3).map((evt) => (
-            <Card
+            <div
               key={evt.id}
-              className="p-5 theme-card bg-[var(--bg-card)] border border-[var(--border-color)] flex flex-col justify-between space-y-4"
+              className="rounded-[16px] p-5 bg-[#1E293B] border border-[#334155] flex flex-col justify-between space-y-4 shadow-sm"
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider">
+                  <span className="text-[10px] font-mono text-[#A78BFA] font-bold uppercase tracking-wider">
                     {evt.status || 'Active'}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-400">
+                  <span className="text-[10px] font-mono text-[#94A3B8]">
                     {evt.tracks?.length || 1} Tracks
                   </span>
                 </div>
-                <h3 className="text-sm font-bold text-white font-mono leading-snug">{evt.title}</h3>
-                <p className="text-xs text-slate-300 font-sans line-clamp-2">{evt.description}</p>
+                <h3 className="text-base font-heading font-bold text-[#E2E8F0] leading-snug">{evt.title}</h3>
+                <p className="text-xs text-[#94A3B8] font-body line-clamp-2">{evt.description}</p>
               </div>
 
-              <div className="pt-2 border-t border-[var(--border-color)]/60 flex items-center justify-between">
+              <div className="pt-2 border-t border-[#334155] flex items-center justify-between">
                 <Link
                   to={`/events/${evt.id || evt.slug}`}
-                  className="text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-semibold"
+                  className="text-xs font-mono text-[#A78BFA] hover:underline flex items-center gap-1 font-semibold"
                 >
                   View Event Rules <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
@@ -407,7 +423,7 @@ export const ParticipantDashboardPage: React.FC = () => {
                   </Button>
                 </Link>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       </section>

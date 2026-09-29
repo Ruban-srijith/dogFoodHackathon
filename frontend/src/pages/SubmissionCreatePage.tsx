@@ -8,7 +8,6 @@ import { useToast } from '../contexts/ToastContext';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
-import { Card } from '../components/Card';
 import { Event, Team } from '../types';
 import { Rocket, Save, LogIn, UserPlus, Sparkles } from 'lucide-react';
 
@@ -173,14 +172,14 @@ export const SubmissionCreatePage: React.FC = () => {
 
   if (!authLoading && !user) {
     return (
-      <div className="max-w-2xl mx-auto py-16 px-4">
-        <Card className="p-8 text-center space-y-6 border border-amber-500/30 bg-slate-900/60 backdrop-blur-xl">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
+      <div className="max-w-2xl mx-auto py-16 px-4 font-body">
+        <div className="rounded-[16px] p-8 text-center space-y-6 border border-[#334155] bg-[#1E293B] shadow-sm">
+          <div className="w-16 h-16 rounded-[4px] bg-[#0F172A] border border-[#334155] flex items-center justify-center mx-auto text-[#A78BFA]">
             <LogIn className="w-8 h-8" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-white">Participant Login Required</h2>
-            <p className="text-slate-400 text-sm max-w-md mx-auto">
+            <h2 className="text-2xl font-heading font-bold text-[#E2E8F0]">Participant Login Required</h2>
+            <p className="text-[#94A3B8] text-sm max-w-md mx-auto font-body">
               You must be signed in with a participant account to submit a project entry.
             </p>
           </div>
@@ -200,30 +199,39 @@ export const SubmissionCreatePage: React.FC = () => {
               Register New Account
             </Button>
           </div>
-        </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-6 px-4">
-      <Card className="p-8 space-y-6">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-            <Rocket className="w-3.5 h-3.5" /> Project Submission
+    <div className="max-w-3xl mx-auto py-6 px-4 font-body">
+      <div className="rounded-[16px] p-8 space-y-6 bg-[#1E293B] border border-[#334155] shadow-sm">
+        {/* Distinct Detail: Rotated Badge & Header with Accent */}
+        <div className="space-y-2 border-b border-[#334155] pb-5">
+          <div className="flex items-center gap-3">
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#A78BFA] uppercase tracking-wider px-2 py-0.5 rounded-[4px] bg-[#0F172A] border border-[#334155] -rotate-1">
+              <Rocket className="w-3.5 h-3.5 text-[#A78BFA]" />
+              <span>ENTRY // PROJECT REGISTRATION</span>
+            </div>
+            <div className="h-3 w-12 diagonal-accent-line opacity-60 hidden sm:block" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Submit Your Project</h1>
-          <p className="text-xs text-slate-400">Share your repository, live demo, and architectural implementation</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-[#E2E8F0] tracking-tight">
+            Submit Your Project
+          </h1>
+          <p className="text-xs text-[#94A3B8] font-body">
+            Share your repository, live demo, and architectural implementation for judging evaluation.
+          </p>
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs">
+          <div className="p-3.5 rounded-[4px] bg-[#0F172A] border border-[#F87171] text-[#F87171] text-xs font-mono">
             {error}
           </div>
         )}
 
-        {/* Hackathon Selection & Team Status */}
-        <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 space-y-4">
+        {/* Hackathon Selection & Team Status - Asymmetric Accent Border */}
+        <div className="p-4 rounded-[4px] bg-[#0F172A] border border-[#334155] border-l-4 border-l-[#A78BFA] space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {events.length > 0 && (
               <Select
@@ -259,9 +267,9 @@ export const SubmissionCreatePage: React.FC = () => {
           </div>
 
           {matchingTeams.length === 0 && (
-            <div className="p-3.5 rounded-lg bg-emerald-950/30 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 text-emerald-300">
-                <Sparkles className="w-4 h-4 shrink-0 text-emerald-400" />
+            <div className="p-3 rounded-[4px] bg-[#1E293B] border border-[#334155] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-[#94A3B8] font-body">
+                <Sparkles className="w-4 h-4 shrink-0 text-[#A78BFA]" />
                 <span>Entering your team name above will automatically register your team and submit your entry.</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -336,7 +344,7 @@ export const SubmissionCreatePage: React.FC = () => {
           </div>
 
           <div className="space-y-1.5 text-left">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-[#94A3B8]">
               Detailed Project Description & Architecture
             </label>
             <textarea
@@ -344,12 +352,12 @@ export const SubmissionCreatePage: React.FC = () => {
               placeholder="Explain the problem, technical architecture, innovations, challenges overcome, and future roadmap..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-xl bg-slate-900/80 border border-slate-800 p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="w-full rounded-[4px] bg-[#0F172A] border border-[#334155] p-3 text-sm text-[#E2E8F0] placeholder-[#94A3B8] focus:outline-none focus:border-[#A78BFA] font-body"
               required
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-5 border-t border-[#334155]">
             <Button
               type="button"
               variant="outline"
@@ -372,7 +380,7 @@ export const SubmissionCreatePage: React.FC = () => {
             </Button>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

@@ -48,18 +48,32 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <Card className="p-8 shadow-2xl theme-card rounded-2xl backdrop-blur-xl relative z-10 border border-[var(--border-color)] bg-[var(--bg-surface)]">
-      <div className="text-center space-y-1.5 mb-6">
-        <h2 className="text-2xl font-black tracking-tight text-[var(--text-main)] font-mono">
+    <Card className="p-8 rounded-[16px] border border-[#334155] bg-[#1E293B] shadow-lg relative z-10 font-body">
+      {/* Distinct Detail: Rotated Badge & Skewed Accents */}
+      <div className="flex items-center justify-between gap-2 mb-5">
+        <div className="flex items-center gap-1 opacity-70">
+          <span className="w-1.5 h-3 bg-[#334155] skew-x-[-25deg]" />
+          <span className="w-1.5 h-3 bg-[#334155] skew-x-[-25deg]" />
+          <span className="w-1.5 h-3 bg-[#A78BFA] skew-x-[-25deg]" />
+        </div>
+        <div className="transform -rotate-2 select-none">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[4px] bg-[#A78BFA] text-[#0F172A] font-mono text-[10px] font-bold uppercase tracking-wider">
+            NEW ACCOUNT
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-1.5 mb-6 text-left">
+        <h1 className="text-3xl font-heading font-bold tracking-tight text-[#E2E8F0]">
           Create an Account
-        </h2>
-        <p className="text-xs text-[var(--text-muted)] font-sans">
-          Join the hackathon community as a builder or evaluator
+        </h1>
+        <p className="text-xs text-[#94A3B8]">
+          Join the hackathon community as a builder, judge, or organizer.
         </p>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-[var(--accent-red)] text-xs font-mono">
+        <div className="mb-4 p-3 rounded-[4px] bg-[#0F172A] border border-[#F87171] text-[#F87171] text-xs font-mono">
           {error}
         </div>
       )}
@@ -70,7 +84,7 @@ export const RegisterPage: React.FC = () => {
           placeholder="Ada Lovelace"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          leftIcon={<User className="w-4 h-4 text-[var(--accent-cyan)]" />}
+          leftIcon={<User className="w-4 h-4 text-[#A78BFA]" />}
           required
         />
 
@@ -79,7 +93,7 @@ export const RegisterPage: React.FC = () => {
           placeholder="adalovelace"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          leftIcon={<AtSign className="w-4 h-4 text-[var(--accent-cyan)]" />}
+          leftIcon={<AtSign className="w-4 h-4 text-[#A78BFA]" />}
           required
         />
 
@@ -89,7 +103,7 @@ export const RegisterPage: React.FC = () => {
           placeholder="ada@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          leftIcon={<Mail className="w-4 h-4 text-[var(--accent-cyan)]" />}
+          leftIcon={<Mail className="w-4 h-4 text-[#A78BFA]" />}
           required
         />
 
@@ -99,7 +113,7 @@ export const RegisterPage: React.FC = () => {
           placeholder="••••••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          leftIcon={<Lock className="w-4 h-4 text-[var(--accent-cyan)]" />}
+          leftIcon={<Lock className="w-4 h-4 text-[#A78BFA]" />}
           required
         />
 
@@ -120,9 +134,9 @@ export const RegisterPage: React.FC = () => {
         </Button>
       </form>
 
-      <div className="mt-6 text-center text-xs text-[var(--text-muted)]">
+      <div className="mt-6 text-center text-xs text-[#94A3B8]">
         Already have an account?{' '}
-        <Link to="/login" className="font-semibold text-[var(--accent-cyan)] hover:underline font-mono">
+        <Link to="/login" className="font-semibold text-[#A78BFA] hover:underline font-mono">
           Sign In
         </Link>
       </div>

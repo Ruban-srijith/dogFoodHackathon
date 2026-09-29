@@ -19,9 +19,9 @@ export default {
       },
       fontFamily: {
         heading: ['Fraunces', 'serif'],
-        body: ['Playfair Display', 'serif'],
-        serif: ['Playfair Display', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        body: ['Manrope', 'sans-serif'],
+        sans: ['Manrope', 'system-ui', 'sans-serif'],
+        serif: ['Fraunces', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       borderRadius: {

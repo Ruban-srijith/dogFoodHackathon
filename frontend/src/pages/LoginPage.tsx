@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Card } from '../components/Card';
-import { Lock, Mail, Sparkles } from 'lucide-react';
+import { Lock, Mail, ShieldCheck } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -58,18 +58,33 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <Card className="p-8 shadow-2xl theme-card rounded-2xl backdrop-blur-xl relative z-10 border border-[var(--border-color)] bg-[var(--bg-surface)]">
-      <div className="text-center space-y-1.5 mb-6">
-        <h2 className="text-2xl font-black tracking-tight text-[var(--text-main)] font-mono">
-          Sign In to DOG<span className="text-[var(--accent-red)]">FOOD</span>
-        </h2>
-        <p className="text-xs text-[var(--text-muted)] font-sans">
-          Access your hackathon dashboard and assigned submissions
+    <Card className="p-8 rounded-[16px] border border-[#334155] bg-[#1E293B] shadow-lg relative z-10 font-body">
+      {/* Distinct Detail: Rotated Badge & Diagonal Accent */}
+      <div className="flex items-center justify-between gap-2 mb-5">
+        <div className="flex items-center gap-1 opacity-70">
+          <span className="w-1.5 h-3 bg-[#334155] skew-x-[-25deg]" />
+          <span className="w-1.5 h-3 bg-[#334155] skew-x-[-25deg]" />
+          <span className="w-1.5 h-3 bg-[#A78BFA] skew-x-[-25deg]" />
+        </div>
+        <div className="transform -rotate-2 select-none">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[4px] bg-[#A78BFA] text-[#0F172A] font-mono text-[10px] font-bold uppercase tracking-wider">
+            <ShieldCheck className="w-3 h-3 stroke-[2.5]" />
+            SECURE ACCESS
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-1.5 mb-6 text-left">
+        <h1 className="text-3xl font-heading font-bold tracking-tight text-[#E2E8F0]">
+          Sign In to DOGFOOD
+        </h1>
+        <p className="text-xs text-[#94A3B8]">
+          Enter your credentials to access your hackathon console and submissions.
         </p>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-[var(--accent-red)] text-xs font-mono">
+        <div className="mb-4 p-3 rounded-[4px] bg-[#F87171]/10 border border-[#F87171]/30 text-[#F87171] text-xs font-mono">
           {error}
         </div>
       )}
@@ -81,7 +96,7 @@ export const LoginPage: React.FC = () => {
           placeholder="developer@dogfood.local"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          leftIcon={<Mail className="w-4 h-4 text-[var(--accent-cyan)]" />}
+          leftIcon={<Mail className="w-4 h-4 text-[#A78BFA]" />}
           required
         />
 
@@ -91,60 +106,60 @@ export const LoginPage: React.FC = () => {
           placeholder="••••••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          leftIcon={<Lock className="w-4 h-4 text-[var(--accent-cyan)]" />}
+          leftIcon={<Lock className="w-4 h-4 text-[#A78BFA]" />}
           required
         />
 
-        <Button type="submit" variant="primary" className="w-full mt-2" isLoading={loading}>
+        <Button type="submit" variant="primary" className="w-full mt-2 font-body font-semibold rounded-[4px]" isLoading={loading}>
           Sign In
         </Button>
       </form>
 
       {/* Demo Credentials Quick-Fill for instant judging/testing exploration */}
-      <div className="mt-6 pt-6 border-t border-[var(--border-color)]">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3 font-mono">
-          <Sparkles className="w-3.5 h-3.5 text-[var(--accent-cyan)] animate-pulse" />
+      <div className="mt-6 pt-5 border-t border-[#334155]">
+        <div className="flex items-center justify-between text-xs font-semibold text-[#94A3B8] uppercase tracking-wider mb-3 font-mono">
           <span>Demo Quick Login</span>
+          <span className="text-[10px] text-[#A78BFA]">1-CLICK FILL</span>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <button
             type="button"
             onClick={() => handleQuickLogin('admin@dogfood.local', 'DogfoodAdmin123!')}
-            className="p-3 rounded-xl bg-[var(--bg-card)] hover:border-[var(--border-hover)] border border-[var(--border-color)] text-left transition hover:scale-[1.02]"
+            className="p-2.5 rounded-[4px] bg-[#0F172A] hover:border-[#A78BFA]/50 border border-[#334155] text-left transition-colors cursor-pointer"
           >
-            <span className="font-bold text-[var(--accent-red)] block font-mono">Admin</span>
-            <span className="text-[10px] text-[var(--text-muted)] truncate block font-mono">admin@dogfood.local</span>
+            <span className="font-bold text-[#E2E8F0] block font-mono text-[11px]">Admin</span>
+            <span className="text-[10px] text-[#94A3B8] truncate block font-mono">admin@dogfood.local</span>
           </button>
           <button
             type="button"
             onClick={() => handleQuickLogin('organizer@dogfood.local', 'DogfoodOrg123!')}
-            className="p-3 rounded-xl bg-[var(--bg-card)] hover:border-[var(--border-hover)] border border-[var(--border-color)] text-left transition hover:scale-[1.02]"
+            className="p-2.5 rounded-[4px] bg-[#0F172A] hover:border-[#A78BFA]/50 border border-[#334155] text-left transition-colors cursor-pointer"
           >
-            <span className="font-bold text-[var(--accent-cyan)] block font-mono">Organizer</span>
-            <span className="text-[10px] text-[var(--text-muted)] truncate block font-mono">organizer@dogfood.local</span>
+            <span className="font-bold text-[#A78BFA] block font-mono text-[11px]">Organizer</span>
+            <span className="text-[10px] text-[#94A3B8] truncate block font-mono">organizer@dogfood.local</span>
           </button>
           <button
             type="button"
             onClick={() => handleQuickLogin('judge1@dogfood.local', 'DogfoodJudge123!')}
-            className="p-3 rounded-xl bg-[var(--bg-card)] hover:border-[var(--border-hover)] border border-[var(--border-color)] text-left transition hover:scale-[1.02]"
+            className="p-2.5 rounded-[4px] bg-[#0F172A] hover:border-[#A78BFA]/50 border border-[#334155] text-left transition-colors cursor-pointer"
           >
-            <span className="font-bold text-[var(--accent-green)] block font-mono">Judge 1</span>
-            <span className="text-[10px] text-[var(--text-muted)] truncate block font-mono">judge1@dogfood.local</span>
+            <span className="font-bold text-[#4ADE80] block font-mono text-[11px]">Judge 1</span>
+            <span className="text-[10px] text-[#94A3B8] truncate block font-mono">judge1@dogfood.local</span>
           </button>
           <button
             type="button"
             onClick={() => handleQuickLogin('alice@dogfood.local', 'DogfoodUser123!')}
-            className="p-3 rounded-xl bg-[var(--bg-card)] hover:border-[var(--border-hover)] border border-[var(--border-color)] text-left transition hover:scale-[1.02]"
+            className="p-2.5 rounded-[4px] bg-[#0F172A] hover:border-[#A78BFA]/50 border border-[#334155] text-left transition-colors cursor-pointer"
           >
-            <span className="font-bold text-[var(--text-main)] block font-mono">Participant</span>
-            <span className="text-[10px] text-[var(--text-muted)] truncate block font-mono">alice@dogfood.local</span>
+            <span className="font-bold text-[#E2E8F0] block font-mono text-[11px]">Participant</span>
+            <span className="text-[10px] text-[#94A3B8] truncate block font-mono">alice@dogfood.local</span>
           </button>
         </div>
       </div>
 
-      <div className="mt-6 text-center text-xs text-[var(--text-muted)]">
+      <div className="mt-6 text-center text-xs text-[#94A3B8]">
         Don&apos;t have an account?{' '}
-        <Link to="/register" className="font-semibold text-[var(--accent-cyan)] hover:underline font-mono">
+        <Link to="/register" className="font-semibold text-[#A78BFA] hover:underline font-mono">
           Create one now
         </Link>
       </div>
