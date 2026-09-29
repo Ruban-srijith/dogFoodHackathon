@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { teamService } from '../services/teamService';
 import { submissionService } from '../services/submissionService';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,16 +9,18 @@ import { Button } from '../components/Button';
 import { RoleBadge } from '../components/Badge';
 import { Loading } from '../components/Loading';
 import { ErrorState } from '../components/ErrorState';
-import { Users, Copy, Check, PlusCircle, FileText, ArrowUpRight, ShieldCheck, Crown } from 'lucide-react';
+import { Users, Copy, Check, PlusCircle, FileText, ArrowUpRight, ShieldCheck, Crown, Trash2 } from 'lucide-react';
 
 export const TeamPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { success } = useToast();
+  const { success, error: toastError } = useToast();
 
   const [team, setTeam] = useState<Team | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,14 +64,31 @@ export const TeamPage: React.FC = () => {
   if (error || !team) return <ErrorState message={error || 'Team not found'} onRetry={fetchTeam} fullScreen />;
 
   const userIdent = user?.id || (user as any)?._id;
-  const isMember = Boolean(
+  const isLeader = Boolean(
     userIdent && (
-      team.members?.some((m: any) => (m.id || m._id) === userIdent) ||
       (typeof team.leader_id === 'string'
         ? team.leader_id === userIdent
         : ((team.leader_id as any)?._id || (team.leader_id as any)?.id) === userIdent)
     )
   );
+  const isMember = Boolean(
+    userIdent && (
+      team.members?.some((m: any) => (m.id || m._id) === userIdent) || isLeader
+    )
+  );
+
+  const handleDeleteTeam = async () => {
+    if (!team || !window.confirm("Are you sure you want to delete this team? This action cannot be undone and will also delete any associated project submissions.")) return;
+    setDeleting(true);
+    try {
+      await teamService.deleteTeam(team.id || (team as any)._id);
+      success("Team deleted successfully.");
+      navigate('/dashboard');
+    } catch (err: any) {
+      toastError(err.message || 'Failed to delete team');
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 font-sans">
@@ -98,12 +117,28 @@ export const TeamPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Rotated Tag/Badge - Hand-crafted detail */}
-        <div className="transform -rotate-2 select-none">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[4px] bg-[#A78BFA] text-[#0F172A] font-mono text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
-            <ShieldCheck className="w-3 h-3 stroke-[2.5]" />
-            VERIFIED CONTENDER
-          </span>
+        {/* Right side controls: Delete option for leader + Rotated Tag/Badge */}
+        <div className="flex items-center gap-3">
+          {isLeader && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-[#F87171] hover:text-[#FCA5A5] hover:bg-[#F87171]/10 border-[#F87171]/30 font-mono text-xs uppercase"
+              onClick={handleDeleteTeam}
+              disabled={deleting}
+              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+            >
+              {deleting ? 'DELETING...' : 'DELETE TEAM'}
+            </Button>
+          )}
+
+          {/* Rotated Tag/Badge - Hand-crafted detail */}
+          <div className="transform -rotate-2 select-none">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[4px] bg-[#A78BFA] text-[#0F172A] font-mono text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+              <ShieldCheck className="w-3 h-3 stroke-[2.5]" />
+              VERIFIED CONTENDER
+            </span>
+          </div>
         </div>
       </div>
 

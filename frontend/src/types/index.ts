@@ -29,6 +29,9 @@ export interface Event {
   created_by: string;
   created_at: string;
   updated_at: string;
+  participation_type?: 'individual' | 'team' | 'both';
+  min_team_size?: number;
+  max_team_size?: number;
   tracks?: Track[];
   rubric?: RubricWithCriteria;
 }

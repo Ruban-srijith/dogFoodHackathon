@@ -43,6 +43,13 @@ const eventSchema = new mongoose.Schema({
     default: 'ongoing'
   },
   location: { type: String, default: 'Global / Decentralized' },
+  participation_type: { 
+    type: String, 
+    enum: ['individual', 'team', 'both'], 
+    default: 'both' 
+  },
+  min_team_size: { type: Number, default: 1 },
+  max_team_size: { type: Number, default: 4 },
   created_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   created_at: { type: Date, default: Date.now }
 });

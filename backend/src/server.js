@@ -241,6 +241,19 @@ app.get(['/api/auth/me', '/api/v1/auth/me'], authenticate, async (req, res) => {
 app.post('/api/events', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
   try {
     const { title, slug, description, start_date, end_date, submission_deadline, location, tracks, prizes } = req.body;
+    let participation_type = req.body.participation_type || req.body.participationType || 'both';
+    let min_team_size = req.body.min_team_size !== undefined ? req.body.min_team_size : req.body.minTeamSize;
+    let max_team_size = req.body.max_team_size !== undefined ? req.body.max_team_size : req.body.maxTeamSize;
+
+    if (participation_type !== 'individual') {
+      min_team_size = parseInt(min_team_size || 1, 10);
+      max_team_size = parseInt(max_team_size || 4, 10);
+      if (isNaN(min_team_size) || min_team_size < 1) return res.status(400).json({ error: 'Bad Request', message: 'Minimum team size must be a positive integer.' });
+      if (isNaN(max_team_size) || max_team_size < min_team_size) return res.status(400).json({ error: 'Bad Request', message: 'Maximum team size must be greater than or equal to minimum team size.' });
+    } else {
+      min_team_size = null;
+      max_team_size = null;
+    }
 
     if (!title || !description || !start_date || !end_date || !submission_deadline) {
       return res.status(400).json({
@@ -284,6 +297,9 @@ app.post('/api/events', authenticate, requireRole('organizer', 'admin'), async (
       end_date: eDate,
       submission_deadline: subDeadline,
       location: location || 'Global / Online',
+      participation_type,
+      min_team_size,
+      max_team_size,
       status: 'ongoing',
       created_by: req.user.id
     });
@@ -406,8 +422,23 @@ const handleUpdateEvent = async (req, res) => {
       event = await Event.findOne({ slug: id });
     }
     if (!event) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Event not found' } });
-    const allowed = ['title', 'description', 'start_date', 'end_date', 'submission_deadline', 'location', 'status'];
+    const allowed = ['title', 'description', 'start_date', 'end_date', 'submission_deadline', 'location', 'status', 'participation_type', 'min_team_size', 'max_team_size'];
     allowed.forEach(f => { if (req.body[f] !== undefined) event[f] = req.body[f]; });
+    
+    if (req.body.participationType !== undefined) event.participation_type = req.body.participationType;
+    if (req.body.minTeamSize !== undefined) event.min_team_size = req.body.minTeamSize;
+    if (req.body.maxTeamSize !== undefined) event.maxTeamSize = req.body.maxTeamSize;
+
+    if (event.participation_type === 'team' || event.participation_type === 'both') {
+      event.min_team_size = parseInt(event.min_team_size || 1, 10);
+      event.max_team_size = parseInt(event.max_team_size || 4, 10);
+      if (isNaN(event.min_team_size) || event.min_team_size < 1) return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Minimum team size must be at least 1.' } });
+      if (isNaN(event.max_team_size) || event.max_team_size < event.min_team_size) return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Maximum team size must be greater than or equal to minimum team size.' } });
+    } else {
+      event.min_team_size = null;
+      event.max_team_size = null;
+    }
+
     await event.save();
     return res.status(200).json({ success: true, data: event });
   } catch (err) {
@@ -426,9 +457,14 @@ app.post('/api/v1/events', authenticate, requireRole('organizer', 'admin'), asyn
 // POST /api/teams & /api/v1/teams (Participant creates a team and gets an invite link)
 app.post(['/api/teams', '/api/v1/teams'], authenticate, requireRole('participant', 'organizer', 'admin'), async (req, res) => {
   try {
-    const { event_id, name, description } = req.body;
+    const { event_id, name, description, is_individual } = req.body;
 
-    if (!name) {
+    let finalName = name;
+    if (is_individual) {
+      finalName = `${req.user.username}'s Team`;
+    }
+
+    if (!finalName) {
       return res.status(400).json({ error: 'Bad Request', message: 'Team name is required.' });
     }
 
@@ -459,14 +495,21 @@ app.post(['/api/teams', '/api/v1/teams'], authenticate, requireRole('participant
           message: 'Submission deadline has passed. New team registration is closed.'
         });
       }
+      
+      if (is_individual && event.participation_type === 'team') {
+        return res.status(400).json({ error: 'Bad Request', message: 'Individual registration is not available for this hackathon.' });
+      }
+      if (!is_individual && event.participation_type === 'individual') {
+        return res.status(400).json({ error: 'Bad Request', message: 'Team registration is not available for this hackathon.' });
+      }
     }
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     const invite_code = crypto.randomBytes(4).toString('hex').toUpperCase();
+    const slug = finalName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + invite_code.toLowerCase();
 
     const team = await Team.create({
       event_id: targetEventId,
-      name,
+      name: finalName,
       slug,
       description: description || '',
       leader_id: req.user.id,
@@ -519,11 +562,22 @@ app.post(['/api/teams/join', '/api/v1/teams/join'], authenticate, requireRole('p
       return res.status(400).json({ error: 'Bad Request', message: 'You are already a member of this team.' });
     }
 
-    // STRICT CHECK: Maximum 4 members allowed
-    if (team.members && team.members.length >= 4) {
+    // STRICT CHECK: Maximum members allowed based on event rules or 4
+    let maxMembers = 4;
+    if (team.event_id) {
+      const event = await Event.findById(team.event_id);
+      if (event) {
+        if (event.participation_type === 'individual') {
+           return res.status(400).json({ error: 'Bad Request', message: 'This hackathon is for individual participation only.' });
+        }
+        maxMembers = event.max_team_size || 4;
+      }
+    }
+
+    if (team.members && team.members.length >= maxMembers) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Team is full. A maximum of 4 members are allowed per team.'
+        message: `Team is full. A maximum of ${maxMembers} members are allowed per team.`
       });
     }
 
@@ -642,8 +696,28 @@ const handleGetTeamById = async (req, res) => {
     return res.status(500).json({ error: 'Server Error', message: err.message });
   }
 };
-app.get('/api/teams/:id', authenticate, handleGetTeamById);
-app.get('/api/v1/teams/:id', authenticate, handleGetTeamById);
+app.get('/api/teams/:id', optionalAuth, handleGetTeamById);
+app.get('/api/v1/teams/:id', optionalAuth, handleGetTeamById);
+
+// DELETE /api/teams/:id and /api/v1/teams/:id
+app.delete(['/api/teams/:id', '/api/v1/teams/:id'], authenticate, requireRole('participant', 'organizer', 'admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const team = await Team.findById(id);
+    if (!team) {
+      return res.status(404).json({ error: 'Not Found', message: 'Team not found' });
+    }
+    const isLeaderOrAdmin = (String(team.leader_id) === String(req.user.id)) || (req.user.role === 'ADMIN');
+    if (!isLeaderOrAdmin) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Only the team leader or an admin can delete this team' });
+    }
+    await Submission.deleteMany({ team_id: team._id });
+    await Team.findByIdAndDelete(id);
+    return res.status(200).json({ success: true, message: 'Team deleted successfully' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Server Error', message: err.message });
+  }
+});
 app.get(['/api/teams/event/:eventId', '/api/v1/teams/event/:eventId'], optionalAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -800,6 +874,18 @@ app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole(
 
     const status = (is_draft === true || reqStatus === 'draft') ? 'draft' : 'submitted';
 
+    if (status === 'submitted' && event.participation_type !== 'individual') {
+      const teamSize = team.members ? team.members.length : 1;
+      const minSize = event.min_team_size || 1;
+      const maxSize = event.max_team_size || 4;
+      if (teamSize < minSize) {
+        return res.status(400).json({ error: 'Bad Request', message: `Your team must have at least ${minSize} members to submit.` });
+      }
+      if (teamSize > maxSize) {
+        return res.status(400).json({ error: 'Bad Request', message: `Your team cannot have more than ${maxSize} members.` });
+      }
+    }
+
     const submission = await Submission.create({
       event_id: targetEventId,
       team_id: cleanTeamId,
@@ -924,6 +1010,25 @@ app.put(['/api/submissions/:id', '/api/v1/submissions/:id'], authenticate, requi
     } else if (status !== undefined) {
       submission.status = status;
     }
+
+    if (submission.status === 'submitted' && event && event.participation_type !== 'individual') {
+      let team = null;
+      try {
+        const subTeamId = submission.team_id?._id || submission.team_id?.id || submission.team_id;
+        team = await Team.findById(subTeamId);
+      } catch (e) {}
+      
+      const teamSize = team && team.members ? team.members.length : 1;
+      const minSize = event.min_team_size || 1;
+      const maxSize = event.max_team_size || 4;
+      if (teamSize < minSize) {
+        return res.status(400).json({ error: 'Bad Request', message: `Your team must have at least ${minSize} members to submit.` });
+      }
+      if (teamSize > maxSize) {
+        return res.status(400).json({ error: 'Bad Request', message: `Your team cannot have more than ${maxSize} members.` });
+      }
+    }
+
     submission.updated_at = new Date();
 
     await submission.save();

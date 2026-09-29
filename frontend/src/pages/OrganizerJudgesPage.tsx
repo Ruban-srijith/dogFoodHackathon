@@ -52,8 +52,8 @@ export const OrganizerJudgesPage: React.FC = () => {
         ]);
         setAssignments(assigns);
         setSubmissions(subs);
-        if (subs.length > 0) setSelectedSubmissionId(subs[0].id);
-        if (judgeUsers.length > 0) setSelectedJudgeId(judgeUsers[0].id);
+        if (subs.length > 0) setSelectedSubmissionId(subs[0].id || (subs[0] as any)._id);
+        if (judgeUsers.length > 0) setSelectedJudgeId(judgeUsers[0].id || (judgeUsers[0] as any)._id);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to initialize assignment console');
@@ -73,8 +73,8 @@ export const OrganizerJudgesPage: React.FC = () => {
       ]);
       setAssignments(assigns);
       setSubmissions(subs);
-      if (subs.length > 0) setSelectedSubmissionId(subs[0].id);
-      if (judges.length > 0) setSelectedJudgeId(judges[0].id);
+      if (subs.length > 0) setSelectedSubmissionId(subs[0].id || (subs[0] as any)._id);
+      if (judges.length > 0) setSelectedJudgeId(judges[0].id || (judges[0] as any)._id);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch assignments');
     } finally {
@@ -320,14 +320,14 @@ export const OrganizerJudgesPage: React.FC = () => {
             label="SELECT JUDGE"
             value={selectedJudgeId}
             onChange={(e) => setSelectedJudgeId(e.target.value)}
-            options={judges.map((j) => ({ value: j.id, label: `${j.full_name} (${j.email})` }))}
+            options={judges.map((j) => ({ value: j.id || (j as any)._id, label: `${j.full_name} (${j.email})` }))}
           />
 
           <Select
             label="SELECT TARGET SUBMISSION"
             value={selectedSubmissionId}
             onChange={(e) => setSelectedSubmissionId(e.target.value)}
-            options={submissions.map((s) => ({ value: s.id, label: `${s.title} — Team: ${s.team_name || 'Individual'}` }))}
+            options={submissions.map((s) => ({ value: s.id || (s as any)._id, label: `${s.title} — Team: ${s.team_name || 'Individual'}` }))}
           />
 
           <div className="pt-3 flex justify-end gap-2 border-t border-[#334155]">

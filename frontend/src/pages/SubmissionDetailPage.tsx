@@ -14,7 +14,6 @@ import { formatDate } from '../utils/formatters';
 import {
   Github,
   ExternalLink,
-  Video,
   Heart,
   MessageSquare,
   Lock,
