@@ -48,10 +48,14 @@ export const SubmissionDetailPage: React.FC = () => {
       const comms = await commentService.getComments(id);
       setComments(comms);
 
-      if (user) {
-        const myVote = await voteService.getMyVote(sub.event_id);
-        if (myVote && myVote.submission_id === id) {
-          setVoted(true);
+      if (user && sub.event_id) {
+        try {
+          const myVote = await voteService.getMyVote(sub.event_id);
+          if (myVote && myVote.submission_id === id) {
+            setVoted(true);
+          }
+        } catch {
+          // Non-fatal: voting status failure should not crash project details
         }
       }
     } catch (err: any) {

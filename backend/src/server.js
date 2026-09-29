@@ -206,20 +206,26 @@ app.post(['/api/auth/logout', '/api/v1/auth/logout'], (req, res) => {
 app.get(['/api/auth/me', '/api/v1/auth/me'], authenticate, async (req, res) => {
   // Build clean user data from JWT claims (strips iat/exp/etc)
   const buildUserData = (src) => ({
-    id: src._id || src.id, email: src.email, username: src.username,
+    id: String(src._id || src.id || ''), email: src.email, username: src.username,
     role: src.role, full_name: src.full_name, bio: src.bio || null,
     avatar_url: src.avatar_url || null, created_at: src.created_at || null
   });
   try {
-    // Try DB refresh; fall back to JWT claims on CastError or test stubs
-    const query = User.findById(req.user.id);
-    const freshUser = typeof query?.lean === 'function' ? await query.lean() : await query;
-    const userData = freshUser ? buildUserData(freshUser) : buildUserData(req.user);
-    return res.status(200).json({ success: true, user: userData, data: userData });
+    const userId = req.user?.id || req.user?._id;
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      const query = User.findById(userId);
+      const freshUser = typeof query?.lean === 'function' ? await query.lean() : await query;
+      if (freshUser) {
+        const userData = buildUserData(freshUser);
+        return res.status(200).json({ success: true, user: userData, data: userData, ...userData });
+      }
+    }
+    const userData = buildUserData(req.user || {});
+    return res.status(200).json({ success: true, user: userData, data: userData, ...userData });
   } catch (_) {
     // Graceful fallback: return JWT-derived fields without crashing
-    const userData = buildUserData(req.user);
-    return res.status(200).json({ success: true, user: userData, data: userData });
+    const userData = buildUserData(req.user || {});
+    return res.status(200).json({ success: true, user: userData, data: userData, ...userData });
   }
 });
 
@@ -2545,22 +2551,30 @@ app.get(['/api/teams/event/:eventId/me', '/api/v1/teams/event/:eventId/me'], aut
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
       const foundEv = await Event.findOne({ slug: eventId }).lean();
       if (foundEv) targetEventId = foundEv._id;
+      else return res.status(200).json({ success: true, data: null, team: null });
     }
-    const team = await Team.findOne({ event_id: targetEventId, members: req.user.id })
+    if (!mongoose.Types.ObjectId.isValid(targetEventId)) {
+      return res.status(200).json({ success: true, data: null, team: null });
+    }
+    const userId = req.user?.id || req.user?._id;
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(200).json({ success: true, data: null, team: null });
+    }
+    const team = await Team.findOne({ event_id: targetEventId, members: userId })
       .populate('leader_id', 'username full_name email')
       .populate('members', 'username full_name email')
       .lean();
     if (!team) return res.status(200).json({ success: true, data: null, team: null });
     // Strip invite_code for non-leader members  
-    const isLeader = String(team.leader_id?._id || team.leader_id) === String(req.user.id);
-    const roleUpper = (req.user.role || '').toUpperCase();
+    const isLeader = String(team.leader_id?._id || team.leader_id) === String(userId);
+    const roleUpper = (req.user?.role || '').toUpperCase();
     if (!isLeader && !['ORGANIZER', 'ADMIN', 'JUDGE'].includes(roleUpper)) {
       delete team.invite_code;
     }
     const formatted = { ...team, id: team._id };
     return res.status(200).json({ success: true, data: formatted, team: formatted, ...formatted });
   } catch (err) {
-    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+    return res.status(200).json({ success: true, data: null, team: null });
   }
 });
 
@@ -2733,13 +2747,26 @@ app.get('/api/v1/votes/event/:eventId/leaderboard', async (req, res) => {
 });
 
 // GET /api/v1/votes/event/:eventId/me  (authenticated – my vote in this event)
-app.get('/api/v1/votes/event/:eventId/me', authenticate, async (req, res) => {
+app.get(['/api/votes/event/:eventId/me', '/api/v1/votes/event/:eventId/me'], authenticate, async (req, res) => {
   try {
     const { eventId } = req.params;
-    const vote = await Vote.findOne({ event_id: eventId, user_id: req.user.id }).lean();
+    let targetEventId = eventId;
+    if (!mongoose.Types.ObjectId.isValid(eventId)) {
+      const foundEv = await Event.findOne({ slug: eventId }).lean();
+      if (foundEv) targetEventId = foundEv._id;
+      else return res.status(200).json({ success: true, data: null });
+    }
+    if (!mongoose.Types.ObjectId.isValid(targetEventId)) {
+      return res.status(200).json({ success: true, data: null });
+    }
+    const userId = req.user?.id || req.user?._id;
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(200).json({ success: true, data: null });
+    }
+    const vote = await Vote.findOne({ event_id: targetEventId, user_id: userId }).lean();
     return res.status(200).json({ success: true, data: vote || null });
   } catch (err) {
-    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+    return res.status(200).json({ success: true, data: null });
   }
 });
 

@@ -59,10 +59,14 @@ export const GalleryPage: React.FC = () => {
         const subs = await submissionService.getGallery(targetId);
         setSubmissions(subs);
 
-        if (user && targetId) {
-          const myVote = await voteService.getMyVote(targetId);
-          if (myVote) {
-            setVotedSubmissions({ [myVote.submission_id]: true });
+        if (user && targetId && targetId !== 'all') {
+          try {
+            const myVote = await voteService.getMyVote(targetId);
+            if (myVote) {
+              setVotedSubmissions({ [myVote.submission_id]: true });
+            }
+          } catch {
+            // Non-fatal: voting status failure should not crash gallery
           }
         }
       } catch (err: any) {

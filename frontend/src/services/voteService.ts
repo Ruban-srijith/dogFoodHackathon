@@ -15,6 +15,13 @@ export const voteService = {
   },
 
   getMyVote: async (eventId: string): Promise<any> => {
-    return await apiClient.get<any>(ENDPOINTS.MY_VOTE(eventId));
+    if (!eventId || eventId === 'undefined' || eventId === 'null' || eventId === 'all') {
+      return null;
+    }
+    try {
+      return await apiClient.get<any>(ENDPOINTS.MY_VOTE(eventId));
+    } catch {
+      return null;
+    }
   },
 };
