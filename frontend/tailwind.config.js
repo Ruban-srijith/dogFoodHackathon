@@ -8,32 +8,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
-          950: '#052e16',
-        },
-        dark: {
-          950: '#090d16',
-          900: '#0f172a',
-          850: '#131d33',
-          800: '#1e293b',
-          700: '#334155',
-          600: '#475569',
-        }
+        background: '#0F172A',
+        card: '#1E293B',
+        accent: '#A78BFA',
+        'text-primary': '#E2E8F0',
+        'text-secondary': '#94A3B8',
+        success: '#4ADE80',
+        error: '#F87171',
+        border: '#334155',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace']
-      }
+        heading: ['Space Grotesk', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      borderRadius: {
+        DEFAULT: '8px',
+        md: '8px',
+        lg: '10px',
+        xl: '12px',
+        '2xl': '12px',
+      },
     },
   },
   plugins: [],

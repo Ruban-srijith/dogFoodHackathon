@@ -16,30 +16,32 @@ export const Badge: React.FC<BadgeProps> = ({
   dot = false,
 }) => {
   const sizeClasses = {
-    sm: 'text-[10px] px-2 py-0.5 font-semibold',
-    md: 'text-xs px-2.5 py-1 font-semibold',
+    sm: 'text-[10px] px-2 py-0.5 font-medium',
+    md: 'text-xs px-2.5 py-1 font-medium',
   }[size];
 
   const variantClasses = {
-    default: 'bg-slate-800/80 text-slate-300 border border-slate-700/70',
-    success: 'bg-emerald-950/70 text-emerald-400 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]',
-    warning: 'bg-amber-950/70 text-amber-400 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.15)]',
-    danger: 'bg-rose-950/70 text-rose-400 border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.15)]',
-    info: 'bg-sky-950/70 text-sky-400 border border-sky-500/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]',
-    purple: 'bg-indigo-950/70 text-indigo-400 border border-indigo-500/30 shadow-[0_0_12px_rgba(129,140,248,0.15)]',
+    default: 'bg-[#334155]/50 text-[#94A3B8] border border-[#334155]',
+    success: 'bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30',
+    warning: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',
+    danger: 'bg-[#F87171]/15 text-[#F87171] border border-[#F87171]/30',
+    info: 'bg-[#A78BFA]/15 text-[#A78BFA] border border-[#A78BFA]/30',
+    purple: 'bg-[#A78BFA]/15 text-[#A78BFA] border border-[#A78BFA]/30',
   }[variant];
 
   const dotColors = {
-    default: 'bg-slate-400',
-    success: 'bg-emerald-400 animate-pulse',
+    default: 'bg-[#94A3B8]',
+    success: 'bg-[#4ADE80] animate-pulse',
     warning: 'bg-amber-400',
-    danger: 'bg-rose-400',
-    info: 'bg-sky-400',
-    purple: 'bg-indigo-400',
+    danger: 'bg-[#F87171]',
+    info: 'bg-[#A78BFA]',
+    purple: 'bg-[#A78BFA]',
   }[variant];
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full uppercase tracking-wider select-none ${sizeClasses} ${variantClasses} ${className}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full select-none ${sizeClasses} ${variantClasses} ${className}`}
+    >
       {dot && <span className={`w-1.5 h-1.5 rounded-full ${dotColors}`} />}
       {children}
     </span>
@@ -50,8 +52,8 @@ export const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
   const variantMap: Record<string, BadgeProps['variant']> = {
     ADMIN: 'danger',
     ORGANIZER: 'purple',
-    JUDGE: 'warning',
-    PARTICIPANT: 'info',
+    JUDGE: 'purple',
+    PARTICIPANT: 'default',
     VISITOR: 'default',
   };
 

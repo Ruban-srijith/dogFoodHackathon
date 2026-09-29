@@ -58,7 +58,7 @@ export const JudgeDashboardPage: React.FC = () => {
             </div>
             <div className="w-24 bg-[var(--bg-surface)] rounded-full h-2 overflow-hidden border border-[var(--border-color)]">
               <div
-                className="bg-[var(--accent-green)] h-full rounded-full transition-all duration-500"
+                className="bg-[#A78BFA] h-full rounded-full transition-all duration-500"
                 style={{ width: `${(completedCount / assignments.length) * 100}%` }}
               />
             </div>

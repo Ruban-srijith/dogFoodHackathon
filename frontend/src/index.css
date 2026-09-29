@@ -3,214 +3,137 @@
 @tailwind utilities;
 
 /* ==========================================================================
-   MULTI-THEME COLOR SCHEMES & CSS VARIABLE ENGINE
+   HACKATHON JUDGING PLATFORM - DARK PREMIUM COLOR PALETTE
    ========================================================================== */
 
-:root,
-[data-theme="telemetry"] {
-  --bg-primary: #060911;
-  --bg-surface: rgba(10, 15, 25, 0.9);
-  --bg-card: rgba(14, 20, 32, 0.75);
-  --border-color: rgba(0, 240, 255, 0.2);
-  --border-hover: rgba(0, 240, 255, 0.5);
-  --text-main: #ffffff;
-  --text-muted: #94a3b8;
-  --accent-red: #ff2a5f;
-  --accent-cyan: #00f0ff;
-  --accent-green: #34d399;
-  --grid-line: rgba(0, 240, 255, 0.07);
-  --shadow-extrusion: 4px 4px 0px #ff2a5f, 8px 8px 0px #0e1b2e;
-}
+:root {
+  /* Exact requested palette */
+  --background: #0F172A;
+  --card: #1E293B;
+  --accent: #A78BFA;
+  --text-primary: #E2E8F0;
+  --text-secondary: #94A3B8;
+  --success: #4ADE80;
+  --error: #F87171;
+  --border: #334155;
 
-[data-theme="swiss"] {
-  --bg-primary: #f4f4f0;
-  --bg-surface: #eae8e3;
-  --bg-card: #ffffff;
-  --border-color: #111111;
-  --border-hover: #e61919;
-  --text-main: #050505;
-  --text-muted: #444444;
-  --accent-red: #e61919;
-  --accent-cyan: #111111;
-  --accent-green: #16a34a;
-  --grid-line: rgba(0, 0, 0, 0.08);
-  --shadow-extrusion: 4px 4px 0px #e61919, 8px 8px 0px #111111;
-}
+  /* Component mapping aliases */
+  --bg-primary: #0F172A;
+  --bg-surface: #1E293B;
+  --bg-card: #1E293B;
+  --border-color: #334155;
+  --border-hover: #475569;
+  --text-main: #E2E8F0;
+  --text-muted: #94A3B8;
+  --accent-cyan: #A78BFA;
+  --accent-red: #F87171;
+  --accent-green: #4ADE80;
+  --grid-line: rgba(51, 65, 85, 0.4);
 
-[data-theme="matrix"] {
-  --bg-primary: #040a04;
-  --bg-surface: rgba(6, 20, 6, 0.95);
-  --bg-card: rgba(8, 28, 8, 0.85);
-  --border-color: rgba(74, 246, 38, 0.3);
-  --border-hover: rgba(74, 246, 38, 0.7);
-  --text-main: #4af626;
-  --text-muted: #2d9117;
-  --accent-red: #ff3b3b;
-  --accent-cyan: #00f0ff;
-  --accent-green: #4af626;
-  --grid-line: rgba(74, 246, 38, 0.08);
-  --shadow-extrusion: 4px 4px 0px #ff3b3b, 8px 8px 0px #061c06;
-}
-
-[data-theme="obsidian"] {
-  --bg-primary: #080c14;
-  --bg-surface: rgba(15, 23, 42, 0.9);
-  --bg-card: rgba(18, 26, 45, 0.75);
-  --border-color: rgba(255, 255, 255, 0.1);
-  --border-hover: rgba(56, 189, 248, 0.4);
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --accent-red: #f43f5e;
-  --accent-cyan: #38bdf8;
-  --accent-green: #10b981;
-  --grid-line: rgba(56, 189, 248, 0.06);
-  --shadow-extrusion: 4px 4px 0px #f43f5e, 8px 8px 0px #0f172a;
-}
-
-[data-theme="monochrome"] {
-  --bg-primary: #000000;
-  --bg-surface: #111111;
-  --bg-card: #181818;
-  --border-color: #ffffff;
-  --border-hover: #aaaaaa;
-  --text-main: #ffffff;
-  --text-muted: #aaaaaa;
-  --accent-red: #ffffff;
-  --accent-cyan: #ffffff;
-  --accent-green: #ffffff;
-  --grid-line: rgba(255, 255, 255, 0.12);
-  --shadow-extrusion: 4px 4px 0px #ffffff, 8px 8px 0px #333333;
-}
-
-[data-theme="royal"] {
-  --bg-primary: #070b16;
-  --bg-surface: rgba(13, 20, 38, 0.92);
-  --bg-card: rgba(17, 26, 48, 0.85);
-  --border-color: rgba(255, 215, 0, 0.35);
-  --border-hover: rgba(255, 215, 0, 0.85);
-  --text-main: #fffdfa;
-  --text-muted: #c5a880;
-  --accent-red: #e11d48;
-  --accent-cyan: #ffd700;
-  --accent-green: #10b981;
-  --grid-line: rgba(255, 215, 0, 0.09);
-  --shadow-extrusion: 4px 4px 0px #ffd700, 8px 8px 0px #0d1426;
+  /* Typography */
+  --font-heading: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 @layer base {
-  html {
-    scroll-behavior: smooth;
+  * {
+    border-color: var(--border);
   }
 
+  html,
   body {
-    background-color: var(--bg-primary);
-    color: var(--text-main);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    min-height: 100vh;
-    transition: background-color 0.3s ease, color 0.3s ease;
-    overflow-x: hidden;
+    background-color: var(--background);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-heading);
+    color: var(--text-primary);
     letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  /* Form Controls */
+  input,
+  textarea,
+  select {
+    background-color: #0F172A;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  /* Numeric Data Alignment */
+  table,
+  .font-numeric {
+    font-feature-settings: 'tnum' on, 'lnum' on;
+  }
+
+  /* Custom Clean Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0F172A;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
   }
 }
 
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Card primitives */
+.theme-card,
+.card-base {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
 }
 
-::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+/* Buttons */
+.btn-primary {
+  background-color: var(--accent);
+  color: #0F172A;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.15s ease;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 9999px;
+.btn-primary:hover {
+  filter: brightness(1.1);
 }
 
-/* Extruded 3D Master Typography */
-.extruded-hero-title {
-  font-family: 'Outfit', sans-serif;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
-  color: var(--text-main);
-  text-shadow: 
-    3px 3px 0px var(--accent-red),
-    6px 6px 0px rgba(0, 0, 0, 0.8),
-    9px 9px 15px rgba(0, 0, 0, 0.9);
+.btn-primary:active {
+  filter: brightness(0.95);
 }
 
-.extruded-hero-title .highlight-f {
-  color: var(--accent-red);
-  text-shadow: 
-    3px 3px 0px #ffffff,
-    6px 6px 0px rgba(0, 0, 0, 0.8),
-    9px 9px 15px rgba(255, 42, 95, 0.4);
-}
-
-/* Marquee Continuous Banner Animation */
-@keyframes marquee-scroll {
-  0% { transform: translateX(0%); }
-  100% { transform: translateX(-50%); }
-}
-
-.animate-marquee {
-  display: flex;
-  width: 200%;
-  animation: marquee-scroll 25s linear infinite;
-}
-
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
-/* Grid Background Pattern Overlay */
+/* Blueprint subtle grid overlay */
 .blueprint-grid-overlay {
   background-image: 
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    linear-gradient(to right, rgba(51, 65, 85, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(51, 65, 85, 0.25) 1px, transparent 1px);
   background-size: 32px 32px;
 }
-
-/* Brutalist & Royal Border Panels */
-.theme-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  transition: all 0.25s ease;
-}
-
-.theme-card:hover {
-  border-color: var(--border-hover);
-  box-shadow: 0 10px 30px -10px var(--border-color);
-}
-
-/* Royal Gold Filigree Shimmer */
-@keyframes royal-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.royal-gold-gradient-text {
-  background: linear-gradient(135deg, #fff7ad 0%, #ffd700 25%, #ffae00 50%, #ffd700 75%, #fff7ad 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: royal-shimmer 6s linear infinite;
-}
-
-.royal-card-glow {
-  position: relative;
-  border: 1px solid rgba(255, 215, 0, 0.4);
-  box-shadow: 0 0 25px rgba(255, 215, 0, 0.15), inset 0 0 15px rgba(255, 215, 0, 0.05);
-}
-
-.royal-card-glow:hover {
-  border-color: #ffd700;
-  box-shadow: 0 0 35px rgba(255, 215, 0, 0.35), inset 0 0 25px rgba(255, 215, 0, 0.1);
-}
-

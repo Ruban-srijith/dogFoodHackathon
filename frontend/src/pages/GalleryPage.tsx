@@ -214,28 +214,28 @@ export const GalleryPage: React.FC = () => {
             }
 
             return (
-              <Card key={subId} hover className="flex flex-col justify-between h-full p-6 space-y-4 group border-slate-800/90 hover:border-sky-500/30">
+              <Card key={subId} hover className="flex flex-col justify-between h-full p-6 space-y-4 group border-[#334155] hover:border-[#A78BFA]/50 bg-[#1E293B] shadow-sm">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-sky-400 font-semibold px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/20">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-[#A78BFA] font-semibold px-2 py-0.5 rounded bg-[#A78BFA]/10 border border-[#A78BFA]/25">
                       {trackName}
                     </span>
                     <button
                       onClick={() => handleVote(subId, sub.event_id)}
                       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition active:scale-95 cursor-pointer ${
                         hasVoted
-                          ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
-                          : 'bg-slate-800/80 text-slate-300 hover:text-rose-400 hover:bg-slate-700/60 border border-slate-700/80'
+                          ? 'bg-[#F87171]/20 text-[#F87171] border border-[#F87171]/30'
+                          : 'bg-[#334155]/60 text-[#94A3B8] hover:text-[#F87171] hover:bg-[#334155] border border-[#334155]'
                       }`}
                       title={hasVoted ? 'You voted for this project' : 'Vote for this project'}
                     >
-                      <Heart className={`w-3.5 h-3.5 ${hasVoted ? 'fill-rose-400 text-rose-400' : ''}`} />
+                      <Heart className={`w-3.5 h-3.5 ${hasVoted ? 'fill-[#F87171] text-[#F87171]' : ''}`} />
                       <span>{sub.vote_count ?? 0}</span>
                     </button>
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-extrabold text-white group-hover:text-sky-400 transition-colors">
+                    <h3 className="text-xl font-bold text-[#E2E8F0] group-hover:text-[#A78BFA] transition-colors font-heading">
                       <Link to={`/submissions/${subId}`}>{sub.title}</Link>
                     </h3>
                     <p className="text-xs text-emerald-400 font-semibold mt-1">by {teamName}</p>

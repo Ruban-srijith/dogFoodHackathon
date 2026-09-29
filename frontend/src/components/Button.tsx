@@ -20,21 +20,28 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center font-bold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg-primary)] disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98] cursor-pointer font-mono';
+  const baseClasses =
+    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#A78BFA] focus:ring-offset-2 focus:ring-offset-[#0F172A] disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98] cursor-pointer';
 
   const sizeClasses = {
     sm: 'text-xs px-3 py-1.5 gap-1.5',
-    md: 'text-sm px-4 py-2.5 gap-2',
-    lg: 'text-base px-6 py-3.5 gap-2.5 font-bold',
+    md: 'text-sm px-4 py-2 gap-2',
+    lg: 'text-base px-5 py-2.5 gap-2.5 font-semibold',
   }[size];
 
   const variantClasses = {
-    primary: 'bg-[var(--accent-cyan)] text-[var(--bg-primary)] hover:brightness-110 font-bold shadow-lg border border-[var(--border-hover)]',
-    secondary: 'bg-[var(--bg-card)] text-[var(--text-main)] border border-[var(--border-color)] hover:border-[var(--border-hover)] hover:bg-[var(--bg-surface)] shadow-sm',
-    outline: 'border border-[var(--border-color)] hover:border-[var(--border-hover)] bg-transparent text-[var(--text-main)] hover:bg-[var(--bg-card)]',
-    danger: 'bg-[var(--accent-red)] text-white font-bold shadow-lg border border-red-400/30',
-    ghost: 'bg-transparent hover:bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-main)]',
-    glow: 'bg-[var(--accent-red)] text-white font-black uppercase tracking-wider shadow-lg border border-[var(--border-hover)] hover:scale-105 transition-transform',
+    primary:
+      'bg-[#A78BFA] text-[#0F172A] font-semibold hover:brightness-110 active:brightness-95 shadow-sm border-0',
+    secondary:
+      'bg-[#1E293B] text-[#E2E8F0] border border-[#334155] hover:border-[#475569] hover:bg-[#334155]/40 shadow-sm',
+    outline:
+      'border border-[#334155] hover:border-[#A78BFA] bg-transparent text-[#E2E8F0] hover:text-[#A78BFA]',
+    danger:
+      'bg-[#F87171] text-[#0F172A] font-semibold hover:brightness-110 shadow-sm border-0',
+    ghost:
+      'bg-transparent hover:bg-[#1E293B] text-[#94A3B8] hover:text-[#E2E8F0]',
+    glow:
+      'bg-[#A78BFA] text-[#0F172A] font-semibold hover:brightness-110 shadow-sm border-0',
   }[variant];
 
   return (
