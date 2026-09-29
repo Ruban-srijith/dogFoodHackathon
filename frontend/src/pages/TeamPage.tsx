@@ -62,7 +62,15 @@ export const TeamPage: React.FC = () => {
   if (loading) return <Loading message="Loading team details..." fullScreen />;
   if (error || !team) return <ErrorState message={error || 'Team not found'} onRetry={fetchTeam} fullScreen />;
 
-  const isMember = team.members?.some((m) => m.id === user?.id);
+  const userIdent = user?.id || (user as any)?._id;
+  const isMember = Boolean(
+    userIdent && (
+      team.members?.some((m: any) => (m.id || m._id) === userIdent) ||
+      (typeof team.leader_id === 'string'
+        ? team.leader_id === userIdent
+        : ((team.leader_id as any)?._id || (team.leader_id as any)?.id) === userIdent)
+    )
+  );
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -166,7 +174,10 @@ export const TeamPage: React.FC = () => {
                 <span className="text-xs text-slate-400 font-mono">@{m.username}</span>
               </div>
               <div className="flex items-center gap-2">
-                {m.member_role === 'leader' && (
+                {((typeof team.leader_id === 'string'
+                  ? team.leader_id === (m.id || m._id)
+                  : ((team.leader_id as any)?._id || (team.leader_id as any)?.id) === (m.id || m._id)) ||
+                  m.member_role === 'leader') && (
                   <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                     Leader
                   </span>
