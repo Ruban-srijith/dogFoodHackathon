@@ -19,21 +19,20 @@ export const StatementSection: React.FC<StatementSectionProps> = ({
 
     const words = textRef.current.querySelectorAll('.statement-word');
 
-    // GSAP ScrollTrigger scrubbing word-by-word opacity (0.15 to 1.0) and blur (8px to 0px)
+    // GSAP ScrollTrigger scrubbing word-by-word opacity and subtle translateY
     const anim = gsap.fromTo(
       words,
-      { opacity: 0.15, filter: 'blur(8px)', y: 10 },
+      { opacity: 0.2, y: 8 },
       {
         opacity: 1,
-        filter: 'blur(0px)',
         y: 0,
-        stagger: 0.08,
+        stagger: 0.05,
         ease: 'none',
         scrollTrigger: {
           trigger: containerRef.current,
           start: 'top 80%',
           end: 'bottom 40%',
-          scrub: 0.8,
+          scrub: 0.5,
         },
       }
     );
@@ -56,7 +55,7 @@ export const StatementSection: React.FC<StatementSectionProps> = ({
           className="font-serif text-3xl sm:text-5xl lg:text-6xl font-light leading-[1.15] text-[var(--text-main)] tracking-tight"
         >
           {words.map((word, i) => (
-            <span key={i} className="statement-word inline-block mr-[0.3em] transition-all">
+            <span key={i} className="statement-word inline-block mr-[0.3em] will-change-transform">
               {word}
             </span>
           ))}

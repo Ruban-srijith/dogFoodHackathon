@@ -11,10 +11,24 @@ export const WireframeCanvas: React.FC = () => {
     if (!ctx) return;
 
     let animationFrameId: number;
+    let isVisible = true;
     let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
     let height = (canvas.height = 420);
 
     const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
+
+    // Pause animation when hero is offscreen
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
+        if (isVisible) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = requestAnimationFrame(render);
+        }
+      },
+      { threshold: 0.05 }
+    );
+    observer.observe(canvas);
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -30,8 +44,8 @@ export const WireframeCanvas: React.FC = () => {
       height = canvas.height = 420;
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
 
     // 3D Polyhedron Node Matrix
     let angleX = 0;
@@ -63,6 +77,8 @@ export const WireframeCanvas: React.FC = () => {
     ];
 
     const render = () => {
+      if (!isVisible) return;
+
       ctx.clearRect(0, 0, width, height);
 
       // Smooth mouse parallax lerp
@@ -78,54 +94,60 @@ export const WireframeCanvas: React.FC = () => {
       const sinY = Math.sin(angleY);
 
       const projectedNodes: { x: number; y: number; z: number }[] = [];
+      const cx = width * 0.72;
+      const cy = height * 0.52;
+      const fov = 380;
 
-      const centerX = width > 768 ? width * 0.75 : width * 0.5;
-      const centerY = height * 0.48;
+      for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i];
 
-      nodes.forEach((node) => {
         // Rotate Y
-        let x1 = node.x * cosY - node.z * sinY;
-        let z1 = node.z * cosY + node.x * sinY;
+        const x1 = n.x * cosY + n.z * sinY;
+        const z1 = -n.x * sinY + n.z * cosY;
 
         // Rotate X
-        let y2 = node.y * cosX - z1 * sinX;
-        let z2 = z1 * cosX + node.y * sinX;
+        const y2 = n.y * cosX - z1 * sinX;
+        const z2 = n.y * sinX + z1 * cosX;
 
-        // Perspective projection
-        const fov = 400;
-        const scale = fov / (fov + z2 + 350);
-        const px = x1 * scale + centerX;
-        const py = y2 * scale + centerY;
-
-        projectedNodes.push({ x: px, y: py, z: z2 });
-      });
+        const distance = fov / (fov + z2 + 200);
+        projectedNodes.push({
+          x: cx + x1 * distance,
+          y: cy + y2 * distance,
+          z: z2,
+        });
+      }
 
       // Draw wireframe edges
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.22)';
       ctx.lineWidth = 1;
+      edges.forEach(([i1, i2]) => {
+        const p1 = projectedNodes[i1];
+        const p2 = projectedNodes[i2];
+        const avgZ = (p1.z + p2.z) / 2;
+        const alpha = Math.max(0.12, Math.min(0.7, (avgZ + 180) / 360));
 
-      edges.forEach(([start, end]) => {
-        const p1 = projectedNodes[start];
-        const p2 = projectedNodes[end];
-
+        ctx.strokeStyle = `rgba(0, 240, 255, ${alpha * 0.6})`;
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
         ctx.stroke();
       });
 
-      // Draw glowing nodes
+      // Draw lightweight glowing nodes without costly software shadowBlur
       projectedNodes.forEach((p, idx) => {
         const nodeColor = idx % 2 === 0 ? '#ff2a5f' : '#00f0ff';
-        ctx.fillStyle = nodeColor;
+        const haloColor = idx % 2 === 0 ? 'rgba(255, 42, 95, 0.25)' : 'rgba(0, 240, 255, 0.25)';
 
-        // Node Glow Halo
-        ctx.shadowColor = nodeColor;
-        ctx.shadowBlur = 10;
+        // Outer glow halo
+        ctx.fillStyle = haloColor;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 6.5, 0, Math.PI * 2);
         ctx.fill();
-        ctx.shadowBlur = 0;
+
+        // Inner solid core
+        ctx.fillStyle = nodeColor;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
       });
 
       animationFrameId = requestAnimationFrame(render);
@@ -134,6 +156,7 @@ export const WireframeCanvas: React.FC = () => {
     render();
 
     return () => {
+      observer.disconnect();
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
@@ -144,6 +167,7 @@ export const WireframeCanvas: React.FC = () => {
     <canvas
       ref={canvasRef}
       className="absolute top-0 right-0 w-full h-[420px] pointer-events-none z-0 opacity-85"
+      style={{ transform: 'translateZ(0)', willChange: 'transform' }}
     />
   );
 };

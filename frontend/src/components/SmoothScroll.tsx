@@ -11,14 +11,18 @@ export const SmoothScroll: React.FC<{ children: React.ReactNode }> = ({ children
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) return;
 
-    // Initialize Lenis Smooth Scroll Engine calibrated for 90Hz / 120Hz ProMotion
+    // CRITICAL: Overwrite native browser smooth scrolling so it never fights Lenis RAF
+    document.documentElement.style.scrollBehavior = 'auto';
+    document.documentElement.style.setProperty('scroll-behavior', 'auto', 'important');
+
+    // Initialize Lenis Smooth Scroll Engine calibrated for ultra-smooth 90Hz / 120Hz
     const lenis = new Lenis({
-      duration: 0.85,
+      duration: 0.9,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
       smoothWheel: true,
-      wheelMultiplier: 1.05,
+      wheelMultiplier: 1.0,
       touchMultiplier: 1.2,
     });
 
@@ -30,9 +34,11 @@ export const SmoothScroll: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     gsap.ticker.add(updateTicker);
-    gsap.ticker.lagSmoothing(500, 33);
+    // Disable lagSmoothing (set to 0) to avoid abrupt frame clamping during scroll
+    gsap.ticker.lagSmoothing(0);
 
     return () => {
+      document.documentElement.style.scrollBehavior = '';
       gsap.ticker.remove(updateTicker);
       lenis.destroy();
     };
