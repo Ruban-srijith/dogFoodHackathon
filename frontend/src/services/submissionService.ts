@@ -73,9 +73,13 @@ export const submissionService = {
   getSubmissionById: async (id: string): Promise<Submission> => {
     try {
       return await apiClient.get<Submission>(ENDPOINTS.SUBMISSION_BY_ID(id));
-    } catch {
+    } catch (err: any) {
+      if (err?.status === 403 || err?.status === 401 || err?.status === 404) {
+        throw err;
+      }
       const found = UNSTOP_PRODUCT_SUBMISSIONS.find((s) => s.id === id);
-      return found || UNSTOP_PRODUCT_SUBMISSIONS[0];
+      if (found) return found;
+      throw err;
     }
   },
 
