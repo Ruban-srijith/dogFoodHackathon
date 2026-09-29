@@ -89,7 +89,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ portal: _portal }) => {
     : 'Jury Evaluation Portal';
 
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 border-r border-[#334155] bg-[#0F172A] p-4 min-h-[calc(100vh-4rem)] flex-col justify-between select-none">
+    <aside
+      data-lenis-prevent
+      className="hidden lg:flex w-64 shrink-0 border-r border-[#334155] bg-[#0F172A] p-4 sticky top-16 h-[calc(100vh-4rem)] self-start flex-col justify-between select-none z-30 overflow-hidden"
+    >
       {/* Scrollable Navigation Groups */}
       <div className="space-y-6 overflow-y-auto flex-1 pr-1 custom-scrollbar">
         <div className="px-3 pb-1 border-b border-[#334155]/60 flex items-center justify-between">
