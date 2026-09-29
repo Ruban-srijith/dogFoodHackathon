@@ -5,7 +5,6 @@ import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { Relief } from '../components/Relief';
 import { Cursor } from '../components/Cursor';
-import { FixedUI } from '../components/FixedUI';
 import { SmoothScroll } from '../components/SmoothScroll';
 
 export const MainLayout: React.FC = () => {
@@ -15,11 +14,8 @@ export const MainLayout: React.FC = () => {
         {/* Desktop Precision Dot & Trailing Lerp Cursor */}
         <Cursor />
         
-        {/* WebGL Relief Background Canvas (Shader Light Follower + Parallax) */}
+        {/* Background Image with Dark Slate Overlay */}
         <Relief />
-
-        {/* Persistent Fixed UI Overlay (Menu, See All Projects, Scroll Progress Ring) */}
-        <FixedUI />
 
         {/* Top Running Marquee Banner */}
         <Marquee />
