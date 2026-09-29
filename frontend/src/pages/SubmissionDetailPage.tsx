@@ -108,13 +108,13 @@ export const SubmissionDetailPage: React.FC = () => {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900/90 to-slate-950 p-8 sm:p-10 space-y-6">
+      <div className="rounded-[16px] border border-[#334155] bg-[#1E293B] p-8 sm:p-10 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <StatusBadge status={submission.status} />
               {submission.track_name && (
-                <span className="text-xs font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                <span className="text-xs font-mono font-semibold text-[#4ADE80] bg-[#4ADE80]/10 px-2.5 py-0.5 rounded-[4px] border border-[#4ADE80]/30">
                   {submission.track_name}
                 </span>
               )}

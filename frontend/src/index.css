@@ -81,14 +81,14 @@
     font-weight: 700;
   }
 
-  /* Form Controls */
+  /* Form Controls - sharp 4px corners */
   input,
   textarea,
   select {
     background-color: #0F172A;
     color: var(--text-primary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 4px;
     transition: border-color 0.12s ease, box-shadow 0.12s ease;
   }
 
@@ -118,7 +118,7 @@
 
   ::-webkit-scrollbar-thumb {
     background: #334155;
-    border-radius: 9999px;
+    border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -136,36 +136,47 @@ nav {
   backface-visibility: hidden;
 }
 
-/* Card primitives */
+/* Card primitives: Flat solid cards with 16px soft radius */
 .theme-card,
 .card-base {
   background-color: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  box-shadow: none;
 }
 
-/* Buttons */
+/* Buttons: Sharp 4px physical controls */
 .btn-primary {
   background-color: var(--accent);
   color: #0F172A;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 4px;
   transition: filter 0.12s ease;
 }
 
 .btn-primary:hover {
-  filter: brightness(1.1);
+  filter: brightness(1.08);
 }
 
 .btn-primary:active {
   filter: brightness(0.95);
 }
 
+/* Technical Accent Lines & Markers */
+.diagonal-accent-line {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #334155,
+    #334155 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+
 /* Blueprint subtle grid overlay */
 .blueprint-grid-overlay {
   background-image: 
-    linear-gradient(to right, rgba(51, 65, 85, 0.25) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(51, 65, 85, 0.25) 1px, transparent 1px);
+    linear-gradient(to right, rgba(51, 65, 85, 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(51, 65, 85, 0.2) 1px, transparent 1px);
   background-size: 32px 32px;
 }
