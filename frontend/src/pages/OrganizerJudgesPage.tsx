@@ -34,33 +34,43 @@ export const OrganizerJudgesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [evts, judgeUsers] = await Promise.all([
-          eventService.getAllEvents(),
-          adminService.getUsers('JUDGE'),
+  const fetchAll = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [evts, judgeUsers] = await Promise.all([
+        eventService.getAllEvents(),
+        adminService.getUsers('JUDGE'),
+      ]);
+      setEvents(evts);
+      setJudges(judgeUsers);
+      const activeEvtId = selectedEventId || (evts.length > 0 ? evts[0].id : '');
+      if (activeEvtId) {
+        if (!selectedEventId) setSelectedEventId(activeEvtId);
+        const [assigns, subs] = await Promise.all([
+          judgeService.getEventAssignments(activeEvtId),
+          submissionService.getEventSubmissions(activeEvtId),
         ]);
-        setEvents(evts);
-        setJudges(judgeUsers);
-        if (evts.length > 0) {
-          setSelectedEventId(evts[0].id);
-        }
-      } catch (err: any) {
-        setError(err.message || 'Failed to initialize assignment console');
+        setAssignments(assigns);
+        setSubmissions(subs);
+        if (subs.length > 0) setSelectedSubmissionId(subs[0].id);
+        if (judgeUsers.length > 0) setSelectedJudgeId(judgeUsers[0].id);
       }
-    };
-    fetchInitialData();
-  }, []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to initialize assignment console');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const fetchAssignments = async () => {
-    if (!selectedEventId) return;
+  const fetchAssignments = async (evtId = selectedEventId) => {
+    if (!evtId) return;
     setLoading(true);
     setError(null);
     try {
       const [assigns, subs] = await Promise.all([
-        judgeService.getEventAssignments(selectedEventId),
-        submissionService.getEventSubmissions(selectedEventId),
+        judgeService.getEventAssignments(evtId),
+        submissionService.getEventSubmissions(evtId),
       ]);
       setAssignments(assigns);
       setSubmissions(subs);
@@ -74,8 +84,8 @@ export const OrganizerJudgesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAssignments();
-  }, [selectedEventId, judges]);
+    fetchAll();
+  }, []);
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,7 +193,11 @@ export const OrganizerJudgesPage: React.FC = () => {
           {events.length > 0 && (
             <select
               value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                setSelectedEventId(nextId);
+                fetchAssignments(nextId);
+              }}
               className="rounded-xl bg-slate-900 border border-slate-800 text-xs px-3 py-2 text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
             >
               {events.map((e) => (
@@ -208,7 +222,7 @@ export const OrganizerJudgesPage: React.FC = () => {
       {loading ? (
         <Loading message="Loading judge assignments..." fullScreen />
       ) : error ? (
-        <ErrorState message={error} onRetry={fetchAssignments} fullScreen />
+        <ErrorState message={error} onRetry={fetchAll} fullScreen />
       ) : assignments.length === 0 ? (
         <EmptyState
           icon={<Gavel className="w-8 h-8 text-amber-400" />}

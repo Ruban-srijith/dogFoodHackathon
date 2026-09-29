@@ -2584,7 +2584,7 @@ app.get('/api/v1/teams/:id', authenticate, async (req, res) => {
 
 // --- Judge routes ---
 // GET /api/v1/judges/event/:eventId/assignments  (organizer/admin)
-app.get('/api/v1/judges/event/:eventId/assignments', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
+app.get(['/api/judges/event/:eventId/assignments', '/api/v1/judges/event/:eventId/assignments'], authenticate, requireRole('organizer', 'admin'), async (req, res) => {
   try {
     const { eventId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
@@ -2601,7 +2601,7 @@ app.get('/api/v1/judges/event/:eventId/assignments', authenticate, requireRole('
 });
 
 // POST /api/v1/judges/assign  (organizer/admin) — alias for POST /api/judges/assignments
-app.post('/api/v1/judges/assign', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
+app.post(['/api/judges/assign', '/api/v1/judges/assign'], authenticate, requireRole('organizer', 'admin'), async (req, res) => {
   const { event_id, judge_id, submission_id } = req.body;
   if (!event_id || !judge_id || !submission_id) {
     return res.status(400).json({ success: false, error: { code: 'MISSING_FIELDS', message: 'event_id, judge_id, submission_id required' } });
@@ -2628,7 +2628,7 @@ app.post('/api/v1/judges/assign', authenticate, requireRole('organizer', 'admin'
 });
 
 // DELETE /api/v1/judges/assignments/:id  (organizer/admin)
-app.delete('/api/v1/judges/assignments/:id', authenticate, requireRole('organizer', 'admin'), async (req, res) => {
+app.delete(['/api/judges/assignments/:id', '/api/v1/judges/assignments/:id'], authenticate, requireRole('organizer', 'admin'), async (req, res) => {
   try {
     const assignment = await JudgeAssignment.findById(req.params.id);
     if (!assignment) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Assignment not found' } });
@@ -2641,7 +2641,7 @@ app.delete('/api/v1/judges/assignments/:id', authenticate, requireRole('organize
 
 // --- Scores / Results ---
 // GET /api/v1/scores/event/:eventId/results  (authenticated – organizer/admin see full; others see normalized)
-app.get('/api/v1/scores/event/:eventId/results', authenticate, async (req, res) => {
+app.get(['/api/scores/event/:eventId/results', '/api/v1/scores/event/:eventId/results'], authenticate, async (req, res) => {
   try {
     const { eventId } = req.params;
     if (!mongoose.Types.ObjectId.isValid(eventId)) {

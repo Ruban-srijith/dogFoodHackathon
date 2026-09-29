@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { NavigationProvider } from './contexts/NavigationContext';
 import { MainLayout } from './layouts/MainLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 import { DashboardLayout } from './layouts/DashboardLayout';
@@ -43,7 +44,8 @@ export const App: React.FC = () => {
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
           <ToastProvider>
-            <Routes>
+            <NavigationProvider>
+              <Routes>
               {/* Public and Participant Routes */}
               <Route element={<MainLayout />}>
                 <Route path="/" element={<HomePage />} />
@@ -89,6 +91,7 @@ export const App: React.FC = () => {
                 <Route path="audit" element={<AdminAuditPage />} />
               </Route>
             </Routes>
+            </NavigationProvider>
           </ToastProvider>
         </AuthProvider>
       </BrowserRouter>
