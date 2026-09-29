@@ -741,8 +741,20 @@ app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole(
       } catch (e) {}
     }
     if (!event) {
+      if (team.event_id) {
+        try {
+          const teamEvId = typeof team.event_id === 'object' ? (team.event_id._id || team.event_id.id) : team.event_id;
+          event = await Event.findById(teamEvId);
+        } catch (e) {}
+      }
+      if (!event) {
+        event = await Event.findOne().sort({ created_at: -1 });
+      }
+    }
+    if (!event) {
       return res.status(404).json({ error: 'Not Found', message: 'Associated event not found.' });
     }
+    targetEventId = event._id;
 
     // Check submission deadline
     const now = new Date();
@@ -758,10 +770,33 @@ app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole(
     if (typeof targetTrackId === 'object' && targetTrackId !== null) {
       targetTrackId = targetTrackId._id || targetTrackId.id;
     }
-    if (!targetTrackId) {
-      const defaultTrack = await Track.findOne({ event_id: targetEventId });
-      if (defaultTrack) targetTrackId = defaultTrack._id;
+    let trackDoc = null;
+    if (targetTrackId) {
+      try {
+        trackDoc = await Track.findById(targetTrackId);
+      } catch (e) {
+        if (e.name !== 'CastError') throw e;
+      }
+      if (!trackDoc) {
+        try {
+          trackDoc = await Track.findOne({ $or: [{ slug: targetTrackId }, { name: targetTrackId }] });
+        } catch (e) {}
+      }
     }
+    if (!trackDoc) {
+      trackDoc = await Track.findOne({ event_id: targetEventId });
+    }
+    if (!trackDoc) {
+      trackDoc = await Track.findOne();
+    }
+    if (!trackDoc) {
+      trackDoc = await Track.create({
+        event_id: targetEventId,
+        name: 'General Track',
+        description: 'Default Competition Track'
+      });
+    }
+    targetTrackId = trackDoc._id;
 
     const status = (is_draft === true || reqStatus === 'draft') ? 'draft' : 'submitted';
 
@@ -861,8 +896,28 @@ app.put(['/api/submissions/:id', '/api/v1/submissions/:id'], authenticate, requi
     if (description !== undefined) submission.description = description;
     if (repo_url !== undefined) submission.repo_url = repo_url;
     if (demo_url !== undefined) submission.demo_url = demo_url;
-    if (video_url !== undefined) submission.video_url = video_url;
-    if (track_id !== undefined) submission.track_id = track_id;
+    if (track_id !== undefined) {
+      let targetTrackId = track_id;
+      if (typeof targetTrackId === 'object' && targetTrackId !== null) {
+        targetTrackId = targetTrackId._id || targetTrackId.id;
+      }
+      let trackDoc = null;
+      if (targetTrackId) {
+        try {
+          trackDoc = await Track.findById(targetTrackId);
+        } catch (e) {
+          if (e.name !== 'CastError') throw e;
+        }
+        if (!trackDoc) {
+          try {
+            trackDoc = await Track.findOne({ $or: [{ slug: targetTrackId }, { name: targetTrackId }] });
+          } catch (e) {}
+        }
+      }
+      if (trackDoc) {
+        submission.track_id = trackDoc._id;
+      }
+    }
     if (tech_stack !== undefined) submission.tech_stack = Array.isArray(tech_stack) ? tech_stack : [tech_stack];
     if (is_draft !== undefined) {
       submission.status = is_draft ? 'draft' : 'submitted';

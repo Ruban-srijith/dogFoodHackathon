@@ -65,7 +65,8 @@ export const SubmissionCreatePage: React.FC = () => {
         const ev = await eventService.getEventByIdOrSlug(selectedEventId);
         setEvent(ev);
         if (ev?.tracks && ev.tracks.length > 0) {
-          setTrackId(ev.tracks[0].id);
+          const firstTrk = ev.tracks[0];
+          setTrackId(firstTrk.id || (firstTrk as any)._id || '');
         }
       } catch (err) {
         console.error('Failed to load event details:', err);
@@ -123,7 +124,7 @@ export const SubmissionCreatePage: React.FC = () => {
         return;
       }
       try {
-        const targetEvent = event?.id || (event as any)?._id || selectedEventId;
+        const targetEvent = (event as any)?._id || event?.id || selectedEventId;
         const newTeam = await teamService.createTeam({
           event_id: targetEvent,
           name: newTeamName.trim(),
@@ -144,7 +145,7 @@ export const SubmissionCreatePage: React.FC = () => {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const targetEvent = event?.id || (event as any)?._id || selectedEventId;
+      const targetEvent = (event as any)?._id || event?.id || selectedEventId;
 
       const sub = await submissionService.createSubmission({
         event_id: targetEvent,
@@ -296,8 +297,8 @@ export const SubmissionCreatePage: React.FC = () => {
               label="Competition Track"
               value={trackId}
               onChange={(e) => setTrackId(e.target.value)}
-              options={event.tracks.map((t) => ({
-                value: t.id,
+              options={event.tracks.map((t: any) => ({
+                value: t.id || t._id,
                 label: `${t.name} ${t.prize_pool ? `(${t.prize_pool})` : ''}`,
               }))}
             />
