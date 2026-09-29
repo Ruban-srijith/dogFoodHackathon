@@ -18,7 +18,9 @@ export default {
         border: '#334155',
       },
       fontFamily: {
-        heading: ['Space Grotesk', 'sans-serif'],
+        heading: ['Fraunces', 'serif'],
+        body: ['Playfair Display', 'serif'],
+        serif: ['Playfair Display', 'serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
