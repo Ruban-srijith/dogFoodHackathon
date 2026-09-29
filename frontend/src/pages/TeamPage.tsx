@@ -31,9 +31,15 @@ export const TeamPage: React.FC = () => {
       const data = await teamService.getTeamById(id);
       setTeam(data);
 
-      const eventSubs = await submissionService.getEventSubmissions(data.event_id);
-      const teamSub = eventSubs.find((s) => s.team_id === data.id);
-      setSubmission(teamSub || null);
+      const eventId = typeof data.event_id === 'string' ? data.event_id : (data.event_id as any)?._id || (data.event_id as any)?.id;
+      if (eventId) {
+        const eventSubs = await submissionService.getEventSubmissions(eventId);
+        const teamSub = eventSubs.find((s) => {
+          const subTeamId = typeof s.team_id === 'string' ? s.team_id : (s.team_id as any)?._id || (s.team_id as any)?.id;
+          return subTeamId === data.id || subTeamId === (data as any)._id;
+        });
+        setSubmission(teamSub || null);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load team');
     } finally {
@@ -135,7 +141,7 @@ export const TeamPage: React.FC = () => {
           <div className="text-center py-6 space-y-3">
             <p className="text-xs text-slate-400">No submission created for this team yet.</p>
             {isMember && (
-              <Link to={`/submissions/new?event_id=${team.event_id}&team_id=${team.id}`}>
+              <Link to={`/submissions/new?event_id=${typeof team.event_id === 'string' ? team.event_id : (team.event_id as any)?._id || (team.event_id as any)?.id || ''}&team_id=${team.id || (team as any)._id}`}>
                 <Button variant="primary" size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
                   Create Project Submission
                 </Button>
@@ -153,8 +159,8 @@ export const TeamPage: React.FC = () => {
         </h2>
 
         <div className="divide-y divide-slate-800/80">
-          {team.members?.map((m) => (
-            <div key={m.id} className="py-3 flex items-center justify-between">
+          {team.members?.map((m: any, idx: number) => (
+            <div key={m.id || m._id || m.username || idx} className="py-3 flex items-center justify-between">
               <div>
                 <span className="font-semibold text-sm text-slate-200 block">{m.full_name}</span>
                 <span className="text-xs text-slate-400 font-mono">@{m.username}</span>

@@ -424,7 +424,7 @@ app.post('/api/v1/events', authenticate, requireRole('organizer', 'admin'), asyn
 
 
 // POST /api/teams & /api/v1/teams (Participant creates a team and gets an invite link)
-app.post(['/api/teams', '/api/v1/teams'], authenticate, requireRole('participant', 'admin'), async (req, res) => {
+app.post(['/api/teams', '/api/v1/teams'], authenticate, requireRole('participant', 'organizer', 'admin'), async (req, res) => {
   try {
     const { event_id, name, description } = req.body;
 
@@ -433,13 +433,26 @@ app.post(['/api/teams', '/api/v1/teams'], authenticate, requireRole('participant
     }
 
     let targetEventId = event_id;
+    if (typeof targetEventId === 'object' && targetEventId !== null) {
+      targetEventId = targetEventId._id || targetEventId.id;
+    }
     if (!targetEventId) {
       const defaultEvent = await Event.findOne().sort({ created_at: -1 });
       if (defaultEvent) targetEventId = defaultEvent._id;
     }
 
     if (targetEventId) {
-      const event = await Event.findById(targetEventId);
+      let event = null;
+      try {
+        event = await Event.findById(targetEventId);
+      } catch (e) {
+        if (e.name !== 'CastError') throw e;
+      }
+      if (!event) {
+        try {
+          event = await Event.findOne({ slug: targetEventId });
+        } catch (e) {}
+      }
       if (event && event.submission_deadline && new Date() > new Date(event.submission_deadline) && req.user.role !== 'ADMIN') {
         return res.status(403).json({
           error: 'Forbidden',
@@ -477,7 +490,7 @@ app.post(['/api/teams', '/api/v1/teams'], authenticate, requireRole('participant
 });
 
 // POST /api/teams/join & /api/v1/teams/join (Others join via link/code - max 4 members)
-app.post(['/api/teams/join', '/api/v1/teams/join'], authenticate, requireRole('participant', 'admin'), async (req, res) => {
+app.post(['/api/teams/join', '/api/v1/teams/join'], authenticate, requireRole('participant', 'organizer', 'admin'), async (req, res) => {
   try {
     const { invite_code } = req.body;
     if (!invite_code) {
@@ -675,7 +688,7 @@ app.get(['/api/teams/event/:eventId', '/api/v1/teams/event/:eventId'], optionalA
 // ==========================================
 
 // POST /api/submissions & /api/v1/submissions (Create project submission, saved as draft or submitted)
-app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole('participant', 'admin'), async (req, res) => {
+app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole('participant', 'organizer', 'admin'), async (req, res) => {
   try {
     const { event_id, team_id, track_id, title, tagline, description, repo_url, demo_url, video_url, tech_stack, is_draft, status: reqStatus } = req.body;
 
@@ -686,14 +699,24 @@ app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole(
       });
     }
 
+    let cleanTeamId = team_id;
+    if (typeof cleanTeamId === 'object' && cleanTeamId !== null) {
+      cleanTeamId = cleanTeamId._id || cleanTeamId.id;
+    }
+
     // Verify team exists and user is a member
-    const team = await Team.findById(team_id);
+    let team = null;
+    try {
+      team = await Team.findById(cleanTeamId);
+    } catch (e) {
+      if (e.name !== 'CastError') throw e;
+    }
     if (!team) {
       return res.status(404).json({ error: 'Not Found', message: 'Team not found.' });
     }
 
     const userIdStr = String(req.user.id);
-    const isMember = String(team.leader_id) === userIdStr || team.members.some(m => String(m) === userIdStr);
+    const isMember = String(team.leader_id) === userIdStr || (team.members && team.members.some(m => String(m) === userIdStr));
     if (!isMember && req.user.role !== 'ADMIN') {
       return res.status(403).json({
         error: 'Forbidden',
@@ -701,15 +724,29 @@ app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole(
       });
     }
 
-    const targetEventId = event_id || team.event_id;
-    const event = await Event.findById(targetEventId);
+    let targetEventId = event_id || team.event_id;
+    if (typeof targetEventId === 'object' && targetEventId !== null) {
+      targetEventId = targetEventId._id || targetEventId.id;
+    }
+
+    let event = null;
+    try {
+      event = await Event.findById(targetEventId);
+    } catch (e) {
+      if (e.name !== 'CastError') throw e;
+    }
+    if (!event) {
+      try {
+        event = await Event.findOne({ slug: targetEventId });
+      } catch (e) {}
+    }
     if (!event) {
       return res.status(404).json({ error: 'Not Found', message: 'Associated event not found.' });
     }
 
     // Check submission deadline
     const now = new Date();
-    if (now > new Date(event.submission_deadline)) {
+    if (event.submission_deadline && now > new Date(event.submission_deadline) && req.user.role !== 'ADMIN') {
       return res.status(403).json({
         error: 'Forbidden',
         message: 'Submission deadline has passed. New submissions are closed.'
@@ -718,6 +755,9 @@ app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole(
 
     // Assign track
     let targetTrackId = track_id;
+    if (typeof targetTrackId === 'object' && targetTrackId !== null) {
+      targetTrackId = targetTrackId._id || targetTrackId.id;
+    }
     if (!targetTrackId) {
       const defaultTrack = await Track.findOne({ event_id: targetEventId });
       if (defaultTrack) targetTrackId = defaultTrack._id;
@@ -727,7 +767,7 @@ app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole(
 
     const submission = await Submission.create({
       event_id: targetEventId,
-      team_id,
+      team_id: cleanTeamId,
       track_id: targetTrackId,
       title,
       tagline: tagline || '',
@@ -763,7 +803,7 @@ app.post(['/api/submissions', '/api/v1/submissions'], authenticate, requireRole(
 });
 
 // PUT /api/submissions/:id & /api/v1/submissions/:id (Edit project - Backend rejects edits after deadline with 403)
-app.put(['/api/submissions/:id', '/api/v1/submissions/:id'], authenticate, requireRole('participant', 'admin'), async (req, res) => {
+app.put(['/api/submissions/:id', '/api/v1/submissions/:id'], authenticate, requireRole('participant', 'organizer', 'admin'), async (req, res) => {
   try {
     const { id } = req.params;
     let submission;
@@ -782,9 +822,16 @@ app.put(['/api/submissions/:id', '/api/v1/submissions/:id'], authenticate, requi
 
     // Verify user is team member or admin
     if (req.user.role !== 'ADMIN') {
-      const team = await Team.findById(submission.team_id);
+      const subTeamId = submission.team_id?._id || submission.team_id?.id || submission.team_id;
+      let team = null;
+      try {
+        team = await Team.findById(subTeamId);
+      } catch (e) {
+        if (e.name !== 'CastError') throw e;
+      }
       const userIdStr = String(req.user.id);
-      const isMember = team && (String(team.leader_id) === userIdStr || team.members.some(m => String(m) === userIdStr));
+      const isMember = (team && (String(team.leader_id) === userIdStr || (team.members && team.members.some(m => String(m) === userIdStr)))) ||
+                       (submission.team_id && (String(submission.team_id.leader_id) === userIdStr || (submission.team_id.members && submission.team_id.members.some(m => String(m) === userIdStr))));
       if (!isMember) {
         return res.status(403).json({
           error: 'Forbidden',
@@ -794,8 +841,14 @@ app.put(['/api/submissions/:id', '/api/v1/submissions/:id'], authenticate, requi
     }
 
     // STRICT CHECK: Backend rejects edits after the deadline (403)
-    const event = await Event.findById(submission.event_id);
-    if (event && new Date() > new Date(event.submission_deadline)) {
+    const subEventId = submission.event_id?._id || submission.event_id?.id || submission.event_id;
+    let event = null;
+    try {
+      event = await Event.findById(subEventId);
+    } catch (e) {
+      if (e.name !== 'CastError') throw e;
+    }
+    if (event && event.submission_deadline && new Date() > new Date(event.submission_deadline) && req.user.role !== 'ADMIN') {
       return res.status(403).json({
         error: 'Forbidden',
         message: 'Submission deadline has passed. Edits are no longer allowed.'

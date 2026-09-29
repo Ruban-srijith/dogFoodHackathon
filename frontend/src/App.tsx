@@ -60,7 +60,7 @@ export const App: React.FC = () => {
                       <Route path="/teams/new" element={<ProtectedRoute><TeamCreatePage /></ProtectedRoute>} />
                       <Route path="/teams/join" element={<ProtectedRoute><TeamJoinPage /></ProtectedRoute>} />
                       <Route path="/teams/:id" element={<TeamPage />} />
-                      <Route path="/submissions/new" element={<ProtectedRoute allowedRoles={['PARTICIPANT', 'ADMIN']}><SubmissionCreatePage /></ProtectedRoute>} />
+                      <Route path="/submissions/new" element={<ProtectedRoute allowedRoles={['PARTICIPANT', 'ORGANIZER', 'ADMIN']}><SubmissionCreatePage /></ProtectedRoute>} />
                       <Route path="*" element={<NotFoundPage />} />
                     </Route>
 
