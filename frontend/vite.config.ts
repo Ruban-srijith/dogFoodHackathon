@@ -8,15 +8,15 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:5001',
+        target: process.env.VITE_BACKEND_PORT === '5000' ? 'http://localhost:5000' : 'http://localhost:5001',
         changeOrigin: true,
       },
       '/health': {
-        target: process.env.VITE_API_URL || 'http://localhost:5001',
+        target: process.env.VITE_BACKEND_PORT === '5000' ? 'http://localhost:5000' : 'http://localhost:5001',
         changeOrigin: true,
       },
       '/ready': {
-        target: process.env.VITE_API_URL || 'http://localhost:5001',
+        target: process.env.VITE_BACKEND_PORT === '5000' ? 'http://localhost:5000' : 'http://localhost:5001',
         changeOrigin: true,
       }
     }

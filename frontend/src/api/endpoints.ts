@@ -1,13 +1,16 @@
 const getBaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_URL;
+  // Never route to localhost:5000 which is macOS AirPlay ControlCenter
+  if (!envUrl || envUrl.includes('5000') || envUrl === '/api/v1') {
+    return '/api/v1';
+  }
   if (typeof window !== 'undefined') {
     const isRemote = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    // If accessing from another computer/device over LAN, ignore any hardcoded localhost URL
-    if (isRemote && envUrl && envUrl.includes('localhost')) {
+    if (isRemote && envUrl.includes('localhost')) {
       return '/api/v1';
     }
   }
-  return envUrl || '/api/v1';
+  return envUrl;
 };
 
 export const BASE_URL = getBaseUrl();

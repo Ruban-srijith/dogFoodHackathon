@@ -863,6 +863,42 @@ app.get([
   '/api/v1/submissions/gallery'
 ], handleGetGallery);
 
+// GET /api/submissions/event/:eventId & /api/v1/submissions/event/:eventId
+app.get(['/api/submissions/event/:eventId', '/api/v1/submissions/event/:eventId'], optionalAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    let filter = {};
+    if (mongoose.Types.ObjectId.isValid(eventId)) {
+      filter.event_id = eventId;
+    } else {
+      const eventDoc = await Event.findOne({ $or: [{ slug: eventId }] }).lean();
+      if (eventDoc) {
+        filter.event_id = eventDoc._id;
+      } else {
+        return res.status(200).json({ success: true, data: [] });
+      }
+    }
+
+    const submissions = await Submission.find(filter)
+      .populate('team_id', 'name slug members leader_id')
+      .populate('track_id', 'name prize_pool')
+      .populate('event_id', 'title slug')
+      .sort({ created_at: -1 })
+      .lean();
+
+    const safe = submissions.map((sub) => ({
+      ...sub,
+      id: sub._id.toString(),
+      team_name: sub.team_id?.name || 'Independent Team',
+      track_name: sub.track_id?.name || 'General Track'
+    }));
+
+    return res.status(200).json({ success: true, data: safe });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
+  }
+});
+
 // GET /api/submissions/:id and /api/v1/submissions/:id
 app.get(['/api/submissions/:id', '/api/v1/submissions/:id'], optionalAuth, async (req, res, next) => {
   if (req.params.id === 'gallery' || req.params.id === 'event') {
@@ -2601,10 +2637,16 @@ app.get('/api/v1/teams/:id', authenticate, async (req, res) => {
 app.get(['/api/judges/event/:eventId/assignments', '/api/v1/judges/event/:eventId/assignments'], authenticate, requireRole('organizer', 'admin'), async (req, res) => {
   try {
     const { eventId } = req.params;
+    let targetEventId = eventId;
     if (!mongoose.Types.ObjectId.isValid(eventId)) {
-      return res.status(400).json({ success: false, error: { code: 'INVALID_ID', message: 'Invalid event ID' } });
+      const eventDoc = await Event.findOne({ $or: [{ slug: eventId }] }).lean();
+      if (eventDoc) {
+        targetEventId = eventDoc._id;
+      } else {
+        return res.status(200).json({ success: true, data: [], total: 0 });
+      }
     }
-    const assignments = await JudgeAssignment.find({ event_id: eventId })
+    const assignments = await JudgeAssignment.find({ event_id: targetEventId })
       .populate('judge_id', 'username full_name email')
       .populate('submission_id', 'title status')
       .lean();
