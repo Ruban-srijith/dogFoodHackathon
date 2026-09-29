@@ -30,8 +30,10 @@ interface NavGroup {
 
 export const Sidebar: React.FC<SidebarProps> = ({ portal: _portal }) => {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'ADMIN';
-  const isOrganizer = user?.role === 'ORGANIZER' || isAdmin;
+  const role = (user?.role || '').toUpperCase();
+  const isAdmin = role === 'ADMIN';
+  const isOrganizer = role === 'ORGANIZER' || isAdmin;
+  const isJudge = role === 'JUDGE' || isOrganizer || isAdmin;
 
   // Build categorized groups based on role permissions
   const groups: NavGroup[] = [];
@@ -61,13 +63,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ portal: _portal }) => {
   }
 
   // 3. Jury & Evaluation Section (Accessible to Judges, Organizers, and Admins)
-  groups.push({
-    title: 'Jury & Evaluation',
-    items: [
-      { to: '/judge/dashboard', label: 'Evaluation Queue', icon: Trophy },
-      { to: '/judge/submissions', label: 'Assigned Submissions', icon: FileCheck2 },
-    ],
-  });
+  if (isJudge) {
+    groups.push({
+      title: 'Jury & Evaluation',
+      items: [
+        { to: '/judge/dashboard', label: 'Evaluation Queue', icon: Trophy },
+        { to: '/judge/submissions', label: 'Assigned Submissions', icon: FileCheck2 },
+      ],
+    });
+  }
 
   // 4. Public & Platform Exploration Section
   groups.push({

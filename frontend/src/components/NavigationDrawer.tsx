@@ -71,10 +71,11 @@ export const NavigationDrawer: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
-  const isAdmin = user?.role === 'ADMIN';
-  const isOrganizer = user?.role === 'ORGANIZER' || isAdmin;
-  const isJudge = user?.role === 'JUDGE' || isAdmin || isOrganizer;
-  const isParticipant = user?.role === 'PARTICIPANT' || (!isAdmin && !isOrganizer && !isJudge);
+  const role = (user?.role || '').toUpperCase();
+  const isAdmin = role === 'ADMIN';
+  const isOrganizer = role === 'ORGANIZER' || isAdmin;
+  const isJudge = role === 'JUDGE' || isAdmin || isOrganizer;
+  const isParticipant = role === 'PARTICIPANT' || (!isAdmin && !isOrganizer && !isJudge);
 
   const groups: NavGroup[] = [];
 

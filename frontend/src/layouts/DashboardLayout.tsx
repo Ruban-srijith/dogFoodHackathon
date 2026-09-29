@@ -31,14 +31,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ portal }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Role authorization per portal
+  // Role authorization per portal (case-insensitive)
+  const role = (user.role || '').toUpperCase();
   const isAuthorized =
     portal === 'admin'
-      ? user.role === 'ADMIN'
+      ? role === 'ADMIN'
       : portal === 'organizer'
-      ? user.role === 'ORGANIZER' || user.role === 'ADMIN'
+      ? role === 'ORGANIZER' || role === 'ADMIN'
       : portal === 'judge'
-      ? user.role === 'JUDGE' || user.role === 'ADMIN'
+      ? role === 'JUDGE' || role === 'ORGANIZER' || role === 'ADMIN'
       : false;
 
   if (!isAuthorized) {
