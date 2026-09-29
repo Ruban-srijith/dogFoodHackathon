@@ -68,7 +68,7 @@ export const NavigationDrawer: React.FC = () => {
   const handleLogout = async () => {
     closeNav();
     await logout();
-    navigate('/login', { replace: true });
+    navigate('/login', { replace: true, state: null });
   };
 
   const role = (user?.role || '').toUpperCase();
